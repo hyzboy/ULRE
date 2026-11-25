@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/SystemGroupActivity.h>
 #include<hgl/ecs/core/render/RenderGraph.h>
 #include<hgl/ecs/core/render/RenderFrameCache.h>
 #include<hgl/ecs/core/render/RenderPassRequest.h>
@@ -125,8 +126,7 @@ namespace hgl
             std::map<std::string, std::vector<std::shared_ptr<System>>> systems_by_element_type;
 
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
-            uint32_t system_group_component_counts[kSystemGroupCount] = {};
-            bool     installed_system_groups[kSystemGroupCount] = {};
+            SystemGroupActivity system_group_activity;
 
             /// 每组的系统快照（供启用/禁用走 O(1) 数组；系统注册时置空、下次启用重建）
             std::vector<std::shared_ptr<System>> group_systems[kSystemGroupCount];

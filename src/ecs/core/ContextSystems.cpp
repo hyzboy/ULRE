@@ -348,7 +348,7 @@ namespace hgl::ecs
         if (group == SystemGroupID::None)
             return false;
 
-        return installed_system_groups[static_cast<uint32_t>(group)];
+        return system_group_activity.IsInstalled(group);
     }
 
     void ECSContext::MarkSystemGroupInstalled(SystemGroupID group)
@@ -356,16 +356,13 @@ namespace hgl::ecs
         if (group == SystemGroupID::None)
             return;
 
-        installed_system_groups[static_cast<uint32_t>(group)] = true;
+        system_group_activity.MarkInstalled(group);
     }
 
     void ECSContext::ResetComponentDrivenGroups()
     {
+        system_group_activity.Reset();
         for (uint32_t g = 0; g < kSystemGroupCount; ++g)
-        {
-            system_group_component_counts[g] = 0;
-            installed_system_groups[g] = false;
             group_systems[g].clear();
-        }
     }
 }

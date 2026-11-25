@@ -61,6 +61,29 @@ int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestSystemReplaceAndPoolLiveness"));
 
+    {
+        SystemGroupActivity activity;
+        activity.Add(SystemGroupID::Line);
+        activity.Add(SystemGroupID::Line);
+        activity.Add(SystemGroupID::Text);
+        activity.MarkInstalled(SystemGroupID::Line);
+        if (activity.Remove(SystemGroupID::Line)
+            || !activity.Remove(SystemGroupID::Line)
+            || !activity.Remove(SystemGroupID::Line)
+            || !activity.IsInstalled(SystemGroupID::Line)
+            || activity.IsInstalled(SystemGroupID::Text))
+        {
+            GLogError(u8"System group activity counts or installation state are incorrect");
+            return 1;
+        }
+        activity.Reset();
+        if (activity.IsInstalled(SystemGroupID::Line) || !activity.Remove(SystemGroupID::Text))
+        {
+            GLogError(u8"System group activity reset did not clear all groups");
+            return 1;
+        }
+    }
+
     // ── S1：同类型系统替换 ──────────────────────────────────────────────────
     {
         ECSContext ctx;

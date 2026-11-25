@@ -750,7 +750,7 @@ namespace hgl
             if (group == SystemGroupID::None)
                 return;
 
-            ++system_group_component_counts[static_cast<uint32_t>(group)];
+            system_group_activity.Add(group);
 
             EnsureSystemGroupSystems(this, group, GetRenderTarget());
             SetSystemGroupEnabled(group, true);
@@ -766,12 +766,7 @@ namespace hgl
             if (group == SystemGroupID::None)
                 return;
 
-            uint32_t &count = system_group_component_counts[static_cast<uint32_t>(group)];
-
-            if (count > 0)
-                --count;
-
-            if (count == 0)
+            if (system_group_activity.Remove(group))
                 SetSystemGroupEnabled(group, false);
         }
 
