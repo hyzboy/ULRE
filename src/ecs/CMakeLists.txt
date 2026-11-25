@@ -1,4 +1,4 @@
-SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
+﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 # ECS 调试/校验面（对拍器 + 诊断打印）。**开关与默认值的唯一台帐 = inc/hgl/common/RenderOptions.h §2**：
 # 本 option 只表达「在所有构建配置里**强制打开**」；默认 OFF = 不下发宏 ⇒ 由台帐按配置决定（Debug 开 / Release 关）。
@@ -115,6 +115,16 @@ if(ULRE_ENABLE_CPU_CULL_PARITY_TEST)
     target_compile_definitions(ULRE.ECS PRIVATE ULRE_ENABLE_CPU_CULL_PARITY_TEST=1)
 endif()
 
+# ── ECS 测试可执行目标开关 ────────────────────────────────────────────────────
+# 历史上 `add_executable` **无条件**执行（只有 `add_test` 包在 BUILD_TESTING 里）⇒
+# 即便 `-DBUILD_TESTING=OFF`，本目录仍会生成 60+ 个测试 exe 并进入 ALL_BUILD，
+# 是「日常构建/增量链接慢」的主要来源之一。
+#
+# 默认 ON（与既有行为一致，ctest 直接可用）；日常只编引擎时用
+#   cmake -S . -B build -DULRE_BUILD_ECS_TEST_TARGETS=OFF
+# 即可让这些目标彻底不出现在解决方案与 ALL_BUILD 里。
+option(ULRE_BUILD_ECS_TEST_TARGETS "构建 ECS 测试可执行目标（关闭 = 不参与 ALL_BUILD，可显著缩短日常构建）" ON)
+
 # ── ECS 测试台架 ──────────────────────────────────────────────────────────────
 # 统一收口：链接 ULRE::Engine、调试工作目录指向运行期目录、解决方案归入 ULRE/Tests/ECS，
 # 避免每个测试目标重复三行样板。
@@ -138,6 +148,7 @@ function(add_ulre_unit_test target_name)
     set_target_properties(${target_name} PROPERTIES FOLDER "ULRE/Tests/ECS/Unit")
 endfunction()
 
+if(BUILD_TESTING AND ULRE_BUILD_ECS_TEST_TARGETS)
 add_ulre_unit_test(TestBindlessSlotAllocator tests/TestBindlessSlotAllocator.cpp)
 
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
@@ -750,3 +761,5 @@ if(BUILD_TESTING)
         TestPhysicsScenarios
         PROPERTIES LABELS "ecs;physics;jolt" TIMEOUT 120)
 endif()
+
+endif()  # BUILD_TESTING AND ULRE_BUILD_ECS_TEST_TARGETS

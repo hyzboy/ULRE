@@ -52,6 +52,19 @@ if(NOT ULRE_ENABLE_CXX_MODULES)
     set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     string(REPLACE " /interface /ifcOutput ${CMAKE_CXX_MODULE_OUTPUT_DIRECTORY}" ""
         CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    # 顺带清掉 /scanSourceForModuleDependencies 之类残留在全局 flags 里的模块开关，
+    # 它们会让每个 TU 多一遍扫描而没有任何产出。
+    string(REGEX REPLACE "/scanSourceForModuleDependencies[^ ]*" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
+# ── MAL 编译并行（仅 MSVC）─────────────────────────────────────────────────────
+# 编译单元之间彼此独立（无 unity build），单 TU 内部串行是纯粹的等待。`/MP` 让 cl.exe
+# 在**单个工程**内并行编译多个 TU，对 `ULRE.ECS` 这类上百个 .cpp 的库是直接的墙钟收益。
+# 与 VS 的「多处理器编译」选项等价；`-DULRE_ENABLE_MSVC_MP=OFF` 可关闭（用于定位
+# 那些依赖固定编译顺序的怪问题）。
+option(ULRE_ENABLE_MSVC_MP "MSVC 下为每个工程启用 /MP 多处理器编译" ON)
+if(MSVC AND ULRE_ENABLE_MSVC_MP)
+    add_compile_options(/MP)
 endif()
 
 # Qt 支持（CMQT 模块）
