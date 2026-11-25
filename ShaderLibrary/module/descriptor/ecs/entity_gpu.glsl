@@ -43,7 +43,7 @@ struct EntityGPUData
     uint flags;                              // EntityGPUFlags 位或（Active=1 / Visible=2）
     uint8_t type[ENTITY_GPU_SLOT_COUNT];     // 槽 i != 0 ⇒ 实体有 ComponentType(i) 组件
     uint row[ENTITY_GPU_SLOT_COUNT];         // 槽 i 的 arena 行号；0 = 无（行 0 哨兵惯例）
-    uint work_flags;                         // 工作期派生位；恒 0，等消费者定义（不造没人读的位）
+    uint work_flags;                         // Bit 0: explicit whole-instance material override.
     float shadow_bias_multiplier;            // T3h 阴影 Bias 倍率事实（0=未上行/默认；消费规则同 CPU）
     uint shadow_receive;                     // T3h 接收阴影事实位（1=接收；0⇒消费端置 NoReceive）
     uint model_template_id;                  // T3.1 模型模板池行号（0 = 无模板 ⇒ 传统单实体路径）

@@ -642,7 +642,9 @@ namespace hgl::ecs
             MaterialVariantTable *variant_table,
             MaterialRuntimeTable *runtime_table,
             MaterialRuntimeRowID row_id,
-            bool shadow_pass)
+            bool shadow_pass,
+            graph::PrimitiveType primitive_type,
+            const graph::GeometryVertexFormat *vertex_format)
         {
             if (!world || !variant_table || !runtime_table || row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
                 return nullptr;
@@ -651,20 +653,7 @@ namespace hgl::ecs
             if (!row)
                 return nullptr;
 
-            const MaterialVariantID variant_id = shadow_pass ? row->shadow_variant : row->forward_variant;
-            if (variant_id == INVALID_MATERIAL_VARIANT_ID)
-                return nullptr;
-
-            MaterialVariantRecord *record = variant_table->GetMutable(variant_id);
-            if (!record)
-                return nullptr;
-
-            if (record->program)
-                return record->program;
-
-            const graph::mtl::MaterialRecipe &effective_recipe = shadow_pass
-                ? row->shadow_cached_normalized_recipe
-                : row->cached_effective_recipe;
+            const graph::mtl::MaterialRecipe &effective_recipe = row->cached_effective_recipe;
 
             if (effective_recipe.recipe_name.empty())
                 return nullptr;
@@ -675,14 +664,29 @@ namespace hgl::ecs
                 return nullptr;
 
             const AnsiString &ambient_provider = ResolveAmbientProviderModule(world);
+            const auto purpose = shadow_pass ? graph::mtl::ShaderProgramPurpose::ShadowDepth
+                                             : graph::mtl::ShaderProgramPurpose::ForwardColor;
+            const auto build_hash = graph::mtl::HashMaterialProgramBuildContext(
+                primitive_type, vertex_format,
+                graphics->GetPhysicalDeviceProfile(), purpose, ambient_provider.c_str());
+            const auto variant_id = variant_table->Intern(MaterialVariantKey{
+                build_hash, graph::mtl::HashMaterialRecipe(effective_recipe)});
+            auto *record = variant_table->GetMutable(variant_id);
+            if (!record)
+                return nullptr;
+            if (shadow_pass)
+            {
+                row->shadow_variant = variant_id;
+                row->shadow_cached_normalized_recipe = effective_recipe;
+            }
+            if (record->program)
+                return record->program;
 
             graph::mtl::MaterialBuildRequest mtl_request{};
             mtl_request.recipe = effective_recipe;
-            mtl_request.primitive_type = graph::PrimitiveType::Triangles;
-            mtl_request.geometry_vertex_format = nullptr;
-            mtl_request.shader_program_purpose = shadow_pass
-                ? graph::mtl::ShaderProgramPurpose::ShadowDepth
-                : graph::mtl::ShaderProgramPurpose::ForwardColor;
+            mtl_request.primitive_type = primitive_type;
+            mtl_request.geometry_vertex_format = vertex_format;
+            mtl_request.shader_program_purpose = purpose;
             mtl_request.ambient_module_name = ambient_provider.c_str();
 
             graph::mtl::ResolvedMaterial template_definition{};
@@ -2095,10 +2099,31 @@ namespace hgl::ecs
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 
         // 分支 1：实体本身已经拥有合法的模型模板 ID（例如通过 RegisterModelTemplate 注册的多部件模板）
-        if (ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+        if (ref && !ref->automatically_normalized
+         && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
         {
-            if (mat_table && mat_table->FindBinding(ref->template_id))
+            if (const auto *binding = mat_table ? mat_table->FindBinding(ref->template_id) : nullptr)
+            {
+                auto *runtime = GetRuntimeTable(world);
+                for (int g = 0; g <= binding->groups.GetCount(); ++g)
+                {
+                    const auto id = g == binding->groups.GetCount()
+                        ? ref->GetOverrideMaterialRow() : binding->groups[g].runtime_row;
+                    auto *row = runtime ? runtime->GetMutable(id) : nullptr;
+                    if (!row || row->cached_effective_recipe.textures.empty()
+                     || refreshed_template_textures.Contains(id))
+                        continue;
+                    const auto old_hash = row->material_texture_configuration_hash;
+                    MaterialRuntimeSlot slot;
+                    slot.row = id;
+                    if (!MaterializeRecipeRowsForPrimitive(entity, slot))
+                        return false;
+                    refreshed_template_textures.Add(id);
+                    if (old_hash != row->material_texture_configuration_hash)
+                        world->MarkTopologyChanged(TopologyChange::MaterialBinding);
+                }
                 return true;
+            }
 
             // 模板已在 GPU SSBO 中注册，但尚未在 ModelTemplateMaterialTable 中注册渲染绑定（如 GPUModelChessboard 示例）。
             // 绝不能改写其实体模板 ID，而应就地为该已有模板自动补齐 Shading Group 渲染绑定。
@@ -2119,7 +2144,8 @@ namespace hgl::ecs
             if (!material_for_item)
                 return false;
 
-            if (material_slot.runtime_dirty || !material_slot.valid)
+            if (material_slot.runtime_dirty || !material_slot.valid
+             || material_slot.last_materialize_epoch != materialize_epoch)
             {
                 if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
                     return false;
@@ -2133,12 +2159,17 @@ namespace hgl::ecs
 
             const uint32_t shading_group_count = (tpl_row->shading_group_count != 0) ? tpl_row->shading_group_count : 1u;
             const uint32_t b_count = tpl_row->part_bucket_count;
+            graph::PrimitiveType primitive_type;
+            const graph::GeometryVertexFormat *vertex_format = nullptr;
+            GetPrimitiveProgramBuildInputs(entity, primitive_type, vertex_format);
 
             for (uint32_t g = 0; g < shading_group_count; ++g)
             {
                 TemplateShadingGroupDesc grp;
                 grp.runtime_row = material_slot.row;
                 grp.casts_shadow = CanCastShadow(entity);
+                grp.primitive_type = primitive_type;
+                grp.vertex_format = vertex_format;
 
                 ValueArray<uint32_t> slot_geo;
                 ValueArray<uint32_t> slot_cnt;
@@ -2190,7 +2221,8 @@ namespace hgl::ecs
         if (!material_for_item)
             return false;
 
-        if (material_slot.runtime_dirty || !material_slot.valid)
+        if (material_slot.runtime_dirty || !material_slot.valid
+         || material_slot.last_materialize_epoch != materialize_epoch)
         {
             if (!MaterializeRecipeRowsForPrimitive(entity, material_slot))
                 return false;
@@ -2210,7 +2242,7 @@ namespace hgl::ecs
         tmpl_desc.is_opaque = true;
 
         const uint32_t auto_template_id = BuildSinglePrimitiveModelTemplate(
-            registry, world, geo, tmpl_desc);
+            registry, world, prim_asset, tmpl_desc);
 
         if (auto_template_id == graph::ssbo::kInvalidModelTemplateID)
             return false;
@@ -2218,7 +2250,10 @@ namespace hgl::ecs
         if (!ref)
             ref = entity->AddComponent<GPUModelRefComponent>();
         if (ref)
+        {
             ref->template_id = auto_template_id;
+            ref->automatically_normalized = true;
+        }
 
         return true;
     }
@@ -2412,7 +2447,8 @@ namespace hgl::ecs
                         model_ref ? model_ref->template_id : 0u,
                         model_ref ? model_ref->part_visibility_mask : 0ull,
                         model_ref ? model_ref->custom_data_index : 0u,
-                        model_ref ? model_ref->prev_transform_id : 0u);
+                        model_ref ? model_ref->prev_transform_id : 0u,
+                        model_ref && model_ref->HasMaterialOverride());
                 }
 
 #if ULRE_ECS_DEBUG_API
@@ -2562,6 +2598,22 @@ namespace hgl::ecs
                     break;
                 }
 
+                if (!material_row->cached_effective_recipe.textures.empty())
+                {
+                    if (!EnsurePrimitiveModelTemplate(entity)
+                     || snapshot.GetTopologyRevision() != ledger.GetTopologyRevision())
+                    {
+                        ok = false;
+                        break;
+                    }
+                    material_row = runtime_table->Get(record.material_row);
+                    if (!material_row)
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t geometry_id  = record.draw_geometry_id;
                 const uint32_t material_id  = (material_row->data_index_row != uint32_t(-1))
@@ -2699,6 +2751,10 @@ namespace hgl::ecs
     {
         if (!world)
             return;
+
+        refreshed_template_textures.Clear();
+        if (auto *templates = world->GetModelTemplateMaterialTable())
+            templates->CollectRetiredTemplates();
 
         // 本 pass 生效相机的 CameraInfo（离屏 pass = pass 相机，主帧 = 主相机）：
         // 每帧现取，**不缓存指针**——pass 之间相机会换（旧实现把指针缓存在安装期，pass 相机一上场就错）。
@@ -2892,7 +2948,17 @@ namespace hgl::ecs
             }
 
             // 阶段 1：在进入收集主循环之前，确保所有有效渲染几何实体已绑定单图元模型模板
-            EnsurePrimitiveModelTemplate(entity);
+            if (ambient_provider_changed)
+            {
+                const auto *ref = entity->GetComponent<GPUModelRefComponent>();
+                if (!ref || ref->automatically_normalized)
+                    world->GetOrCreateMaterialRuntimeSlot(entity).program_dirty = true;
+            }
+            if (!EnsurePrimitiveModelTemplate(entity))
+            {
+                any_material_work = true;
+                any_pending_resources = true;
+            }
 
             // 阶段 1/2：模板载体实体（挂有效 GPUModelRefComponent）
             // 若在 ModelTemplateMaterialTable 中已注册绑定（自包含 Shading Groups），或无 GeometryData，
@@ -3148,7 +3214,7 @@ namespace hgl::ecs
                 // 提取材质 4-ID 事实（支持覆盖优先，默认回退模板 group 0）
                 uint32_t fact_material_id = 0u;
                 uint32_t fact_texture_id = 0u;
-                MaterialRuntimeRowID active_row_id = pure_model_ref->override_material_row;
+                MaterialRuntimeRowID active_row_id = pure_model_ref->GetOverrideMaterialRow();
                 if (active_row_id == INVALID_MATERIAL_RUNTIME_ROW_ID && !binding->groups.IsEmpty())
                 {
                     active_row_id = binding->groups[0].runtime_row;
@@ -3189,9 +3255,9 @@ namespace hgl::ecs
                         continue;
 
                     MaterialRuntimeRowID row_id = grp_desc.runtime_row;
-                    if (pure_model_ref->override_material_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
+                    if (pure_model_ref->HasMaterialOverride())
                     {
-                        row_id = pure_model_ref->override_material_row;
+                        row_id = pure_model_ref->GetOverrideMaterialRow();
                     }
 
                     const MaterialRuntimeRow *row = current_runtime_table ? current_runtime_table->Get(row_id) : nullptr;
@@ -3201,8 +3267,13 @@ namespace hgl::ecs
                         continue;
                     }
 
+                    graph::PrimitiveType primitive_type;
+                    const graph::GeometryVertexFormat *vertex_format = grp_desc.vertex_format;
+                    if (!vertex_format)
+                        GetPrimitiveProgramBuildInputs(entity, primitive_type, vertex_format);
                     graph::ShaderProgram *program = EnsureTemplateGroupProgram(
-                        world, variant_table, current_runtime_table, row_id, shadow_pass);
+                        world, variant_table, current_runtime_table, row_id, shadow_pass,
+                        grp_desc.primitive_type, vertex_format);
                     if (!program || !render_pass)
                     {
                         drop_group(g, "TemplateProgramUnavailable", "Template group program or render pass is unavailable");
@@ -3231,7 +3302,7 @@ namespace hgl::ecs
                                                                  render_pass,
                                                                  resolved_pipeline,
                                                                  resolved_pipeline_config,
-                                                                 g);
+                                                                 g, program);
 
                     auto item = std::make_unique<ModelTemplateRenderItem>(
                         entity_id,

@@ -10,7 +10,7 @@ namespace hgl::ecs
     /**
      * ShadowProxy —— 实体阴影属性控制（A5b：由原阴影组件正名）。
      *
-     * 挂载在可渲染实体（拥有 GeometryData）上。若实体未挂载本组件，渲染管线一律采用
+     * 挂载在可渲染实体（拥有 GeometryData 或 GPUModelRefComponent）上。若实体未挂载本组件，渲染管线一律采用
      * **全局缺省约定**：可投射、可接收、最大投射距离 0.0f（不限）、倍率 1.0f。
      *
      * 缺省约定的**唯一出处**是下面那组自由函数（CanCastShadow / GetShadowMaxDistance /
@@ -35,7 +35,7 @@ namespace hgl::ecs
 
         // ── 投射控制 (Caster) ──
         bool CanCastShadow() const { return cast_shadow; }
-        void SetCastShadow(bool enable) { cast_shadow = enable; }
+        void SetCastShadow(bool enable);
 
         float GetMaxDistance() const { return max_cast_distance; }
         void SetMaxDistance(float dist) { max_cast_distance = dist; }

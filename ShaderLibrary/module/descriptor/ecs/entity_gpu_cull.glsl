@@ -163,7 +163,7 @@ layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer Model
 // `group_bucket_base_addr == 0`（旧帧槽 / 未启用）⇒ 退回一级表的单组口径。
 layout(buffer_reference, scalar, buffer_reference_align=4) readonly buffer ModelGroupBucketBaseRef
 {
-    uint values[];
+    uvec4 values[]; // bucket base, effective material ID, effective texture ID, has material
 };
 
 // ── 模板行常量镜像（真源 = inc/hgl/graph/ssbo/ModelTemplateRows.h，改那边必须同步这里）──
@@ -570,11 +570,13 @@ void expand_template_entity(const uint blk,
         // 部件 → 素材桶：先经二级组表取所属 shading_group 的组基址；
         // 组表未启用（旧槽）或该组在本 pass 不参与 ⇒ 前者回退一级表、后者跳过该部件。
         uint part_bucket_base = tag_bucket_base;
+        uvec4 group_route = uvec4(MODEL_BUCKET_BASE_INVALID, 0u, 0u, 0u);
 
         if (group_bucket_addr != uint64_t(0))
         {
-            part_bucket_base =
+            group_route =
                 ModelGroupBucketBaseRef(group_bucket_addr).values[tag_bucket_base + part.shading_group];
+            part_bucket_base = group_route.x;
 
             if (part_bucket_base == MODEL_BUCKET_BASE_INVALID)
                 continue;    // 该组本 pass 不绘制（如透明件不投阴影）——只丢部件，不丢整个实例
@@ -596,10 +598,12 @@ void expand_template_entity(const uint blk,
                 continue;
         }
 
-        // 材质：部件自带 `material_id` / `texture_id` 优先（`kModelPartFlagHasMaterial`），
-        // 未置位 ⇒ 继承实体的 pass 级材质行（单材质模板 / 宿主材质覆盖路径，逐字节不变）。
+        // 有效组路由优先，保持实例覆盖及纹理就绪更新与 CPU 分批一致。
+        // 低层兼容模板无有效路由时，未覆盖的 HasMaterial 部件用自身 ID，否则继承实体。
         // ⚠ 用显式标志位而不是 `!= 0u`：池行号 0 可能是**合法数据**。
-        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u;
+        const uint ENTITY_GPU_WORK_MATERIAL_OVERRIDE = 1u;
+        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u
+                              && (entity.work_flags & ENTITY_GPU_WORK_MATERIAL_OVERRIDE) == 0u;
 
         emit_bucket_instance(blk,
                              bucket,
@@ -607,8 +611,8 @@ void expand_template_entity(const uint blk,
                              part.geometry_id,
                              transform_id,
                              entity,
-                             has_part_mtl ? part.material_id : ids_blk.material_id,
-                             has_part_mtl ? part.texture_id  : ids_blk.texture_id,
+                             group_route.w != 0u ? group_route.y : (has_part_mtl ? part.material_id : ids_blk.material_id),
+                             group_route.w != 0u ? group_route.z : (has_part_mtl ? part.texture_id : ids_blk.texture_id),
                              true,
                              part_l2w,
                              prev_part_l2w,

@@ -27,6 +27,8 @@ namespace hgl
          * 「0 消费者 = 投机 API」纪律下，这里刻意不提供 Has/Set/Get 一类便捷函数：谁读谁写，随消费者一起加。
          */
 
+        inline constexpr uint32_t kEntityGPUWorkMaterialOverride = 1u << 0;
+
         /// 实体级标志位（`flags`）；工作期派生位另见 `work_flags`
         enum class EntityGPUFlags : uint32_t
         {
@@ -75,8 +77,7 @@ namespace hgl
                                                     ///< （槽号已蕴含类型 ⇒ 该数组是**显式冗余**；按 v2 §3 保留，
                                                     ///<   便于着色器判空写法直观：`if (e.type[CT] != 0)`）
             uint32_t row [kEntityGPUSlotCount] = {}; ///< 槽 i 对应的 arena 行号；0 = 无
-            uint32_t work_flags = 0;                ///< 工作期派生位（由 type/row 推出）；**留 0**，
-                                                    ///< 等消费者定义后再填位表（不造没人读的位）
+            uint32_t work_flags = 0;                ///< Bit 0: explicit whole-instance material override.
 
             // ── T3h：阴影接收事实（形态 B 接管的 GPU 通路，第一个真消费者）──────
             // 原 `_pad` 区划出 8 B：128 B 步长与 alignas(64) 不变（填充是契约、

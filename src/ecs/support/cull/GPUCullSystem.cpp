@@ -428,11 +428,11 @@ namespace hgl::ecs
                 for (uint32_t r = 0; r < graph::kModelExpansionMaxBucketBaseRows; ++r)
                     table[r] = graph::kModelExpansionInvalidBucketBase;
 
-                uint32_t *group_table = reinterpret_cast<uint32_t *>(
+                auto *group_table = reinterpret_cast<math::Vector4u *>(
                     slot_base + size_t(kExpansionGroupBucketOffset));
 
                 for (uint32_t r = 0; r < graph::kModelExpansionMaxGroupBucketSlots; ++r)
-                    group_table[r] = graph::kModelExpansionInvalidBucketBase;
+                    group_table[r] = {graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u};
             }
 
             expansion_arena_buffer_ = device_->CreateBuffer(
@@ -453,7 +453,7 @@ namespace hgl::ecs
             expansion_group_bucket_cpu_.Reserve(int(graph::kModelExpansionMaxGroupBucketSlots));
 
             for (uint32_t r = 0; r < graph::kModelExpansionMaxGroupBucketSlots; ++r)
-                expansion_group_bucket_cpu_.Add(graph::kModelExpansionInvalidBucketBase);
+                expansion_group_bucket_cpu_.Add({graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u});
 
             for (uint32_t p = 0; p < uint32_t(kArenaPasses); ++p)
                 expansion_group_slot_next_[p] = 0u;
@@ -538,14 +538,14 @@ namespace hgl::ecs
         if (pass_index >= uint32_t(kArenaPasses) || group_count == 0u || !out_offset)
             return false;
 
-        uint32_t *table = expansion_group_bucket_cpu_.GetData();
+        auto *table = expansion_group_bucket_cpu_.GetData();
 
         if (!table)
             return false;
 
         uint32_t &next = expansion_group_slot_next_[pass_index];
 
-        if (next + group_count > graph::kModelExpansionGroupBucketSlotsPerPass)
+        if (group_count > graph::kModelExpansionGroupBucketSlotsPerPass - next)
         {
             static bool s_warned = false;
 
@@ -561,10 +561,10 @@ namespace hgl::ecs
             return false;
         }
 
-        uint32_t *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
+        auto *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
 
         for (uint32_t g = 0; g < group_count; ++g)
-            block[next + g] = graph::kModelExpansionInvalidBucketBase;
+            block[next + g] = {graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u};
 
         *out_offset = next;
         next += group_count;
@@ -572,20 +572,26 @@ namespace hgl::ecs
     }
 
     void GPUCullSystem::SetModelGroupBucketBase(const uint32_t pass_index, const uint32_t offset,
-                                                const uint32_t group_index, const uint32_t bucket_base)
+                                                const uint32_t group_index, const uint32_t bucket_base,
+                                                const uint32_t material_id, const uint32_t texture_id,
+                                                const bool has_material)
     {
         if (pass_index >= uint32_t(kArenaPasses)
          || offset >= graph::kModelExpansionGroupBucketSlotsPerPass
-         || offset + group_index >= graph::kModelExpansionGroupBucketSlotsPerPass)
+         || group_index >= graph::kModelExpansionGroupBucketSlotsPerPass - offset)
+        {
+            GLogError(u8"[GPUCullSystem] Invalid group route: pass=%u offset=%u group=%u",
+                      pass_index, offset, group_index);
             return;
+        }
 
-        uint32_t *table = expansion_group_bucket_cpu_.GetData();
+        auto *table = expansion_group_bucket_cpu_.GetData();
 
         if (!table)
             return;
 
         table[size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass
-              + offset + group_index] = bucket_base;
+              + offset + group_index] = {bucket_base, material_id, texture_id, has_material ? 1u : 0u};
     }
 
     void GPUCullSystem::ResetModelGroupBucketSlots()
@@ -601,15 +607,15 @@ namespace hgl::ecs
 
         expansion_group_slot_next_[pass_index] = 0u;
 
-        uint32_t *table = expansion_group_bucket_cpu_.GetData();
+        auto *table = expansion_group_bucket_cpu_.GetData();
 
         if (!table)
             return;
 
-        uint32_t *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
+        auto *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
 
         for (uint32_t r = 0; r < graph::kModelExpansionGroupBucketSlotsPerPass; ++r)
-            block[r] = graph::kModelExpansionInvalidBucketBase;
+            block[r] = {graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u};
     }
 
     void GPUCullSystem::WriteModelExpansionArena(const uint32_t slot)    {
@@ -668,10 +674,10 @@ namespace hgl::ecs
             std::memcpy(base + kExpansionHeaderBytes, src,
                         size_t(graph::kModelExpansionMaxBucketBaseRows) * sizeof(uint32_t));
 
-        // 二级 shading_group 组基址表（16 KB/槽，同样整表上传）
-        if (const uint32_t *src = expansion_group_bucket_cpu_.GetData())
+        // 二级组路由表（每槽 16 B，同样整表上传）
+        if (const auto *src = expansion_group_bucket_cpu_.GetData())
             std::memcpy(base + kExpansionGroupBucketOffset, src,
-                        size_t(graph::kModelExpansionMaxGroupBucketSlots) * sizeof(uint32_t));
+                        size_t(graph::kModelExpansionMaxGroupBucketSlots) * sizeof(math::Vector4u));
 
         expansion_arena_buffer_->Unmap();
     }

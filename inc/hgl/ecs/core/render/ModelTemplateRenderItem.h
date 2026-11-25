@@ -54,6 +54,13 @@ namespace hgl::ecs
         uint32_t GetShadingGroup() const { return shading_group; }
         uint32_t GetTemplateID() const { return template_id; }
 
+        graph::ShaderProgram *GetShaderProgram() const override
+        {
+            auto *program = context ? context->GetMaterialRuntimePipelineTable().GetProgram(
+                entity_id, cached_pass, shading_group) : nullptr;
+            return program ? program : PrimitiveRenderItem::GetShaderProgram();
+        }
+
         graph::Pipeline *GetPipeline(graph::RenderPass *render_pass) const override
         {
             if (pipeline && (!render_pass || render_pass == cached_pass))

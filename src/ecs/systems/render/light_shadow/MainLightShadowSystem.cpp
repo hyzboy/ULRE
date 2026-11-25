@@ -321,7 +321,9 @@ namespace hgl::ecs
                 req.cull_mode = CullMode::Front;
                 req.is_shadow_pass = true;
                 req.shadow_reference_camera = main_camera;
-                req.mobility_filter = (c == 0) ? static_cast<int>(Mobility::Movable) : static_cast<int>(Mobility::Static);
+                req.mobility_filter = c == 0
+                    ? (shadow_controller->GetConfig().c0_dynamic_overlay ? static_cast<int>(Mobility::Movable) : -1)
+                    : static_cast<int>(Mobility::Static);
 
                 context->RenderTo(req);
 

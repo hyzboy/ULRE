@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include <hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include <hgl/type/ValueArray.h>
 
 namespace hgl
 {
@@ -53,6 +54,7 @@ namespace hgl::ecs
         // primitive). Primitives whose last_materialize_epoch differs must be
         // re-materialized — their rows were rebuilt while they were skipped.
         uint64_t materialize_epoch = 0;
+        ValueArray<MaterialRuntimeRowID> refreshed_template_textures;
 
         /// 环境层 ambient provider（天光算法模块）的逐帧快照。
         /// provider 由**世界**决定，不属材质授权态（不进 `MaterialAuthoredGeneration`），

@@ -184,7 +184,8 @@ namespace hgl
             { RenderNeed::ShadowReceiver,
               ComponentTypeBit(ComponentType::Geometry),
               static_cast<uint32_t>(StrategyFact::ReceiveShadow),
-              0, 0, 0 },
+              0, 0, 0,
+              ComponentTypeBit(ComponentType::GPUModelRef) },
 
             // EarlyZ：有几何即可（预留，暂不驱动任何路径）
             { RenderNeed::EarlyZ,

@@ -210,7 +210,7 @@ namespace hgl::ecs
         /// 分流到多个 MaterialBatch"。二级表把"实体 → 组基址"换成"实体 → 组表偏移"，
         /// 再由 `组表偏移 + part.shading_group` 取该组的绝对桶号。
         ///
-        /// 分配口径：批装配期按 (pass, 模板) 申请 `group_count` 个连续槽（初值哨兵），
+        /// 分配口径：批装配期按 (pass, 模板, 有效绑定) 申请 `group_count` 个连续槽（初值哨兵），
         /// 某组确定归属本批后再回填该槽。未参与本 pass 的组保持哨兵 ⇒ 展开侧
         /// `continue` 掉该部件（如透明件不投阴影）。
         ///
@@ -221,7 +221,9 @@ namespace hgl::ecs
 
         /// 回填某一组的组基址（块内相对首桶号）。`offset` 来自 AllocateModelGroupBucketSlots。
         void SetModelGroupBucketBase(uint32_t pass_index, uint32_t offset,
-                                     uint32_t group_index, uint32_t bucket_base);
+                                     uint32_t group_index, uint32_t bucket_base,
+                                     uint32_t material_id = 0, uint32_t texture_id = 0,
+                                     bool has_material = false);
 
         /// 清空全部 pass 的组表（回哨兵 + 游标归零）。批装配期每 pass 开头调用
         /// `ResetModelGroupBucketSlots(pass)`（按下标重载见下）。
@@ -312,14 +314,15 @@ namespace hgl::ecs
 
         /// T3.1：展开竞技场每帧槽字节数 = 64 B 头部（`ModelExpansionArena` 48 B + 对齐余量）
         /// + 实体桶组基址表（`u32 × kModelExpansionMaxBucketBaseRows`）
-        /// + 二级 shading_group 组基址表（`u32 × kModelExpansionMaxGroupBucketSlots`）。
+        /// + 二级组路由表（uvec4: 桶基址、有效材质、有效纹理、覆盖有效位）。
         /// 两张表都紧跟头部 ⇒ `bucket_base_addr = 槽基址 + 64`，
         /// `group_bucket_base_addr = 槽基址 + kExpansionGroupBucketOffset`（16 B 对齐）。
         static constexpr VkDeviceSize kExpansionHeaderBytes = graph::kModelExpansionHeaderBytes;
         static constexpr VkDeviceSize kExpansionGroupBucketOffset =
             kExpansionHeaderBytes + VkDeviceSize(graph::kModelExpansionMaxBucketBaseRows) * 4;
         static constexpr VkDeviceSize kExpansionSlotBytes =
-            kExpansionGroupBucketOffset + VkDeviceSize(graph::kModelExpansionMaxGroupBucketSlots) * 4;
+            kExpansionGroupBucketOffset + VkDeviceSize(graph::kModelExpansionMaxGroupBucketSlots) * sizeof(math::Vector4u);
+        static_assert(sizeof(math::Vector4u) == 16u, "Group routes must match GLSL uvec4");
 
         static_assert(kExpansionGroupBucketOffset % 16u == 0u,
                       "二级组基址表必须 16B 对齐（buffer_reference 取址承诺）");
@@ -364,8 +367,8 @@ namespace hgl::ecs
         hgl::ValueArray<uint32_t> expansion_bucket_base_cpu_;
 
         /// 二级 shading_group 组基址表（CPU 侧主副本；下标 = pass * 单 pass 槽数 + 组表偏移）。
-        /// 每帧随竞技场一起上传（16 KB/slot）。
-        hgl::ValueArray<uint32_t> expansion_group_bucket_cpu_;
+        /// 每帧随竞技场一起上传（每槽 16 B，槽数包含全部 pass）。
+        hgl::ValueArray<math::Vector4u> expansion_group_bucket_cpu_;
 
         /// 每个 pass 的组表分配游标（下一可用槽）。
         uint32_t expansion_group_slot_next_[kArenaPasses] = {};

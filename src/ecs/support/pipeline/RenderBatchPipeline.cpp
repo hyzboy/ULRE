@@ -852,8 +852,9 @@ namespace hgl::ecs
         std::vector<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
         std::vector<uint32_t> template_entity_group;          // 项 → 组下标（UINT32_MAX = 非模板项）
 
-        // 本 pass 内各模板的二级组表基址（按 template_id 统一分配一次）
-        hgl::UnorderedMap<uint32_t, uint32_t> pass_template_group_offsets;
+        // A shared template can have different effective bindings in this pass.
+        // Packing two uint32 IDs is lossless; equality is not based on a hash.
+        hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
 
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
         RefreshTemplateFactCache();
@@ -935,9 +936,11 @@ namespace hgl::ecs
                             break;
                         }
 
-                        // 二级组表：本 (pass, 模板) 独占一段 `shading_group_count` 个连续槽
+                        // 二级组表：本 (pass, 模板, 有效绑定) 独占一段连续组槽
                         uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(ref->template_id))
+                        const uint64_t route_key = (uint64_t(ref->template_id) << 32)
+                                                 | uint64_t(ref->GetOverrideMaterialRow());
+                        if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
                         {
                             group_table_offset = *offset_ptr;
                         }
@@ -949,7 +952,7 @@ namespace hgl::ecs
                                 why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
                                 break;
                             }
-                            pass_template_group_offsets.Add(ref->template_id, group_table_offset);
+                            pass_template_group_offsets.Add(route_key, group_table_offset);
                         }
 
                         // 获取该组的几何与容量规格（优先从 ModelTemplateMaterialTable 取，单组可回退 facts）
@@ -984,7 +987,8 @@ namespace hgl::ecs
 
                         for (uint32_t g = 0; g < uint32_t(template_groups.size()); ++g)
                             if (template_groups[g].template_id == ref->template_id
-                             && template_groups[g].shading_group == target_group)
+                             && template_groups[g].shading_group == target_group
+                             && template_groups[g].group_table_offset == group_table_offset)
                             {
                                 gi = g;
                                 break;
@@ -1111,8 +1115,17 @@ namespace hgl::ecs
 
                     // 二级组表：将本批分配的首桶号回填到该模板的该组槽位中
                     // （多组在 Step 1.4 由载体项各自所属的批分别回填自己的组槽）。实体行记组表偏移。
+                    const auto *item = dynamic_cast<const PrimitiveRenderItem *>(b->items[i]);
+                    const auto *row = item ? item->GetMaterialRuntimeRow() : nullptr;
+                    const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(grp.template_id);
+                    const auto *ref = owner->GetComponent<GPUModelRefComponent>();
                     gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, grp.shading_group,
-                                                      bucket_first + grp.group_bucket);
+                                                      bucket_first + grp.group_bucket,
+                                                      row ? row->data_index_row : 0u,
+                                                      row && row->material_texture_configuration.IsValid()
+                                                        ? row->material_texture_configuration.row_index : 0u,
+                                                      row && ((binding && binding->owns_gpu_rows)
+                                                           || (ref && ref->HasMaterialOverride())));
                     gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
                                                         grp.group_table_offset);
                 }
@@ -1246,13 +1259,16 @@ namespace hgl::ecs
         // 必须放在 FinalizeBatch 之后：接管结果由 FinalizeBatch 定型。
         // 判据取实际结果而非请求：只要有任一批仍是 CPU 模式，就说明本帧批布局
         // 依赖 CPU 账，下一帧不可假设它稳定。
-        if (world)
+        if (world && world->IsMainFrameTopologyPass())
         {
-            bool all_engaged = cache.materialBatches.GetCount() > 0;
+            bool all_engaged = false;
 
             for (const auto& pair : cache.materialBatches)
             {
-                if (!pair.second || !pair.second->gpu_driven_override)
+                if (!pair.second || pair.second->items.empty())
+                    continue;
+                all_engaged = true;
+                if (!pair.second->gpu_driven_override)
                 {
                     all_engaged = false;
                     break;

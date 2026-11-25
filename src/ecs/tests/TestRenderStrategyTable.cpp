@@ -91,6 +91,14 @@ int main(int argc, char** argv)
             return 10;
         }
 
+        const auto template_needs = EvaluateRenderNeed(
+            ComponentTypeBit(ComponentType::GPUModelRef), facts.ToMask());
+        if (!HasRenderNeed(template_needs, RenderNeed::ShadowReceiver)
+         || !HasRenderNeed(template_needs, RenderNeed::ShadowCaster))
+        {
+            GLogError(u8"Test 1 Failed: 纯模型模板实体必须具有阴影能力位");
+            return 10;
+        }
         GLogInfo(u8"Test 1 Passed: 主视图正常路径的需求位正确。");
     }
 

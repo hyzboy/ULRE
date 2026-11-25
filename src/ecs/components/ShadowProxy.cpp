@@ -7,6 +7,18 @@
 
 namespace hgl::ecs
 {
+    void ShadowProxy::SetCastShadow(const bool enable)
+    {
+        if (cast_shadow == enable)
+            return;
+        cast_shadow = enable;
+        if (owner && owner->GetContext())
+        {
+            owner->GetContext()->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+            owner->GetContext()->BumpStaticSceneRevision();
+        }
+    }
+
     ShadowProxy *GetShadowProxy(Entity *owner)
     {
         if (!owner)

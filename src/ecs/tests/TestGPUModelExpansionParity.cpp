@@ -892,8 +892,14 @@ namespace
               "部件级细剔除只在直渲 pass 生效（阴影 pass 不做，避免漏阴影）" },
             { "has_part_mtl ? part.material_id : ids_blk.material_id",
               "部件材质必须按 HasMaterial 标志选择（不得用行号 != 0 判定）" },
-            { "has_part_mtl ? part.texture_id  : ids_blk.texture_id",
+            { "has_part_mtl ? part.texture_id : ids_blk.texture_id",
               "部件纹理必须按 HasMaterial 标志选择（不得恒用实体纹理）" },
+            { "group_route.w != 0u ? group_route.y",
+              "有效组路由必须优先提供当前材质行" },
+            { "group_route.w != 0u ? group_route.z",
+              "有效组路由必须优先提供当前纹理配置" },
+            { "entity.work_flags & ENTITY_GPU_WORK_MATERIAL_OVERRIDE",
+              "实例覆盖必须屏蔽共享部件的默认材质" },
         };
 
         bool ok = true;
