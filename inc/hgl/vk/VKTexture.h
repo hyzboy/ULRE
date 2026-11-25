@@ -1,4 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
+#ifndef HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
 #define HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
 
 #include<hgl/vk/VK.h>
@@ -8,18 +8,17 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
 #include<hgl/sync/Atomic.h>
+#include<hgl/vk/VKTextureOwner.h>
 namespace hgl::graph{
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
 
 using TextureID=int;
-class TextureManager;
-
 class Texture
 {
 protected:
 
-    TextureManager *manager;
+    TextureOwner *owner;
     TextureID texture_id;
     uint64_t unique_id_=0;
 
@@ -27,7 +26,7 @@ protected:
 
 public:
 
-    TextureManager *            GetManager          ()      {return manager;}
+    TextureOwner *              GetOwner            ()      {return owner;}
     const TextureID             GetID               ()const noexcept {return texture_id;}
     uint64_t                    GetUniqueID         ()const noexcept {return unique_id_;}
 
@@ -67,9 +66,9 @@ public:
 
 public:
 
-    Texture(TextureManager *tm,const TextureID &id,TextureData *td)
+    Texture(TextureOwner *tm,const TextureID &id,TextureData *td)
     {
-        manager=tm;
+        owner=tm;
         texture_id=id;
         data=td;
         static hgl::atom_uint64 next_uid{1};

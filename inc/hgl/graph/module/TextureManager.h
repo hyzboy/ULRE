@@ -17,7 +17,7 @@ namespace hgl::graph{
 
 class BindlessTextureManager;
 
-GRAPH_MODULE_CLASS(TextureManager)
+GRAPH_MODULE_CLASS(TextureManager), public TextureOwner
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
@@ -56,6 +56,14 @@ public:
 
     TextureManager(GraphicsContext *gc);
     virtual ~TextureManager();
+
+    // ── TextureOwner（下层契约；见 inc/hgl/vk/VKTextureOwner.h）──
+
+    /// 设备句柄（与模块基类同名成员并存会歧义 ⇒ 契约用独立名字）
+    VkDevice GetOwnerVkDevice() const override { return GetVkDevice(); }
+
+    /// 纹理析构前：通知 bindless 经理 + 从本管理器的三张登记表注销
+    void OnTextureDestroying(Texture *texture) override;
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
 

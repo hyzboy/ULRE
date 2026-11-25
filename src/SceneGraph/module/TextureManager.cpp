@@ -102,12 +102,26 @@ void TextureManager::EnsureTransferResources()
         texture_serial=0;
 }
 
+void TextureManager::OnTextureDestroying(Texture *tex)
+{
+    if(!tex)
+        return;
+
+    if(auto *gc=GetGraphicsContext())
+    {
+        if(auto *bindless=gc->GetBindlessTextureManager())
+            bindless->NotifyTextureDestroyed(tex->GetUniqueID());
+    }
+
+    Release(tex);
+}
+
 const TextureID TextureManager::Add(Texture *tex)
 {
     if(!tex)
         return(-1);
 
-    if(tex->GetManager()!=this)
+    if(tex->GetOwner()!=this)
         return(-2);
 
     if(texture_set.Contains(tex))

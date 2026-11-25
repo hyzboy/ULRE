@@ -1,29 +1,18 @@
-﻿#include<hgl/vk/VKTexture.h>
+#include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/vk/VKBindlessTextureManager.h>
+#include<hgl/log/Log.h>
 #include<cstdint>
 namespace hgl::graph{
 Texture::~Texture()
 {
-    if(manager)
-    {
-        if(auto *gc=manager->GetGraphicsContext())
-        {
-            if(auto *bindless=gc->GetBindlessTextureManager())
-                bindless->NotifyTextureDestroyed(unique_id_);
-        }
-    }
-
-    if (manager)
-        manager->Release(this);
+    if(owner)
+        owner->OnTextureDestroying(this);
 
     if(!data)return;
 
-    const VkDevice vk_dev = manager ? manager->GetVkDevice() : VK_NULL_HANDLE;
+    const VkDevice vk_dev = owner ? owner->GetOwnerVkDevice() : VK_NULL_HANDLE;
 
     if(data->image && vk_dev != VK_NULL_HANDLE && data->owns_image)
     {
@@ -61,7 +50,7 @@ VkImageView TextureCube::GetBindlessArrayView()
     VkExtent3D ext = data->image_view->GetExtent();
     ext.depth      = 1;      // 单张 Cubemap：6 层 CUBE_ARRAY view（6*depth）
 
-    data->array_view = CreateImageViewCubeArray(manager->GetVkDevice(),
+    data->array_view = CreateImageViewCubeArray(owner->GetOwnerVkDevice(),
                                                 data->image_view->GetFormat(),
                                                 ext,
                                                 data->miplevel,
@@ -70,7 +59,7 @@ VkImageView TextureCube::GetBindlessArrayView()
 
     GLogInfo("[CubeView] tex=%p device=%p view=%p image=%p mips=%u",
              (const void *)this,
-             manager->GetVkDevice(),
+             owner->GetOwnerVkDevice(),
              data->array_view?data->array_view->GetImageView():VK_NULL_HANDLE,
              data->image,
              data->miplevel);
@@ -92,7 +81,7 @@ VkImageView Texture2D::GetBindlessArrayView()
     // sampled_usage=true：本视图专供 bindless 采样，深度模板格式必须只保留 DEPTH
     // aspect（VUID-VkDescriptorImageInfo-imageView-01976），否则采样行为未定义。
     // 附件视图（data->image_view）仍保持 DEPTH|STENCIL，两者互不影响。
-    data->array_view = CreateImageView2DArray(manager->GetVkDevice(),
+    data->array_view = CreateImageView2DArray(owner->GetOwnerVkDevice(),
                                               data->image_view->GetFormat(),
                                               ext,
                                               data->miplevel,
