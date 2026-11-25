@@ -771,14 +771,7 @@ namespace hgl
         {
             // 显式析构全部行（卸载钩子 + ~T），再把池整个丢掉（块随池析构释放）。
             // 实体销毁路径通常已经把行销干净了，这里是世界级收尾与"从未关联实体"的兜底。
-            for (auto &pool : component_pools)
-                if (pool)
-                    pool->Clear();
-
-            component_pools.clear();
-
-            for (auto &slot : component_pool_slots)
-                slot = nullptr;
+            component_pool_registry.Clear();
         }
 
         void ECSContext::DestroyComponent(const ComponentType type, const uint32_t row)
@@ -786,7 +779,7 @@ namespace hgl
             if (row == 0 || !IsValidComponentType(type))
                 return;
 
-            ComponentPoolBase *pool = component_pool_slots[static_cast<uint32_t>(type)];
+            ComponentPoolBase *pool = component_pool_registry.Get(type);
 
             if (!pool)
                 return;     // 该类型从未建过池 ⇒ 不可能有活行

@@ -98,6 +98,27 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestSystemReplaceAndPoolLiveness"));
 
     {
+        ComponentPoolRegistry registry;
+        if (registry.Get<GeometryData>() || registry.Get(ComponentType::None))
+        {
+            GLogError(u8"Component pools must be created lazily");
+            return 1;
+        }
+        auto *pool = registry.Ensure<GeometryData>();
+        if (!pool || registry.Ensure<GeometryData>() != pool || !pool->Create(nullptr))
+        {
+            GLogError(u8"Component pool registration failed");
+            return 1;
+        }
+        registry.Clear();
+        if (registry.Get<GeometryData>() || registry.Ensure<GeometryData>()->GetActiveCount() != 0)
+        {
+            GLogError(u8"Component pool registry did not clear its slots and rows");
+            return 1;
+        }
+    }
+
+    {
         SystemScheduleState schedule;
         schedule.AddDependency(false, 1, 2);
         schedule.AddDependency(false, 1, 2);

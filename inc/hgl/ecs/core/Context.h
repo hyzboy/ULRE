@@ -13,6 +13,7 @@
 #include<hgl/ecs/core/render/ScenePipelineMode.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/ecs/support/storage/ComponentPool.h>
+#include<hgl/ecs/support/storage/ComponentPoolRegistry.h>
 #include<hgl/ecs/support/storage/EntityGPUTable.h>
 #include<hgl/ecs/support/storage/EntityRenderIDTable.h>
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
@@ -148,15 +149,12 @@ namespace hgl
 
             // ── T2-c：组件存储 = 世界私有的**类型化对象池**（按 ComponentType 索引）──
             //
-            // 池**惰性创建**（首次挂载该类型时经 `EnsureTypedPool<T>()`，形态由
-            // `ComponentStorageTraits<T>` 决定：裸行池 / 行内持 shared_ptr 的共享行池）；
-            // `component_pools` 只是持有者，一切查询走 `component_pool_slots[type]`。
+            // 池惰性创建，类型槽和池所有权都由世界私有注册表管理。
             //
             // 「池即活跃集」：`GetComponents<T>` 直接读池的活跃集视图（裸指针）。旧形态是
             // 「按类型 hash 的 weak_ptr 注册表」——每挂一个组件 push 一个 weak_ptr、每类型一次向量增长，
             // 而且它把 `shared_ptr<Component>` 钉在组件上（T2-c 拆掉的两样东西之一）。
-            std::vector<std::unique_ptr<ComponentPoolBase>> component_pools;
-            ComponentPoolBase *component_pool_slots[COMPONENT_TYPE_COUNT] = {};
+            ComponentPoolRegistry component_pool_registry;
 
             // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
             //
@@ -1175,13 +1173,7 @@ namespace hgl
             template<typename T>
             typename ComponentStorageTraits<T>::PoolType *GetTypedPool() const
             {
-                constexpr ComponentType type = ComponentTypeOf<T>::value;
-
-                if (type == ComponentType::None)
-                    return nullptr;
-
-                return static_cast<typename ComponentStorageTraits<T>::PoolType *>(
-                           component_pool_slots[static_cast<uint32_t>(type)]);
+                return component_pool_registry.Get<T>();
             }
 
             /// 该类型的池（不存在则按 `ComponentStorageTraits<T>` 建）；
@@ -1189,22 +1181,7 @@ namespace hgl
             template<typename T>
             typename ComponentStorageTraits<T>::PoolType *EnsureTypedPool()
             {
-                constexpr ComponentType type = ComponentTypeOf<T>::value;
-
-                static_assert(type != ComponentType::None,
-                              "组件必须有类型号（T2-c：实体槽 = 按类型行号）—— 请在组件头里特化 ComponentTypeOf<T>");
-
-                const uint32_t index = static_cast<uint32_t>(type);
-
-                if (!component_pool_slots[index])
-                {
-                    auto pool = std::make_unique<typename ComponentStorageTraits<T>::PoolType>();
-
-                    component_pool_slots[index] = pool.get();
-                    component_pools.push_back(std::move(pool));
-                }
-
-                return static_cast<typename ComponentStorageTraits<T>::PoolType *>(component_pool_slots[index]);
+                return component_pool_registry.Ensure<T>();
             }
 
             /// 挂载组件（返回池内行地址；已有同类型 ⇒ 先卸旧行，语义与旧 `ReplaceComponent` 一致）
