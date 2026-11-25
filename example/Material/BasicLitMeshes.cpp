@@ -1,7 +1,7 @@
 #include <hgl/framework/WorkManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/asset/LevelAssetRegistry.h>
-#include <hgl/graph/asset/LevelLoader.h>
+#include <hgl/world/assembly/LevelLoader.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/module/GeometryManager.h>
@@ -65,7 +65,7 @@ private:
             return false;
 
         GeometryCreater creater(mesh_vdm);
-        return level_asset->Instantiate(ecs_context, &creater, level_instance);
+        return LevelLoader::Instantiate(*level_asset, ecs_context, &creater, level_instance);
     }
 
 public:

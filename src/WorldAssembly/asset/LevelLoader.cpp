@@ -1,4 +1,5 @@
-﻿#include <hgl/graph/asset/LevelLoader.h>
+#include <hgl/world/assembly/LevelLoader.h>
+#include <hgl/graph/asset/LevelAssetRegistry.h>
 #include <hgl/graph/asset/GeometryAssetRegistry.h>
 #include <hgl/graph/asset/PrimitiveAssetRegistry.h>
 #include <hgl/graph/mesh/LoadStaticMesh.h>
@@ -633,5 +634,13 @@ namespace hgl::graph
         }
 
         return true;
+    }
+
+    bool LevelLoader::Instantiate(const LevelAsset &asset,
+                                  ecs::ECSContext *world,
+                                  GeometryCreater *creater,
+                                  LevelInstance &out_instance)
+    {
+        return Instantiate(asset.GetSpec(), world, creater, out_instance, asset.GetFilename());
     }
 }

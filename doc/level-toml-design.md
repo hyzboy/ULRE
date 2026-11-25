@@ -5,7 +5,7 @@
 >
 > ```cpp
 > auto *level = gc->GetLevelAssetRegistry()->GetOrLoad(OS_TEXT("example/Material/BasicLitMeshes.level.toml"));
-> level->Instantiate(world, creater, instance);   // 模型子树内部走 ModelAsset 异步流送
+> if (level) LevelLoader::Instantiate(*level, world, creater, instance); // 模型子树内部走 ModelAsset 异步流送
 > ```
 >
 > 本文定义数据格式与分阶段目标；下方“当前落地范围”记录实现与设计的差异。
@@ -14,6 +14,12 @@
 > glTF/`.model` 场景语义冲突，故规格化关卡统一正名为 **Level**（`LevelSpec` /
 > `LevelAsset` / `LevelAssetRegistry` / `LevelLoader`，扩展名 `.level.toml` /
 > `.level.fb`）；二进制模型包统一叫 **Model**（`.model` MDL2 MiniPack）。
+
+`LevelAssetRegistry` 只负责资产加载；ECS 实例化使用
+`<hgl/world/assembly/LevelLoader.h>` 和 `ULRE.WorldAssembly`。
+原 `LevelAsset::Instantiate(...)` 调用应迁移为
+`LevelLoader::Instantiate(*level, ...)`；旧的 `hgl/graph/asset/LevelLoader.h`
+路径保留为转发头。
 
 ### 当前落地范围
 
@@ -244,7 +250,7 @@ primitive_dirs = ["res/primitive"]
 ```cpp
 // 一步到位（推荐给示例）
 LevelAsset *level = gc->GetLevelAssetRegistry()->GetOrLoad(path);
-bool ok = level->Instantiate(world, creater, instance);
+bool ok = level && LevelLoader::Instantiate(*level, world, creater, instance);
 ```
 
 `GetOrLoad` 同步解析 TOML/`.level.fb`（纯文本/小二进制，读盘即解析）；重型内容
@@ -399,7 +405,7 @@ bool Init() override
     auto *level_asset = GetGraphicsContext()->GetLevelAssetRegistry()->GetOrLoad(
         OS_TEXT("example/Material/BasicLitMeshes.level.toml"));
 
-    return level_asset && level_asset->Instantiate(GetECSContext(), &creater, level_instance);
+    return level_asset && LevelLoader::Instantiate(*level_asset, GetECSContext(), &creater, level_instance);
 }
 ```
 

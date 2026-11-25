@@ -19,16 +19,8 @@
 #include <hgl/graph/asset/LevelSpec.h>
 #include <hgl/type/ManagedArray.h>
 
-namespace hgl::ecs
-{
-    class ECSContext;
-}
-
 namespace hgl::graph
 {
-    class GeometryCreater;
-    class LevelInstance;
-
     class LevelAsset
     {
         OSString filename;
@@ -41,10 +33,6 @@ namespace hgl::graph
         const OSString &GetFilename() const { return filename; }
         const OSString &GetResourceKey() const { return resource_key; }
         const LevelSpec &GetSpec() const { return spec; }
-
-        bool Instantiate(ecs::ECSContext *world,
-                         GeometryCreater *creater,
-                         LevelInstance &out_instance) const;
     };
 
     class LevelAssetRegistry

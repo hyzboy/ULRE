@@ -2,7 +2,7 @@
 #include<hgl/common/DebugChannel.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/asset/LevelAssetRegistry.h>
-#include<hgl/graph/asset/LevelLoader.h>
+#include<hgl/world/assembly/LevelLoader.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -79,7 +79,7 @@ int os_main(int argc,os_char **argv)
     LevelInstance instance;
     LevelAsset *level=levels->GetOrLoad(OS_TEXT("example/Debug/RenderDiagnosticsFixture.level.toml"));
     GeometryCreater creater(&vertices);
-    if(!level || !level->Instantiate(world,&creater,instance))
+    if(!level || !LevelLoader::Instantiate(*level,world,&creater,instance))
         return 5;
 
     if(::getenv("ULRE_DIAGNOSTIC_SHARED_CUBE"))

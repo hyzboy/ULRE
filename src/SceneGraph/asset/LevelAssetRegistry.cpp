@@ -1,6 +1,5 @@
 #include <hgl/graph/asset/LevelAssetRegistry.h>
 #include <hgl/graph/asset/LevelAssetFile.h>
-#include <hgl/graph/asset/LevelLoader.h>
 #include <hgl/asset/LoadedFile.h>
 #include <hgl/log/Log.h>
 
@@ -9,13 +8,6 @@ USE_MODULE_LOGGER(LevelAssetRegistry)
 
 namespace hgl::graph
 {
-    bool LevelAsset::Instantiate(ecs::ECSContext *world,
-                                 GeometryCreater *creater,
-                                 LevelInstance &out_instance) const
-    {
-        return LevelLoader::Instantiate(spec, world, creater, out_instance, filename);
-    }
-
     LevelAssetRegistry::~LevelAssetRegistry()
     {
         Clear();
