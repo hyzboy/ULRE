@@ -101,7 +101,6 @@ namespace hgl
             BoundingVolumes skeleton_bounds;             ///< 骨架阶段算出的整体包围盒
             bool            skeleton_bounds_valid = false;
             ecs::Mobility   skeleton_mobility = ecs::Mobility::Static; ///< 派生图元子实体沿用
-            uint32_t        template_id = 0;              ///< GPU 模板 ID（0 表示未生成或无 GPU 模板）
 
         public:
             StaticMeshModelInstance() = default;
@@ -201,15 +200,6 @@ namespace hgl
                 return asset_index >= 0 && asset_index < owned_assets.GetCount()
                      ? owned_assets.At(asset_index) : nullptr;
             }
-
-            /// 获取绑定的 GPU 模型模板 ID（0 表示未生成或无模板）
-            uint32_t GetTemplateID() const { return template_id; }
-
-            /**
-             * @brief 构建并为节点实体绑定 GPU 模型模板（将所有网格与材质打包注册为 GPU SSBO 模板并挂载 GPUModelRefComponent）
-             */
-            bool BuildAndBindGPUTemplate(const std::vector<StaticMeshNode> &nodes,
-                                         const Options                     &options = {});
 
             /**
              * @brief 解析某个图元应绑定的材质数据行下标（纯查表，无副作用）。

@@ -7,11 +7,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/GeometryData.h>
 #include <hgl/ecs/components/MaterialData.h>
-#include <hgl/ecs/components/GPUModelRefComponent.h>
-#include <hgl/ecs/support/material/ModelTemplateBuilder.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
-#include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/log/Log.h>
 #include <glm/gtc/quaternion.hpp>
 
@@ -35,16 +31,6 @@ namespace hgl::graph
 
     void StaticMeshModelInstance::Release()
     {
-        // 销毁 GPU 模板
-        if (template_id != 0 && world)
-        {
-            auto *gc = world->GetGraphicsContext();
-            auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-            if (registry)
-                ecs::DestroyMultiMaterialModelTemplate(registry, world, template_id);
-            template_id = 0;
-        }
-
         // 顺序敏感：先销毁实体（GeometryData 仍引用 owned_assets 里的副本），
         // 再释放资产副本。
         if (world)
@@ -396,93 +382,6 @@ namespace hgl::graph
                  nodes.size(), GetAttachedPrimitiveCount(),
                  extra_entities.size(), owned_assets.GetCount());
 
-        // 尝试自动构建并绑定 GPU 模型模板（如果 GPU SSBO 资源池与材质表就绪）
-        // BuildAndBindGPUTemplate(nodes, options);
-
-        return true;
-    }
-
-    bool StaticMeshModelInstance::BuildAndBindGPUTemplate(const std::vector<StaticMeshNode> &nodes,
-                                                          const Options                     &options)
-    {
-        if (!world)
-        {
-            FLogError(u8"BuildAndBindGPUTemplate: 世界未就绪");
-            return false;
-        }
-
-        auto *gc = world->GetGraphicsContext();
-        auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-        if (!registry)
-        {
-            FLogInfo(u8"BuildAndBindGPUTemplate: GlobalSSBOBufferRegistry 未就绪（可能是脱机环境），跳过 GPU 模板构建");
-            return false;
-        }
-
-        ModelAssetContent content;
-        content.nodes = nodes;
-        for (int i = 0; i < owned_assets.GetCount(); ++i)
-        {
-            if (const PrimitiveAsset *asset = owned_assets.At(i))
-                content.assets.push_back(*asset);
-        }
-
-        if (content.assets.empty())
-            return false;
-
-        ecs::MultiMaterialModelTemplateDesc desc;
-        desc.by_material_index = options.rows_by_material_index;
-
-        if (options.material_rows && options.material_row_count > 0)
-        {
-            for (uint32_t i = 0; i < options.material_row_count; ++i)
-            {
-                ecs::MultiMaterialPartInput input;
-                input.material_id = options.material_rows[i].data_index;
-                input.can_cast_shadow = true;
-                input.is_opaque = true;
-                desc.material_inputs.Add(input);
-            }
-        }
-        else
-        {
-            ecs::MultiMaterialPartInput input;
-            input.material_id = 0;
-            input.can_cast_shadow = true;
-            input.is_opaque = true;
-            desc.material_inputs.Add(input);
-        }
-
-        template_id = ecs::BuildMultiMaterialModelTemplate(registry, world, content, desc);
-        if (template_id == 0)
-        {
-            FLogError(u8"BuildAndBindGPUTemplate: BuildMultiMaterialModelTemplate 失败");
-            return false;
-        }
-
-        // 为各个包含图元的节点实体挂载 GPUModelRefComponent
-        for (size_t i = 0; i < nodes.size(); ++i)
-        {
-            if (i >= node_records.size() || !node_records[i].entity.IsValid())
-                continue;
-
-            if (nodes[i].primitiveIndices.empty())
-                continue;
-
-            ecs::Entity *entity = world->GetEntity(node_records[i].entity);
-            if (!entity)
-                continue;
-
-            ecs::GPUModelRefComponent *ref = entity->GetComponent<ecs::GPUModelRefComponent>();
-            if (!ref)
-                ref = entity->AddComponent<ecs::GPUModelRefComponent>();
-            if (ref)
-            {
-                ref->template_id = template_id;
-            }
-        }
-
-        FLogInfo(u8"BuildAndBindGPUTemplate: 成功构建并绑定 GPU 模板 (template_id=%u)", template_id);
         return true;
     }
 
