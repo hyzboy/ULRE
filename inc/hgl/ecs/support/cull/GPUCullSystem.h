@@ -193,8 +193,9 @@ namespace hgl::ecs
 
         /// T3.1 + 阶段 1：登记「实体 → 模板组表偏移」（写者 = 批装配期，`RenderBatchPipeline`）。
         /// `pass_index` ∈ [0, kArenaPasses)，`entity_index` ∈ [0, kMaxVisibleEntities)。
-        /// 写入值 = `AllocateModelGroupBucketSlots` 返回的**组表偏移**（不是桶号）：
-        /// 展开侧先取 `group_table[偏移 + part.shading_group]` 得到该组的块内首桶号，
+        /// 参数是 `AllocateModelGroupBucketSlots` 返回的 pass 内偏移（不是桶号）；
+        /// 写入值加上 pass 分区起点，展开侧取 `group_table[写入值 + part.shading_group]`，
+        /// 得到该组的块内首桶号，
         /// 再加 `bucket_slot` ⇒ 同一实体的部件可以分流到不同 MaterialBatch。
         /// 未登记 ⇒ `kModelExpansionInvalidBucketBase` ⇒ 展开侧跳过该实体。
         void SetModelEntityGroupOffset(uint32_t pass_index, uint32_t entity_index, uint32_t group_table_offset);

@@ -490,14 +490,17 @@ namespace hgl::ecs
     {
         static bool s_row_warned = false;
 
-        if (pass_index >= uint32_t(kArenaPasses) || entity_index >= graph::kModelExpansionBucketBaseRowsPerPass)
+        if (pass_index >= uint32_t(kArenaPasses)
+         || entity_index >= graph::kModelExpansionBucketBaseRowsPerPass
+         || group_table_offset >= graph::kModelExpansionGroupBucketSlotsPerPass)
         {
             if (!s_row_warned)
             {
                 s_row_warned = true;
-                GLogError(u8"[GPUCullSystem] T3.1 组表偏移写入越界：pass=%u(≥%u) 实体=%u(≥%u) ⇒ 丢弃",
+                GLogError(u8"[GPUCullSystem] T3.1 组表偏移写入越界：pass=%u(≥%u) 实体=%u(≥%u) 偏移=%u(≥%u) ⇒ 丢弃",
                           pass_index, uint32_t(kArenaPasses),
-                          entity_index, graph::kModelExpansionBucketBaseRowsPerPass);
+                          entity_index, graph::kModelExpansionBucketBaseRowsPerPass,
+                          group_table_offset, graph::kModelExpansionGroupBucketSlotsPerPass);
             }
             return;
         }
@@ -507,7 +510,8 @@ namespace hgl::ecs
         if (!table)
             return;
 
-        table[size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass + entity_index] = group_table_offset;
+        table[size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass + entity_index] =
+            pass_index * graph::kModelExpansionGroupBucketSlotsPerPass + group_table_offset;
     }
 
     void GPUCullSystem::ResetModelBucketBases(const uint32_t pass_index)

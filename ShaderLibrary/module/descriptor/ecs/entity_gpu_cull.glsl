@@ -470,6 +470,7 @@ void expand_template_entity(const uint blk,
 {
     const ModelExpansionArenaData arena = model_expansion_arena;
 
+    // 一级表保存的是包含 pass 分区起点的二级组表绝对偏移。
     const uint tag_bucket_base = model_bucket_bases[blk * pc.max_visible_count + entity_slot];
 
     if (tag_bucket_base == MODEL_BUCKET_BASE_INVALID)

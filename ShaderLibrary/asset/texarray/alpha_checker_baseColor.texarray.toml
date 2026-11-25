@@ -1,5 +1,5 @@
 # 单层黑白棋盘 baseColor 数组（RGBA8 UNORM，256x256）：alpha test 镂空的遮罩来源。
-# 白格 alpha=1 挡光、黑格 alpha=0 镂空。
+# 白格 R 接近 1、黑格 R=0；绑定到 opacity_mask 时白格挡光、黑格镂空。
 #
 # `CascadeShadowMap` 与 `AlphaTestShadow` 原先各建一张同样的 256x256/1 层数组，
 # 现在共用这一份规约。

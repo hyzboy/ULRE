@@ -76,10 +76,9 @@ namespace
     // 避免把量化/滤波残差算成几何。
     constexpr float kDepthGeometryThreshold = 0.02f;
 
-    // D1 契约判读带：相对"非零像素包围盒"的填充率。棋盘镂空实测 57.6%，
-    // 实心(~100%)与全空(~0%)都在带外。
-    constexpr float kContractFillMin = 0.50f;
-    constexpr float kContractFillMax = 0.65f;
+    constexpr float kMaskedFillMin = 0.35f;
+    constexpr float kMaskedFillMax = 0.65f;
+    constexpr float kSolidFillMin = 0.90f;
 
     // ── D3 契约：接收侧旋钮（receive_shadow / bias_multiplier）──────────────
     // 判定方式是**逐像素对比**三帧颜色（相机/场景静止，除旋钮外逐帧一致；
@@ -110,14 +109,14 @@ namespace
     //
     // 只回答一个问题：alpha test 物体的阴影是否按 opacity_mask 镂空。
     //
-    // 场景 = 地面 + 两个悬浮棋盘 cube（同一 alpha_recipe、同一棋盘纹理）：
+    // 场景 = 地面 + 两个悬浮 cube（同一 alpha_recipe、同一棋盘纹理）：
     //   CubeA  绑定 opacity_mask        → 影子应为棋盘镂空（白格挡光黑格透光）
     //   CubeB  不绑定 opacity_mask      → SampleOptional fallback 1.0
     //                                   → 影子应为实心方影（对照组）
     // 两个 cube 都是 Movable（进 CSM 0 动态层，每帧全量重绘）——不受静态级联
     // 滚动缓存影响，任何一帧都在验证 masked 链路本身。
     //
-    // 本体侧：两者都应有镂空（forward alpha test，HGL_ALPHA_TEST 生效）。
+    // 本体侧：CubeA 镂空，CubeB 使用 fallback 因而实心。
     // 若 A/B 影子一致（都实心或都镂空）即为回归。
 
     constexpr uint32_t kShadowMapSize = 1024;
@@ -159,8 +158,7 @@ private:
     graph::GlobalSSBOBinding material_accessor{};
 
     // ── D1 契约：深度图镂空自动判读 ─────────────────────────────────────────
-    // 判读口径：**相对非零（几何）像素包围盒**的填充率。整图口径不可用——该
-    // 模型包围盒仅占全图 ~0.6%，57.6% 会被稀释成 0.4%。期望带 50–65%。
+    // 分别统计两对象在深度图中的包围盒填充率，不能用整体填充率判定归属。
     struct DepthFillStats
     {
         uint32_t bbox_w = 0;
@@ -171,6 +169,7 @@ private:
     };
 
     bool depth_dumped = false;
+    bool only_masked = false;
     bool contract_done = false;   // c0 契约已判读
     bool contract_ok = false;     // c0 契约结果（selfcheck 退出码依据）
 
@@ -233,9 +232,35 @@ private:
     // 回读走引擎基础功能（graph::ReadbackDepthTarget）：暂存缓冲、布局转换、围栏与释放全在
     // 引擎侧；示例把 float 深度按原精度落裸 .raw，另存一份 8bit 灰度 .tga 供人眼判读
     //（8bit 足够分辨"镂空（clear 值）vs 实心"，但会压平反 Z 的远景层次 ⇒ 数值结论一律用 .raw）。
-    // out_stats != nullptr 时顺带算出 D1 契约用的填充统计（同一遍扫描，零额外读回）。
+    // 可同时计算两个投影区域的 D1 填充统计。
+    static DepthFillStats MeasureDepthRegion(const float *depth, uint32_t w, uint32_t h,
+                                             uint32_t begin_x, uint32_t end_x)
+    {
+        DepthFillStats stats;
+        uint32_t min_x = w, min_y = h, max_x = 0, max_y = 0;
+        for (uint32_t y = 0; y < h; ++y)
+            for (uint32_t x = begin_x; x < end_x; ++x)
+                if (depth[static_cast<size_t>(y) * w + x] > kDepthGeometryThreshold)
+                {
+                    ++stats.filled;
+                    if (x < min_x) min_x = x;
+                    if (x > max_x) max_x = x;
+                    if (y < min_y) min_y = y;
+                    if (y > max_y) max_y = y;
+                }
+        stats.empty = stats.filled == 0;
+        if (!stats.empty)
+        {
+            stats.bbox_w = max_x - min_x + 1;
+            stats.bbox_h = max_y - min_y + 1;
+            stats.ratio = float(stats.filled) / float(stats.bbox_w * stats.bbox_h);
+        }
+        return stats;
+    }
+
     bool DumpCascadeDepth(graph::IRenderTarget *rt, const char *filename,
-                          DepthFillStats *out_stats = nullptr)
+                          DepthFillStats *out_masked = nullptr,
+                          DepthFillStats *out_fallback = nullptr)
     {
         if (!rt)
             return false;
@@ -262,9 +287,8 @@ private:
 
         std::vector<uint8> gray(static_cast<size_t>(w) * h, 0);
 
-        // D1：几何像素统计（reversed-Z → clear=0、几何=近处亮）。单遍即可——包围盒
-        // 内不会出现包围盒外的几何像素，故 filled 总数就是框内填充数。
-        uint32_t min_x = w, min_y = h, max_x = 0, max_y = 0, filled = 0;
+        // reversed-Z：clear=0、几何=近处亮。
+        uint32_t min_x = w, max_x = 0, filled = 0;
 
         for (uint32_t y = 0; y < h; ++y)
         {
@@ -280,22 +304,17 @@ private:
                     ++filled;
                     if (x < min_x) min_x = x;
                     if (x > max_x) max_x = x;
-                    if (y < min_y) min_y = y;
-                    if (y > max_y) max_y = y;
                 }
             }
         }
 
-        if (out_stats)
+        if (out_masked && out_fallback)
         {
-            out_stats->filled = filled;
-            out_stats->empty = (filled == 0);
-            out_stats->bbox_w = out_stats->empty ? 0 : (max_x - min_x + 1);
-            out_stats->bbox_h = out_stats->empty ? 0 : (max_y - min_y + 1);
-            out_stats->ratio = out_stats->empty
-                                   ? 0.0f
-                                   : static_cast<float>(filled) /
-                                         static_cast<float>(out_stats->bbox_w * out_stats->bbox_h);
+            // 固定相机与光源下，MaskedCube 位于深度图左侧，FallbackCube 在右侧。
+            // 单对象诊断时不拆分同一投影。
+            const uint32_t split = !filled || only_masked ? w : min_x + (max_x - min_x + 1) / 2;
+            *out_masked = MeasureDepthRegion(depth, w, h, 0, split);
+            *out_fallback = MeasureDepthRegion(depth, w, h, split, w);
         }
 
         // 裸 F32（零转换：直接写读回的 GPU 字节）+ 8bit 灰度可视化副本
@@ -560,7 +579,7 @@ public:
         //
         // DIAG: ATS_ONLY_MASKED=1 只留 MaskedCube——区分"单物体链路问题"
         // 与"同 batch 双物体行交互问题"。
-        const bool only_masked = []()
+        only_masked = []()
         {
             const char *v = getenv("ATS_ONLY_MASKED");
             return v && v[0] == '1';
@@ -705,8 +724,8 @@ public:
                     const AnsiString fn = AnsiString("cascade_depth_c") +
                         AnsiString::numberOf(c);
 
-                    DepthFillStats stats;
-                    const bool dumped = DumpCascadeDepth(rt, fn.c_str(), &stats);
+                    DepthFillStats masked, fallback;
+                    const bool dumped = DumpCascadeDepth(rt, fn.c_str(), &masked, &fallback);
 
                     // D1 契约只判 c0：动态层含两个 cube（棋盘镂空 + 无 mask 实心）；
                     // c1 静态层在本场景无 caster（实测全空），判它无意义。
@@ -719,33 +738,17 @@ public:
                     {
                         GLogError(u8"[D1-CONTRACT] c0 FAIL: 深度图读回失败");
                     }
-                    else if (stats.empty)
-                    {
-                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 深度图全空（片元被剥离后 alpha 恒 0，"
-                                  u8"或 caster 未进入深度图）");
-                    }
-                    else if (stats.ratio < kContractFillMin)
-                    {
-                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 包围盒填充率 %.1f%% < %.0f%% "
-                                  u8"(bbox=%ux%u filled=%u) -- 镂空过度或几何缺失",
-                                  stats.ratio * 100.0f, kContractFillMin * 100.0f,
-                                  stats.bbox_w, stats.bbox_h, stats.filled);
-                    }
-                    else if (stats.ratio > kContractFillMax)
-                    {
-                        GLogError(u8"[D1-CONTRACT] c0 FAIL: 包围盒填充率 %.1f%% > %.0f%% "
-                                  u8"(bbox=%ux%u filled=%u) -- mask 未生效，影子退化为实心",
-                                  stats.ratio * 100.0f, kContractFillMax * 100.0f,
-                                  stats.bbox_w, stats.bbox_h, stats.filled);
-                    }
                     else
                     {
-                        contract_ok = true;
-                        GLogInfo(u8"[D1-CONTRACT] c0 PASS: bbox=%ux%u filled=%u 填充率 %.1f%% "
-                                 u8"(期望 %.0f-%.0f%%)",
-                                 stats.bbox_w, stats.bbox_h, stats.filled,
-                                 stats.ratio * 100.0f,
-                                 kContractFillMin * 100.0f, kContractFillMax * 100.0f);
+                        contract_ok = !masked.empty && masked.filled >= 100
+                                   && masked.ratio >= kMaskedFillMin && masked.ratio <= kMaskedFillMax
+                                   && (only_masked || (!fallback.empty && fallback.filled >= 100
+                                                      && fallback.ratio >= kSolidFillMin));
+                        GLogInfo(u8"[D1-CONTRACT] c0 %s: MaskedCube %.1f%% (%u px), FallbackCube %.1f%% (%u px)%s",
+                                 contract_ok ? "PASS" : "FAIL",
+                                 masked.ratio * 100.0f, masked.filled,
+                                 fallback.ratio * 100.0f, fallback.filled,
+                                 only_masked ? " (single masked)" : "");
                     }
                 }
 
@@ -851,9 +854,10 @@ public:
                     GLogInfo(u8"[D3-CONTRACT] 对照组(ATS_D3_NOKNOB=1) 噪声底 %s: "
                              u8"逐像素外观变化 %u px（A→B %u / A→C %u，期望 0）",
                              clean ? "PASS" : "FAIL", c_ab + c_ac, c_ab, c_ac);
+                    const bool ok = clean && contract_done && contract_ok;
                     GLogInfo(u8"[D3-CONTRACT] selfcheck: %s (control, exit %d)",
-                             clean ? "PASS" : "FAIL", clean ? 0 : 1);
-                    std::exit(clean ? 0 : 1);
+                             ok ? "PASS" : "FAIL", ok ? 0 : 1);
+                    std::exit(ok ? 0 : 1);
                 }
 
                 uint32_t changed = 0, g2r = 0, r2g = 0;
@@ -940,8 +944,8 @@ public:
             return false;
 
         GLogInfo(u8"=== AlphaTestShadow initialized (2 cubes: masked + fallback-opaque) ===");
-        GLogInfo(u8"预期: MaskedCube 影子=棋盘镂空, FallbackCube 影子=实心方影, 两者本体均镂空");
-        GLogInfo(u8"D1 契约: 第 45 帧读回 c0 深度图并判读包围盒内填充率(期望 50-65%%); "
+        GLogInfo(u8"预期: MaskedCube 本体及影子=棋盘镂空, FallbackCube 本体及影子=实心");
+        GLogInfo(u8"D1 契约: 第 45 帧分别判读遮罩及实心阴影的包围盒填充率; "
                  u8"设 ATS_SELFCHECK=1 或加 --selfcheck 则按契约退出码结束(0=PASS/1=FAIL)");
         return true;
     }
