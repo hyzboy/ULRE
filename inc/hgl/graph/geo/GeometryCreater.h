@@ -177,7 +177,9 @@ protected:
 public:
 
     GeometryCreater(VulkanDevice *,const GeometryVertexFormat &,BufferManager *bm=nullptr);
-    GeometryCreater(VertexDataManager *);
+    /// 共享 VDM 的创建器。`bm` 是**调用方自己的**缓冲管理器（VDM 不再回吐它 ——
+    /// 顶点数据池只依赖 `VertexBufferAllocator` 契约，不持有上层管理器指针）。
+    GeometryCreater(VertexDataManager *,BufferManager *bm);
     virtual ~GeometryCreater();
 
             /**

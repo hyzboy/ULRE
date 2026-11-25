@@ -875,7 +875,7 @@ private:
         using namespace inline_geometry;
 
         // 共享顶点池：全部几何写进同一个 VertexDataManager
-        GeometryCreater pc(vdm);
+        GeometryCreater pc(vdm, GetManager<BufferManager>());
         SharedCreaterScope scope(GetGeometryAssetRegistry(), &pc);
 
         builtin_geometries[0] = GetGeometry("geo:builtin:sphere_64");

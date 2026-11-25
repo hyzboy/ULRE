@@ -1,14 +1,13 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/buffer/IndexBuffer.h>
+#include<hgl/vk/VertexBufferAllocator.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
 #include<hgl/type/BlockAllocator.h>
 #include<hgl/log/Logger.h>
 
 namespace hgl::graph{
-
-class BufferManager;
 
 /**
  * 顶点数据管理器——所有模型共享的大 VBO/SSBO（超级大缓冲）
@@ -39,9 +38,10 @@ class VertexDataManager
     OBJECT_LOGGER
 
     VulkanDevice *device;
-    BufferManager *buffer_manager;
 
-    // TODO: Migrate VAB/IBO allocations to BufferManager while keeping pooled behavior.
+    /// 顶点/索引缓冲的分配契约（可为空 ⇒ 退回直接向 device 申请）。
+    /// 由 `BufferManager` 实现 ⇒ 本层不再认识任何上层模块类型。
+    VertexBufferAllocator *allocator;
 
 protected:
 
@@ -63,11 +63,11 @@ protected:
 public:
 
     VertexDataManager(VulkanDevice *dev,const GeometryVertexFormat &gvf);
-    VertexDataManager(BufferManager *bm,const GeometryVertexFormat &gvf);
+    VertexDataManager(VertexBufferAllocator *alloc,const GeometryVertexFormat &gvf);
     ~VertexDataManager();
 
           VulkanDevice *GetDevice       ()const{return device;}                                     ///<取得GPU设备
-          BufferManager *GetBufferManager()const{return buffer_manager;}                             ///<取得BufferManager
+    VertexBufferAllocator *GetAllocator()const{return allocator;}                                ///<取得缓冲分配器（可为空）
 
     const GeometryVertexFormat &GetGeometryVertexFormat()const{return geometry_vertex_format;}
 

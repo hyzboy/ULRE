@@ -1,7 +1,7 @@
-﻿#include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/buffer/VertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/graph/module/BufferManager.h>
+#include<hgl/vk/VertexBufferAllocator.h>
 
 DEFINE_LOGGER_MODULE(VertexDataManager)
 
@@ -9,7 +9,7 @@ namespace hgl::graph
 {
     VertexDataManager::VertexDataManager(VulkanDevice *dev,const GeometryVertexFormat &gvf)
     {
-        buffer_manager=nullptr;
+        allocator=nullptr;
         device=dev;
 
         geometry_vertex_format=gvf;
@@ -25,10 +25,10 @@ namespace hgl::graph
         LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count));
     }
 
-    VertexDataManager::VertexDataManager(BufferManager *bm,const GeometryVertexFormat &gvf)
+    VertexDataManager::VertexDataManager(VertexBufferAllocator *alloc,const GeometryVertexFormat &gvf)
     {
-        buffer_manager=bm;
-        device=bm?bm->GetDevice():nullptr;
+        allocator=alloc;
+        device=alloc?alloc->GetAllocatorDevice():nullptr;
 
         geometry_vertex_format=gvf;
         vi_count=geometry_vertex_format.GetCount();
@@ -47,15 +47,15 @@ namespace hgl::graph
     {
         LogVerbose(OS_TEXT("VertexDataManager destroying: vab_cur_size=") + OSString::numberOf(vab_cur_size) + OS_TEXT(", ibo_cur_size=") + OSString::numberOf(ibo_cur_size));
 
-        if (buffer_manager)
+        if (allocator)
         {
             for (uint i=0;i<vi_count;i++)
             {
                 if (vab[i])
-                    buffer_manager->Release(vab[i]);
+                    allocator->ReleaseAllocatedBuffer(vab[i]);
             }
             if (ibo)
-                buffer_manager->Release(ibo);
+                allocator->ReleaseAllocatedBuffer(ibo);
 
             if (vab)
             {
@@ -111,8 +111,8 @@ namespace hgl::graph
 
             LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)attribute->format) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
 
-            if (buffer_manager)
-                vab[i]=buffer_manager->CreateVAB(attribute->format,vab_max_size);
+            if (allocator)
+                vab[i]=allocator->CreateAllocatorVAB(attribute->format,vab_max_size);
             else
                 vab[i]=device->CreateVAB(attribute->format,vab_max_size);
             if(!vab[i])
@@ -124,8 +124,8 @@ namespace hgl::graph
                 {
                     if (vab[j])
                     {
-                        if (buffer_manager)
-                            buffer_manager->Release(vab[j]);
+                        if (allocator)
+                            allocator->ReleaseAllocatedBuffer(vab[j]);
                         else
                             SAFE_CLEAR(vab[j]);
                     }
@@ -142,8 +142,8 @@ namespace hgl::graph
 
         if(ibo_size>0)
         {
-            if (buffer_manager)
-                ibo=buffer_manager->CreateIBO(index_type,ibo_size,nullptr);
+            if (allocator)
+                ibo=allocator->CreateAllocatorIBO(index_type,ibo_size,nullptr);
             else
                 ibo=device->CreateIBO(index_type,ibo_size);
             if(!ibo)
@@ -153,8 +153,8 @@ namespace hgl::graph
                 // cleanup VABs
                 for(uint i=0;i<vi_count;i++)
                 {
-                    if (buffer_manager)
-                        buffer_manager->Release(vab[i]);
+                    if (allocator)
+                        allocator->ReleaseAllocatedBuffer(vab[i]);
                     else
                         SAFE_CLEAR(vab[i]);
                 }

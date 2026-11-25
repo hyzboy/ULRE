@@ -24,8 +24,8 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const GeometryVertexFormat &g
     Clear();
 }
 
-GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),_vdm->GetBufferManager())
+GeometryCreater::GeometryCreater(VertexDataManager *_vdm,BufferManager *bm)
+    :GeometryCreater(_vdm->GetDevice(),_vdm->GetGeometryVertexFormat(),bm)
 {
     vdm=_vdm;
 
@@ -203,7 +203,7 @@ Geometry *GeometryCreater::Create()
     if(!geometry)
         return(nullptr);
 
-    auto *bm = buffer_manager ? buffer_manager : (vdm ? vdm->GetBufferManager() : nullptr);
+    auto *bm = buffer_manager;
     if (bm && bm->GetGraphicsContext())
     {
         auto *gc = bm->GetGraphicsContext();

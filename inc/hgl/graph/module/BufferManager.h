@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/vk/VertexBufferAllocator.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/buffer/BufferOwner.h>
 #include<hgl/vk/buffer/DeviceBuffer.h>
@@ -14,7 +15,7 @@ namespace hgl::graph{
 
 using BufferID = int;
 
-GRAPH_MODULE_CLASS(BufferManager)
+GRAPH_MODULE_CLASS(BufferManager), public VertexBufferAllocator
 {
 private:
 
@@ -36,6 +37,32 @@ public: //Add/Get/Release
     BufferID        Add(BufferOwner *buf) { return rm_buffers.Add(buf); }
     BufferOwner * Get(const BufferID &id) { return rm_buffers.Get(id); }
     void            Release(BufferOwner *buf) { rm_buffers.Release(buf, true); }
+
+    // ── VertexBufferAllocator（下层契约；见 inc/hgl/vk/VertexBufferAllocator.h）──
+    // 方法名刻意与既有 CreateVAB/CreateIBO/Release 区分：本类同时继承 GraphModule
+    // 与契约，同名会让 `this->X()` 产生重载歧义。实现全部转发到既有入口，语义不变。
+
+    VulkanDevice * GetAllocatorDevice() override { return GetDevice(); }
+
+    VAB * CreateAllocatorVAB(VkFormat format, uint32_t vertex_count,
+                             const std::source_location &loc) override
+    { return CreateVAB(format, vertex_count, nullptr, SharingMode::Exclusive, loc); }
+
+    IndexBuffer * CreateAllocatorIBO(IndexType index_type, uint32_t index_count, const void *data,
+                                     const std::source_location &loc) override
+    { return CreateIBO(index_type, index_count, data, SharingMode::Exclusive, loc); }
+
+    VAB * CreateAllocatorNamedVAB(const AnsiString &name, VkFormat format, uint32_t vertex_count,
+                                  const void *data, BufferAllocPolicy policy,
+                                  const std::source_location &loc) override
+    { return CreateVAB(ObjectNameBuilder(name), format, vertex_count, data, policy, SharingMode::Exclusive, loc); }
+
+    IndexBuffer * CreateAllocatorNamedIBO(const AnsiString &name, IndexType index_type,
+                                          uint32_t index_count, const void *data, BufferAllocPolicy policy,
+                                          const std::source_location &loc) override
+    { return CreateIBO(ObjectNameBuilder(name), index_type, index_count, data, policy, SharingMode::Exclusive, loc); }
+
+    void ReleaseAllocatedBuffer(BufferOwner *buffer) override { Release(buffer); }
 
     /**
      * @brief 清理所有残留的缓冲区，防止销毁设备时出现资源泄漏
