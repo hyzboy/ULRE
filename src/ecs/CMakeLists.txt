@@ -303,6 +303,9 @@ add_ecs_test(TestFramePrepareOncePerFrame tests/TestFramePrepareOncePerFrame.cpp
 # 步骤4 判据：帧提交等待列表（车道累积/提升/取走清空/主帧收尾/超限截断）
 add_ecs_test(TestFrameLaneWaitSet tests/TestFrameLaneWaitSet.cpp)
 
+# 步骤7 判据：模型展开路由表（一级/二级索引规则、pass 分区隔离、容量边界、越界丢弃）
+add_ecs_test(TestModelGroupRoutingTables tests/TestModelGroupRoutingTables.cpp)
+
 # §3-②/⑥ 判据：相机纯读（Resolve）与认领（Ensure）分离（+ 实体级相机模板编译期禁死）
 add_ecs_test(TestCameraResolveAndClaim tests/TestCameraResolveAndClaim.cpp)
 
@@ -650,6 +653,13 @@ if(BUILD_TESTING)
     set_tests_properties(
         TestFrameLaneWaitSet
         PROPERTIES LABELS "ecs;render" TIMEOUT 60)
+
+    add_test(
+        NAME TestModelGroupRoutingTables
+        COMMAND TestModelGroupRoutingTables)
+    set_tests_properties(
+        TestModelGroupRoutingTables
+        PROPERTIES LABELS "ecs;render;cull" TIMEOUT 60)
 
     add_test(
         NAME TestCameraResolveAndClaim

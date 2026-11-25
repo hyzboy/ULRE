@@ -120,11 +120,7 @@ namespace hgl::ecs
         SAFE_CLEAR(batch_counter_buffer_);
         SAFE_CLEAR(expansion_arena_buffer_);
         expansion_arena_addr_ = 0;
-        expansion_bucket_base_cpu_.ClearAndDeallocate();
-        expansion_group_bucket_cpu_.ClearAndDeallocate();
-
-        for (uint32_t p = 0; p < uint32_t(kArenaPasses); ++p)
-            expansion_group_slot_next_[p] = 0u;
+        model_group_routes.Release();
 
         // 映射指针随 buffer 一起失效，必须同时复位（否则重建后仍指向旧映射）
         batch_counter_cpu_ = nullptr;
@@ -443,20 +439,7 @@ namespace hgl::ecs
             if (!expansion_arena_buffer_) return false;
             expansion_arena_addr_ = device_->GetBufferDeviceAddressAligned16(expansion_arena_buffer_->GetBuffer());
 
-            expansion_bucket_base_cpu_.ClearAndDeallocate();
-            expansion_bucket_base_cpu_.Reserve(int(graph::kModelExpansionMaxBucketBaseRows));
-
-            for (uint32_t r = 0; r < graph::kModelExpansionMaxBucketBaseRows; ++r)
-                expansion_bucket_base_cpu_.Add(graph::kModelExpansionInvalidBucketBase);
-
-            expansion_group_bucket_cpu_.ClearAndDeallocate();
-            expansion_group_bucket_cpu_.Reserve(int(graph::kModelExpansionMaxGroupBucketSlots));
-
-            for (uint32_t r = 0; r < graph::kModelExpansionMaxGroupBucketSlots; ++r)
-                expansion_group_bucket_cpu_.Add({graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u});
-
-            for (uint32_t p = 0; p < uint32_t(kArenaPasses); ++p)
-                expansion_group_slot_next_[p] = 0u;
+            model_group_routes.Create();
 
             GLogInfo(u8"[GPUCullSystem] T3.1 model expansion arena ready: addr=%p（slots=%u, slot_bytes=%llu, bucket_base_rows=%u, group_slots=%u）",
                      (void*)expansion_arena_addr_, uint32_t(HGL_FRAME_SLOT_TOTAL),
@@ -483,143 +466,6 @@ namespace hgl::ecs
         // 所以写表侧（ECSContext::SyncWorldAddresses）不需要知道槽步长。
         const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
         return expansion_arena_addr_ + uint64_t(slot) * uint64_t(kExpansionSlotBytes);
-    }
-
-    void GPUCullSystem::SetModelEntityGroupOffset(const uint32_t pass_index, const uint32_t entity_index,
-                                                  const uint32_t group_table_offset)
-    {
-        static bool s_row_warned = false;
-
-        if (pass_index >= uint32_t(kArenaPasses)
-         || entity_index >= graph::kModelExpansionBucketBaseRowsPerPass
-         || group_table_offset >= graph::kModelExpansionGroupBucketSlotsPerPass)
-        {
-            if (!s_row_warned)
-            {
-                s_row_warned = true;
-                GLogError(u8"[GPUCullSystem] T3.1 组表偏移写入越界：pass=%u(≥%u) 实体=%u(≥%u) 偏移=%u(≥%u) ⇒ 丢弃",
-                          pass_index, uint32_t(kArenaPasses),
-                          entity_index, graph::kModelExpansionBucketBaseRowsPerPass,
-                          group_table_offset, graph::kModelExpansionGroupBucketSlotsPerPass);
-            }
-            return;
-        }
-
-        uint32_t *table = expansion_bucket_base_cpu_.GetData();
-
-        if (!table)
-            return;
-
-        table[size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass + entity_index] =
-            pass_index * graph::kModelExpansionGroupBucketSlotsPerPass + group_table_offset;
-    }
-
-    void GPUCullSystem::ResetModelBucketBases(const uint32_t pass_index)
-    {
-        if (pass_index >= uint32_t(kArenaPasses))
-            return;
-
-        uint32_t *table = expansion_bucket_base_cpu_.GetData();
-
-        if (!table)
-            return;
-
-        uint32_t *block = table + size_t(pass_index) * graph::kModelExpansionBucketBaseRowsPerPass;
-
-        for (uint32_t r = 0; r < graph::kModelExpansionBucketBaseRowsPerPass; ++r)
-            block[r] = graph::kModelExpansionInvalidBucketBase;
-    }
-
-    // ── 阶段 1：二级 shading_group 组基址表 ──────────────────────────────
-
-    bool GPUCullSystem::AllocateModelGroupBucketSlots(const uint32_t pass_index,
-                                                     const uint32_t group_count,
-                                                     uint32_t *out_offset)
-    {
-        if (out_offset)
-            *out_offset = graph::kModelExpansionInvalidBucketBase;
-
-        if (pass_index >= uint32_t(kArenaPasses) || group_count == 0u || !out_offset)
-            return false;
-
-        auto *table = expansion_group_bucket_cpu_.GetData();
-
-        if (!table)
-            return false;
-
-        uint32_t &next = expansion_group_slot_next_[pass_index];
-
-        if (group_count > graph::kModelExpansionGroupBucketSlotsPerPass - next)
-        {
-            static bool s_warned = false;
-
-            if (!s_warned)
-            {
-                s_warned = true;
-                GLogError(u8"[GPUCullSystem] 组基址表槽位耗尽：pass=%u 需要 %u 槽，已用 %u / 容量 %u"
-                          u8"（模板/组数超设计上限 ⇒ 该批本帧不接管）",
-                          pass_index, group_count, next,
-                          graph::kModelExpansionGroupBucketSlotsPerPass);
-            }
-
-            return false;
-        }
-
-        auto *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
-
-        for (uint32_t g = 0; g < group_count; ++g)
-            block[next + g] = {graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u};
-
-        *out_offset = next;
-        next += group_count;
-        return true;
-    }
-
-    void GPUCullSystem::SetModelGroupBucketBase(const uint32_t pass_index, const uint32_t offset,
-                                                const uint32_t group_index, const uint32_t bucket_base,
-                                                const uint32_t material_id, const uint32_t texture_id,
-                                                const bool has_material)
-    {
-        if (pass_index >= uint32_t(kArenaPasses)
-         || offset >= graph::kModelExpansionGroupBucketSlotsPerPass
-         || group_index >= graph::kModelExpansionGroupBucketSlotsPerPass - offset)
-        {
-            GLogError(u8"[GPUCullSystem] Invalid group route: pass=%u offset=%u group=%u",
-                      pass_index, offset, group_index);
-            return;
-        }
-
-        auto *table = expansion_group_bucket_cpu_.GetData();
-
-        if (!table)
-            return;
-
-        table[size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass
-              + offset + group_index] = {bucket_base, material_id, texture_id, has_material ? 1u : 0u};
-    }
-
-    void GPUCullSystem::ResetModelGroupBucketSlots()
-    {
-        for (uint32_t p = 0; p < uint32_t(kArenaPasses); ++p)
-            ResetModelGroupBucketSlots(p);
-    }
-
-    void GPUCullSystem::ResetModelGroupBucketSlots(const uint32_t pass_index)
-    {
-        if (pass_index >= uint32_t(kArenaPasses))
-            return;
-
-        expansion_group_slot_next_[pass_index] = 0u;
-
-        auto *table = expansion_group_bucket_cpu_.GetData();
-
-        if (!table)
-            return;
-
-        auto *block = table + size_t(pass_index) * graph::kModelExpansionGroupBucketSlotsPerPass;
-
-        for (uint32_t r = 0; r < graph::kModelExpansionGroupBucketSlotsPerPass; ++r)
-            block[r] = {graph::kModelExpansionInvalidBucketBase, 0u, 0u, 0u};
     }
 
     void GPUCullSystem::WriteModelExpansionArena(const uint32_t slot)    {
@@ -674,12 +520,12 @@ namespace hgl::ecs
         std::memcpy(base, &arena, sizeof(arena));
 
         // 实体桶组基址表（整表上传：32 KB/槽，且内容逐帧重写 ⇒ 不做脏区间跟踪）
-        if (const uint32_t *src = expansion_bucket_base_cpu_.GetData())
+        if (const uint32_t *src = model_group_routes.BucketBaseData())
             std::memcpy(base + kExpansionHeaderBytes, src,
                         size_t(graph::kModelExpansionMaxBucketBaseRows) * sizeof(uint32_t));
 
         // 二级组路由表（每槽 16 B，同样整表上传）
-        if (const auto *src = expansion_group_bucket_cpu_.GetData())
+        if (const auto *src = model_group_routes.GroupRouteData())
             std::memcpy(base + kExpansionGroupBucketOffset, src,
                         size_t(graph::kModelExpansionMaxGroupBucketSlots) * sizeof(math::Vector4u));
 

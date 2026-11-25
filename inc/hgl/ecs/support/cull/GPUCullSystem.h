@@ -11,6 +11,7 @@
 #include <hgl/vk/VKShaderProgram.h>
 #include <hgl/common/RenderOptions.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/support/cull/ModelGroupRoutingTables.h>
 #include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/type/ValueArray.h>
 
@@ -127,6 +128,8 @@ namespace hgl::ecs
         // 数值与 `RenderPassSlot::Count` 同值（保留字面量：门 `B.batch-info-struct-parity`
         // 对 GLSL 的 `ULRE_ARENA_PASSES` 做整数对拍，别名会让提取失败）。
         static constexpr uint32_t kArenaPasses        = 2;
+        static_assert(kArenaPasses == ModelGroupRoutingTables::kPasses,
+                      "kArenaPasses 与 ModelGroupRoutingTables::kPasses 漂移（分份遍数必须单源）");
         static_assert(kArenaPasses == RenderPassSlot::Count,
                       "kArenaPasses 与 RenderPassSlot::Count 漂移（分份遍数必须单源）");
         static constexpr uint32_t kArenaRowsPerPass   = kMaxVisibleEntities;
@@ -200,12 +203,15 @@ namespace hgl::ecs
         /// 得到该组的块内首桶号，
         /// 再加 `bucket_slot` ⇒ 同一实体的部件可以分流到不同 MaterialBatch。
         /// 未登记 ⇒ `kModelExpansionInvalidBucketBase` ⇒ 展开侧跳过该实体。
-        void SetModelEntityGroupOffset(uint32_t pass_index, uint32_t entity_index, uint32_t group_table_offset);
+        /// 实现委托 `ModelGroupRoutingTables`（下标/偏移规则只在那里）。
+        void SetModelEntityGroupOffset(uint32_t pass_index, uint32_t entity_index, uint32_t group_table_offset)
+        { model_group_routes.SetEntityGroupOffset(pass_index, entity_index, group_table_offset); }
 
         /// T3.1：清空当前 pass 的实体桶组基址块（回哨兵）。批装配期每 pass 开头调用一次
         ///（上一帧的基址对本帧批次布局无效）。只清本 pass 那半块 —— 两个 pass 的装配
         /// 在同一帧内先后发生，整表清空会抹掉另一个 pass 已登记的基址。
-        void ResetModelBucketBases(uint32_t pass_index);
+        void ResetModelBucketBases(uint32_t pass_index)
+        { model_group_routes.ResetPassEntityBases(pass_index); }
 
         /// ── 阶段 1：二级「shading_group 组基址」表 ────────────────────────────
         ///
@@ -220,18 +226,31 @@ namespace hgl::ecs
         /// 越界（单 pass 槽数超 `kModelExpansionGroupBucketSlotsPerPass`）= 装配 bug，
         /// 返回 false 由调用方 fail-fast（整批不接管），不做静默截断。
         bool AllocateModelGroupBucketSlots(uint32_t pass_index, uint32_t group_count,
-                                          uint32_t *out_offset);
+                                          uint32_t *out_offset)
+        {
+            if (!out_offset)
+            {
+                uint32_t ignored;
+                return model_group_routes.AllocateGroupSlots(pass_index, group_count, ignored);
+            }
+
+            return model_group_routes.AllocateGroupSlots(pass_index, group_count, *out_offset);
+        }
 
         /// 回填某一组的组基址（块内相对首桶号）。`offset` 来自 AllocateModelGroupBucketSlots。
         void SetModelGroupBucketBase(uint32_t pass_index, uint32_t offset,
                                      uint32_t group_index, uint32_t bucket_base,
                                      uint32_t material_id = 0, uint32_t texture_id = 0,
-                                     bool has_material = false);
+                                     bool has_material = false)
+        {
+            model_group_routes.SetGroupRoute(pass_index, offset, group_index,
+                                             bucket_base, material_id, texture_id, has_material);
+        }
 
         /// 清空全部 pass 的组表（回哨兵 + 游标归零）。批装配期每 pass 开头调用
         /// `ResetModelGroupBucketSlots(pass)`（按下标重载见下）。
-        void ResetModelGroupBucketSlots();
-        void ResetModelGroupBucketSlots(uint32_t pass_index);
+        void ResetModelGroupBucketSlots() { model_group_routes.ResetAllGroupRoutes(); }
+        void ResetModelGroupBucketSlots(uint32_t pass_index) { model_group_routes.ResetPassGroupRoutes(pass_index); }
 
         /// T6.3：实例自定义数据输出缓冲及 GPU 基址（容量 = kArenaRows，16 B/行）
         graph::DeviceBuffer *GetCustomDataOutBuffer() const { return custom_data_out_buffer_; }
@@ -365,16 +384,9 @@ namespace hgl::ecs
         uint64_t expansion_arena_addr_ = 0;
         bool     model_expansion_enabled_ = true;                ///< 展开分支使能（写 arena.flags）
 
-        /// 实体 → 模板素材桶组基址表（CPU 侧主副本；下标 = pass_index * kMaxVisibleEntities + entity_index）。
-        /// 每帧随竞技场一起上传（整表 32 KB/slot，按槽双写 —— 展开分支的读侧只认自己那一槽）。
-        hgl::ValueArray<uint32_t> expansion_bucket_base_cpu_;
-
-        /// 二级 shading_group 组基址表（CPU 侧主副本；下标 = pass * 单 pass 槽数 + 组表偏移）。
-        /// 每帧随竞技场一起上传（每槽 16 B，槽数包含全部 pass）。
-        hgl::ValueArray<math::Vector4u> expansion_group_bucket_cpu_;
-
-        /// 每个 pass 的组表分配游标（下一可用槽）。
-        uint32_t expansion_group_slot_next_[kArenaPasses] = {};
+        /// 实体 → 模板素材桶组基址（一级表）+ 二级 shading_group 组路由表。
+        /// 下标/偏移规则**只**在 `ModelGroupRoutingTables` 内存在（分区唯一权威来源）。
+        ModelGroupRoutingTables model_group_routes;
 
         /// 批信息行（**与 `entity_gpu_cull.glsl` 的 `BatchInfoRow` 逐字段同序同型**；
         /// 16 B/行）。后两字段 = **dispatch 档**：gather 的 X 公式按它选（线按段数、组大小不同）。
