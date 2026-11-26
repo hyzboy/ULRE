@@ -47,9 +47,6 @@
 #include<memory>
 #include<functional>
 #include<vector>
-#include<map>
-#include<set>
-#include<unordered_map>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
@@ -139,7 +136,7 @@ namespace hgl
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
             /// Supports dynamic enable/disable per SystemGroup
-            std::unordered_map<std::string, std::unique_ptr<RenderPipelineBase>> render_pipelines;
+            hgl::UnorderedMap<AnsiString, RenderPipelineBase*> render_pipelines;
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -172,10 +169,7 @@ namespace hgl
 
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
-            /// ⚠ 2026-10-10（审计 §1.1）：**setter 是真 API**（`SceneGraph/module/OffscreenWorld` + 7 个示例在用），
-            /// 只读的 `GetResourceNamePrefix()` 才是零调用者（已删）—— 该成员目前「只写不读」，即
-            /// 分层泄漏追踪的读取端尚未实现（审计原判）。
-            std::string resource_name_prefix;
+            AnsiString resource_name_prefix;
 
         private:
 
@@ -552,10 +546,14 @@ namespace hgl
             void RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline);
             void RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline);
 
+            /// Clear and release all registered render pipelines
+            void ClearPipelines();
+
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
-            /// ⚠ 读取端（`GetResourceNamePrefix()`）零调用者，2026-10-10 审计 §1.1 已删；写入端保留。
-            void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
+            void SetResourceNamePrefix(const AnsiString& prefix) { resource_name_prefix = prefix; }
+            void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix.c_str(); }
+            const AnsiString& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             // ── IECSEntityObserver 接口实现 ──
             void OnEntityDestroyed(EntityID id) override;
@@ -848,28 +846,6 @@ namespace hgl
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
-
-            /// 注册一个系统。
-            /// **tick / render 的分类不接受调用方声明**：唯一权威是该系统自己的 `ExecutionPhase`
-            /// （分界 = `RenderSwapchainNextImage`）。曾经的 `is_render` 形参与
-            /// `RegisterTickSystem` / `RegisterRenderSystem` 两个包装都不决定任何列表，
-            /// 只在相位误配时打一句告警就把系统静默换表 ⇒ 整条声明面已删除（2026-10-09）。
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterSystem(Args&&... args)
-            {
-                auto system = std::make_shared<T>(std::forward<Args>(args)...);
-                const size_t key = typeid(T).hash_code();
-                system_registry.AddOrUpdate(key, system);
-                return system;
-            }
-
-             /// Get a system by type
-             template<typename T>
-             std::shared_ptr<T> GetSystem() const
-             {
-                const size_t key = typeid(T).hash_code();
-                return std::static_pointer_cast<T>(system_registry.Find(key));
-             }
 
             /// Get systems by render element type name (e.g., "Primitive", "Text", "SkySphere")
             void GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const;

@@ -197,43 +197,53 @@ namespace hgl
             return camera_system;
         }
 
+        void ECSContext::ClearPipelines()
+        {
+            for (auto& pair : render_pipelines)
+            {
+                delete pair.second;
+            }
+            render_pipelines.Clear();
+        }
+
         RenderPipelineBase* ECSContext::GetRenderPipeline(const char* name)
         {
             if (!name) return nullptr;
-            return GetRenderPipeline(std::string(name));
+            return GetRenderPipeline(AnsiString(name));
         }
 
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
-            auto it = render_pipelines.find(name);
-            if (it != render_pipelines.end())
-                return it->second.get();
-            return nullptr;
+            return GetRenderPipeline(AnsiString(name.c_str()));
         }
 
         RenderPipelineBase* ECSContext::GetRenderPipeline(const AnsiString& name)
         {
-            return GetRenderPipeline(std::string(name.c_str()));
+            auto* ptr = render_pipelines.GetValuePointer(name);
+            return ptr ? *ptr : nullptr;
         }
 
         void ECSContext::RegisterRenderPipeline(const char* name, std::unique_ptr<RenderPipelineBase> pipeline)
         {
             if (!name || !pipeline) return;
-            RegisterRenderPipeline(std::string(name), std::move(pipeline));
+            RegisterRenderPipeline(AnsiString(name), std::move(pipeline));
         }
 
         void ECSContext::RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline)
         {
-            if (!pipeline)
-                return;
-
-//            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
-            render_pipelines[name] = std::move(pipeline);
+            RegisterRenderPipeline(AnsiString(name.c_str()), std::move(pipeline));
         }
 
         void ECSContext::RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline)
         {
-            RegisterRenderPipeline(std::string(name.c_str()), std::move(pipeline));
+            if (!pipeline)
+                return;
+
+            auto* old = render_pipelines.GetValuePointer(name);
+            if (old && *old)
+                delete *old;
+
+            render_pipelines[name] = pipeline.release();
         }
 
         void ECSContext::Shutdown()
@@ -254,7 +264,7 @@ namespace hgl
             // Text/Primitive specific support-pipeline members removed; all pipelines live in render_pipelines.
 
             // Release all registered render pipelines
-            render_pipelines.clear();
+            ClearPipelines();
 
             // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
             render_runner.ClearFrameCache();
