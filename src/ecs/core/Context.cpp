@@ -591,13 +591,12 @@ namespace hgl
         void ECSContext::OnEntityDestroying(const EntityID id)
         {
             spatial_state.OnEntityDestroy(id);
-            render_data.OnEntityDestroy(id);
         }
 
         void ECSContext::OnEntityDestroyed(const EntityID id)
         {
             DeactivateEntityRow(id);
-            render_data.OnEntityDestroyed(id);
+            render_data.DestroyEntityData(id);
             MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 

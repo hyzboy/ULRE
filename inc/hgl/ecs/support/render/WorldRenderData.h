@@ -77,8 +77,7 @@ namespace hgl::ecs
         bool InitializeDeviceResources(graph::VulkanDevice *device, const AnsiString &world_name);
 
         void Clear();
-        void OnEntityDestroy(EntityID id);
-        void OnEntityDestroyed(EntityID id);
+        void DestroyEntityData(EntityID id);
 
         // ── 光源行表 ──
         LightRowTable &GetLightRowTable() { return light_row_table; }

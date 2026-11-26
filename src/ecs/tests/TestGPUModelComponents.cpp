@@ -4,6 +4,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
+#include <hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include <hgl/vk/buffer/RingLayout.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
@@ -276,6 +277,39 @@ namespace
         EXPECT(row->row[uint32_t(ComponentType::Geometry)] == 0u);
         EXPECT(row->type[uint32_t(ComponentType::Geometry)] == 0u);
     }
+
+    void TestEntityRenderDataCleanup()
+    {
+        ECSContext ctx;
+        auto *first = ctx.CreateEntity("RenderDataWithSlot");
+        auto *second = ctx.CreateEntity("RenderDataWithoutSlot");
+        EXPECT(first && second);
+        if (!first || !second)
+            return;
+
+        const EntityID first_id = first->GetEntityID();
+        const EntityID second_id = second->GetEntityID();
+        EXPECT(ctx.GetOrCreateMaterialData(first) != nullptr);
+        EXPECT(ctx.GetOrCreateMaterialData(second) != nullptr);
+        ctx.GetOrCreateMaterialRuntimeSlot(first_id);
+
+        graph::mtl::MaterialPipelineConfig config;
+        config.wireframe = true;
+        auto &pipelines = ctx.GetMaterialRuntimePipelineTable();
+        pipelines.Set(first_id, nullptr, nullptr, config);
+        pipelines.Set(second_id, nullptr, nullptr, config);
+        EXPECT(pipelines.GetConfig(first_id, nullptr).wireframe);
+        EXPECT(pipelines.GetConfig(second_id, nullptr).wireframe);
+
+        ctx.DestroyEntity(first_id);
+        EXPECT(!ctx.GetMaterialData(first_id));
+        EXPECT(!ctx.GetMaterialRuntimeSlot(first_id));
+        EXPECT(!pipelines.GetConfig(first_id, nullptr).wireframe);
+
+        ctx.Shutdown();
+        EXPECT(!ctx.GetMaterialData(second_id));
+        EXPECT(!pipelines.GetConfig(second_id, nullptr).wireframe);
+    }
 }//namespace
 
 int main(int argc, char **argv)
@@ -292,6 +326,7 @@ int main(int argc, char **argv)
     TestRingLayoutPrevBase();
     TestEntityGPUTablePrevTransform();
     TestComponentRefreshPreservesTransformRow();
+    TestEntityRenderDataCleanup();
 
     if (g_fail > 0)
     {

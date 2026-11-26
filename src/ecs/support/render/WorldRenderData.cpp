@@ -58,17 +58,13 @@ namespace hgl::ecs
         fallback_camera = nullptr;
     }
 
-    void WorldRenderData::OnEntityDestroy(EntityID id)
+    void WorldRenderData::DestroyEntityData(EntityID id)
     {
         if (material_runtime_table)
             material_runtime_table->DestroySlot(id);
 
         if (material_runtime_pipeline_table)
             material_runtime_pipeline_table->Clear(id);
-    }
-
-    void WorldRenderData::OnEntityDestroyed(EntityID id)
-    {
         if (material_authoring_side_table)
             material_authoring_side_table->Remove(id);
     }

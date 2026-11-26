@@ -11,7 +11,7 @@
 //   · 第二步：`ComponentType::MaterialData` ECS 组件退役 —— 组件层只是旁表的转发壳，
 //     实体只要被收集就先得建壳再建条目，纯多余。
 // ⇒ `MaterialData` 收敛为**纯授权记录**：不再继承 `ComponentRow`、不占类型表槽位；
-//   记录直接住在这张世界级旁表里，**键 = `EntityID`**，实体死亡时随 `~Entity` 摘除。
+//   记录直接住在这张世界级旁表里，**键 = `EntityID`**，实体销毁时由世界清理。
 //   取用口保持原名（`ECSContext::Get/CreateMaterialData`），语义改为「查/建旁表记录」：
 //   从未做过材质授权 ⇒ `Get` 返回 nullptr（普通实体零内存）。
 
