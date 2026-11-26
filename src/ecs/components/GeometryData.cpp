@@ -20,7 +20,7 @@ namespace hgl::ecs
         if (!owner)
             return;
 
-        ECSContext *context = owner->GetContext();
+        ECSContext *context = owner->GetContextAs<hgl::ecs::ECSContext>();
         if (!context)
             return;
 
@@ -40,7 +40,7 @@ namespace hgl::ecs
         // 授权代数前进，渲染侧的重解析快路径据此失配（原先由组件级 generation
         // 承担的失效点，A2 随授权状态一并迁入 MaterialData）。
         Entity *owner = GetOwner();
-        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         MaterialData *material_data = context
             ? context->GetMaterialData(owner)
             : nullptr;
@@ -61,7 +61,7 @@ namespace hgl::ecs
         InvalidateOwnerRuntimePipeline();
 
         Entity *owner = GetOwner();
-        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         if (context)
             context->MarkTopologyChanged(TopologyChange::GeometryBinding);
     }
@@ -78,7 +78,7 @@ namespace hgl::ecs
         InvalidateOwnerRuntimePipeline();
 
         Entity *owner = GetOwner();
-        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         if (!context)
             return;
 
@@ -139,7 +139,7 @@ namespace hgl::ecs
         // （`OnComponentRowRemoved` 也会记一次 EntityStructure，这里记的是
         //   几何绑定类别的归因，便于报表指出「是谁导致的重建」。）
         Entity *owner = GetOwner();
-        ECSContext *context = owner ? owner->GetContext() : nullptr;
+        ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         if (context)
             context->MarkTopologyChanged(TopologyChange::GeometryBinding);
     }

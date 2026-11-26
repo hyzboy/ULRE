@@ -59,7 +59,7 @@ namespace hgl
             }
 
             if (context)
-                context->NotifyEntityRowsChanged(this);
+                context->NotifyEntityRowsChanged(this, ComponentType::None);
 
             MarkSceneDirty();
         }

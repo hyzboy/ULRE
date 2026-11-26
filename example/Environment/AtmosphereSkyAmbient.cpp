@@ -193,8 +193,8 @@ private:
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-            auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
+            auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(count));
             // 水平环绕（xz 平面圆上 5 点）+ 高度 1.0——位置互不重叠；
@@ -207,7 +207,7 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             // 纹理已由配方声明（mesh_recipe.AddTexture），实体端不再重复绑定
 
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};

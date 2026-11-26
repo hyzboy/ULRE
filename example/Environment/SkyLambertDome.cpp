@@ -84,15 +84,15 @@ private:
 
         auto* entity = ecs_context->CreateEntity<Entity>("SkyLambertDome");
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
-        auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
-        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
+        auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(4.0f));
         transform.SetMobility(Mobility::Static);
 
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&dome_asset);
+        primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&dome_asset);
 
         return true;
     }

@@ -12,10 +12,10 @@ namespace hgl::ecs
         if (cast_shadow == enable)
             return;
         cast_shadow = enable;
-        if (owner && owner->GetContext())
+        if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
         {
-            owner->GetContext()->InvalidateEntityRuntimePipeline(owner->GetEntityID());
-            owner->GetContext()->BumpStaticSceneRevision();
+            context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+            context->BumpStaticSceneRevision();
         }
     }
 

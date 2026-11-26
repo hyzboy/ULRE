@@ -184,9 +184,9 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = plane_grid_entity->GetContext()->GetOrCreateGeometryData(plane_grid_entity);
-            hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContext()->GetOrCreateMaterialData(plane_grid_entity);
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
+            auto primitive_comp = plane_grid_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(plane_grid_entity);
+            hgl::ecs::MaterialData *material_data_comp = plane_grid_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(plane_grid_entity);
+            primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&plane_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
             plane_struct = plane_material_data_accessor;
             material_data_comp->SetDataResource(plane_struct);
@@ -205,9 +205,9 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = ray_line_entity->GetContext()->GetOrCreateGeometryData(ray_line_entity);
-            hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContext()->GetOrCreateMaterialData(ray_line_entity);
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
+            auto primitive_comp = ray_line_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(ray_line_entity);
+            hgl::ecs::MaterialData *material_data_comp = ray_line_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(ray_line_entity);
+            primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource line_struct{};
             line_struct = line_material_data_accessor;
             material_data_comp->SetDataResource(line_struct);

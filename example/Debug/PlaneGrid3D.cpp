@@ -113,15 +113,15 @@ private:
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
-        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
+        auto prim_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(rotation);
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&plane_grid_asset);
+        prim_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&plane_grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_ssbo_binding;
         material_data_comp->SetDataResource(named_struct);

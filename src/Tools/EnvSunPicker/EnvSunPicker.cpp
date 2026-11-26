@@ -363,9 +363,9 @@ private:
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
 
-        auto *primitive_comp = line_entity->GetContext()->GetOrCreateGeometryData(line_entity);
-        auto *material_data_comp = line_entity->GetContext()->GetOrCreateMaterialData(line_entity);
-        primitive_comp->GetOwner()->GetContext()
+        auto *primitive_comp = line_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(line_entity);
+        auto *material_data_comp = line_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(line_entity);
+        primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
             ->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&line_asset);
         MaterialData::MaterialDataAuthoringResource line_struct{};
         line_struct = line_material_data_accessor;

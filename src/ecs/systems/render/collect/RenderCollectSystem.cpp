@@ -57,7 +57,7 @@ namespace hgl::ecs
         ///（原 `EnsureMaterialDataOf` 是压测场景行池/内存报错的根因）。
         MaterialData *FindMaterialDataOf(Entity *entity)
         {
-            ECSContext *context = entity ? entity->GetContext() : nullptr;
+            ECSContext *context = entity ? entity->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
 
             return context ? context->GetMaterialData(entity) : nullptr;
         }
@@ -328,7 +328,7 @@ namespace hgl::ecs
             if (out_recipe.fallback_error_kind == graph::mtl::MaterialErrorKind::None)
                 return true;
 
-            ECSContext *context = primitive_comp ? primitive_comp->GetContext() : nullptr;
+            ECSContext *context = primitive_comp ? primitive_comp->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
             graph::GraphicsContext *graphics = context ? context->GetGraphicsContext() : nullptr;
 
             if (!graphics)

@@ -237,7 +237,7 @@ private:
             return LogFail("InitECSScene", "create sphere entity failed");
 
         auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
-        auto primitive_component = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity);
+        auto primitive_component = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
         if (!transform.IsValid() || !primitive_component)
             return LogFail("InitECSScene", "create sphere components failed");
 
@@ -254,7 +254,7 @@ private:
         if (!ApplyMaterialMode(false))
             return false;
 
-        sphere_primitive_component->GetOwner()->GetContext()->GetOrCreateGeometryData(sphere_primitive_component->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        sphere_primitive_component->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_primitive_component->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
 
         return true;
     }

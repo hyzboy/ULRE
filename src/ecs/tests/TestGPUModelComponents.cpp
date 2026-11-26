@@ -115,6 +115,10 @@ namespace
         ECSContext ctx;
 
         Entity *e1 = ctx.CreateEntity<Entity>("ModelA");
+        EXPECT(e1->GetContextAs<ECSContext>() == &ctx);
+        ECSCoreContext core("CoreOnly");
+        Entity *core_entity = core.CreateEntity();
+        EXPECT(core_entity && !core_entity->GetContextAs<ECSContext>());
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();
         EXPECT(ref != nullptr);
         EXPECT(ref->template_id == 0u);

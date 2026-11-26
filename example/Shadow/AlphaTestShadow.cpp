@@ -565,9 +565,9 @@ public:
             shadow->SetCastShadow(false);
             ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
-            auto prim = e->GetContext()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
-            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
+            auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             // 纹理已由配方声明（ground_recipe 的 base_color = 纯白数组），实体端不再重复绑定
             material_data_comp->SetDataResource(material_accessor);
             // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
@@ -596,9 +596,9 @@ public:
             tf.SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
             tf.SetLocalScale(glm::vec3(2.0f));
 
-            auto prim = e->GetContext()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
-            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
+            auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
 
             // CubeA 额外绑 opacity_mask（影子镂空）；CubeB 不绑 ⇒ fallback 1.0 ⇒ 影子实心。
             // 差别只在配方上，所以挂一份配方覆盖，实体端不再出现纹理授权。

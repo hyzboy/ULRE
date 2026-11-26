@@ -325,11 +325,11 @@ private:
             //（`RenderBatchPipeline` 按 `GPUModelRefComponent` 跳过载体项的基础聚类）；
             // 这里保留挂载只因宿主材质配方仍走"几何资产默认配方"来源（模板自带材质绑定
             // 在 Step 1.4 落地后才可完全去掉）。
-            auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
-            geometry_data->GetOwner()->GetContext()
+            auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+            geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
                 ->GetOrCreateGeometryData(geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
 
-            hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
             row_resource = base_row;
             material_data->SetDataResource(row_resource);

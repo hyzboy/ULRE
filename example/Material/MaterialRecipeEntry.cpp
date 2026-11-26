@@ -123,8 +123,8 @@ private:
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(Mobility::Static);
 
-        auto primitive_comp = cube_entity->GetContext()->GetOrCreateGeometryData(cube_entity);
-        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContext()->GetOrCreateMaterialData(cube_entity);
+        auto primitive_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_entity);
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube_entity);
         const mtl::MaterialRecipe *loaded_recipe =
             GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/Phase2.MaterialRecipeEntry.Cube");
         if (!loaded_recipe)
@@ -134,7 +134,7 @@ private:
             return false;
 
         cube_asset = PrimitiveAsset(geometry, &cube_recipe, PrimitiveType::Triangles);
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource named_struct{};
         named_struct = material_data_ssbo_accessor;
         material_data_comp->SetDataResource(named_struct);

@@ -103,16 +103,16 @@ private:
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
         auto rect_transform = ecs_world->GetTransform(ecs_world->CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
-        auto rect_primitive = rect_entity->GetContext()->GetOrCreateGeometryData(rect_entity);
+        auto rect_primitive = rect_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rect_entity);
         // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
-        rect_entity->GetContext()->GetOrCreateMaterialData(rect_entity);
+        rect_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rect_entity);
 
         rect_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         rect_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         rect_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         rect_transform.SetMobility(Mobility::Static);
 
-        rect_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(rect_primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
+        rect_primitive->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rect_primitive->GetOwnerID())->SetPrimitiveAsset(&rect_asset);
         // 纹理已由配方文件声明（[[textures]] base_color），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

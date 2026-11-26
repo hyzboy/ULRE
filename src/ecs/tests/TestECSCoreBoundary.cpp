@@ -86,6 +86,7 @@ namespace
         bool destroyed_handle_invalid = false;
         bool attempt_reentry = false;
         bool reentry_succeeded = false;
+        hgl::ecs::ComponentType last_type = hgl::ecs::ComponentType::None;
 
         void OnEntityCreated(hgl::ecs::EntityID id) override
         {
@@ -97,7 +98,7 @@ namespace
                 world->Observe(nullptr);
             }
         }
-        void OnEntityRowsChanged(const hgl::ecs::Entity *entity) override;
+        void OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type) override;
         void OnSceneStructureDirty() override {}
         void OnEntityDestroyed(hgl::ecs::EntityID id) override
         {
@@ -116,9 +117,10 @@ namespace hgl::ecs
     };
 }
 
-void BoundaryObserver::OnEntityRowsChanged(const hgl::ecs::Entity *entity)
+void BoundaryObserver::OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type)
 {
     ++refreshed;
+    last_type = type;
     if (attempt_reentry && world && entity)
     {
         auto *owner = world->GetEntity(entity->GetEntityID());
@@ -185,6 +187,10 @@ int main()
         GLogError(u8"[ECSCoreBoundary] ECSCoreContext::GetEntity 寻址不匹配");
         return 6;
     }
+
+    if (entity->GetContextAs<hgl::ecs::ECSCoreContext>() != &core_ctx
+        || entity->GetContextAs<BoundaryObservedContext>() != nullptr)
+        return 23;
 
     // 3. 组件池与组件挂载验证
     auto *comp = entity->AddComponent<BoundaryTestComponent>();
@@ -278,11 +284,14 @@ int main()
     observer.attempt_reentry = true;
     observed.Observe(&observer);
     auto *observed_entity = observed.CreateEntity();
-    if (!observed_entity || !observed_entity->AddComponent<BoundaryTestComponent>())
+    if (!observed_entity || observed_entity->GetContextAs<BoundaryObservedContext>() != &observed
+        || !observed_entity->AddComponent<BoundaryTestComponent>()
+        || observer.last_type != hgl::ecs::ComponentType::Lines)
         return 16;
     observed.DestroyEntity(observed_entity);
     if (observer.created != 1 || observer.refreshed != 2 || observer.destroyed != 1
-        || !observer.destroyed_handle_invalid || observer.reentry_succeeded)
+        || !observer.destroyed_handle_invalid || observer.reentry_succeeded
+        || observer.last_type != hgl::ecs::ComponentType::None)
     {
         GLogError(u8"[ECSCoreBoundary] 实体通知次数或销毁时序不正确");
         return 17;

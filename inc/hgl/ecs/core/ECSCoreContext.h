@@ -123,7 +123,7 @@ namespace hgl::ecs
             const uint32_t row = pool->Create(owner, std::forward<Args>(args)...);
             owner->SetComponentRow(type, row);
             OnComponentRowAdded(type);
-            NotifyEntityRowsChanged(owner);
+            NotifyEntityRowsChanged(owner, type);
             owner->MarkSceneDirty();
 
             return pool->Row(row);
@@ -220,12 +220,12 @@ namespace hgl::ecs
             }
         }
 
-        void NotifyEntityRowsChanged(const Entity *entity)
+        void NotifyEntityRowsChanged(const Entity *entity, ComponentType type)
         {
             if (entity_observer)
             {
                 MutationScope scope(notifying_entity_observer);
-                entity_observer->OnEntityRowsChanged(entity);
+                entity_observer->OnEntityRowsChanged(entity, type);
             }
         }
 
@@ -254,6 +254,13 @@ namespace hgl::ecs
     };
 
     // ── Entity 组件挂载/卸载内联定义 ──
+
+    template<typename T>
+    T *Entity::GetContextAs() const
+    {
+        static_assert(std::is_base_of_v<ECSCoreContext, T>, "T must derive from ECSCoreContext");
+        return dynamic_cast<T *>(context);
+    }
 
     template<typename T, typename... Args>
     T *Entity::AddComponent(Args &&...args)
@@ -296,7 +303,7 @@ namespace hgl::ecs
         if (context)
         {
             context->DestroyComponent(type, row);
-            context->NotifyEntityRowsChanged(this);
+            context->NotifyEntityRowsChanged(this, type);
         }
 
         MarkSceneDirty();

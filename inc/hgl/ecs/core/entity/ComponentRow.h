@@ -25,7 +25,7 @@ namespace hgl
          * | `component_slot` / `version` / `change_mask` | **删除**：槽 = 实体侧 `component_rows[]` 的下标；版本/变更位只在真正用它的类型自己身上 |
          *
          * 只留 **8 B**：宿主实体裸指针。实体住块池、地址稳定（T2-a 的结构性不变量：全仓持
-         * `Entity*` 永不作废）⇒ 与全仓同纪律；世界经 `owner->GetContext()` 取，不再各存一份世界指针。
+         * `Entity*` 永不作废）⇒ 与全仓同纪律；世界经 `owner->GetCoreContext()` 取，不再各存一份世界指针。
          * 行的生存期 ⊂ 宿主的生存期（`~Entity` 先销掉自己全部组件行）⇒ 不会悬垂。
          */
         struct ComponentRow

@@ -78,7 +78,7 @@ namespace hgl::ecs
         if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
             return true;
 
-        ECSContext *context = entity->GetContext();
+        ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();
         if (!context)
             return false;
 
@@ -103,7 +103,7 @@ namespace hgl::ecs
         if (!entity)
             return false;
 
-        ECSContext *context = entity->GetContext();
+        ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();
         if (!context)
             return false;
 
@@ -122,7 +122,7 @@ namespace hgl::ecs
         if (!entity)
             return false;
 
-        ECSContext *context = entity->GetContext();
+        ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();
         if (!context)
             return false;
 
@@ -138,7 +138,7 @@ namespace hgl::ecs
         if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
             return true;
 
-        ECSContext *context = entity->GetContext();
+        ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();
         if (!context)
             return false;
 

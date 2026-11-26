@@ -208,9 +208,9 @@ private:
             transform.SetMobility(Mobility::Static);
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = ticks[i].entity->GetContext()->GetOrCreateGeometryData(ticks[i].entity);
-            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContext()->GetOrCreateMaterialData(ticks[i].entity);
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            auto primitive_comp = ticks[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(ticks[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = ticks[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(ticks[i].entity);
+            primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource tick_struct{};
             tick_struct = tick_data_ssbo_accessor;
             material_data_comp->SetDataResource(tick_struct);
@@ -242,9 +242,9 @@ private:
             hands[i].length_scale = hand_scales[i];
 
             // 建几何资产组件 GeometryData
-            auto primitive_comp = hands[i].entity->GetContext()->GetOrCreateGeometryData(hands[i].entity);
-            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContext()->GetOrCreateMaterialData(hands[i].entity);
-            primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
+            auto primitive_comp = hands[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(hands[i].entity);
+            hgl::ecs::MaterialData *material_data_comp = hands[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(hands[i].entity);
+            primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&clock_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource hand_struct{};
             hand_struct = hand_data_ssbo_accessors[i];
             material_data_comp->SetDataResource(hand_struct);

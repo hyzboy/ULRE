@@ -169,9 +169,9 @@ private:
         transform.SetLocalScale(glm::vec3(scale, scale, scale));
         transform.SetMobility(animate ? Mobility::Movable : Mobility::Static);
 
-        auto primitive_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
-        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
-        primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
+        auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
+        primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         if (mtl_data_ssbo_accessor.IsValid())
         {
             hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};

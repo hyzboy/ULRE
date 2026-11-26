@@ -586,9 +586,9 @@ private:
         planet_transform.SetLocalScale(glm::vec3(PLANET_RADIUS));
         planet_transform.SetMobility(Mobility::Static);
 
-        auto planet_prim = planet_entity->GetContext()->GetOrCreateGeometryData(planet_entity);
-        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContext()->GetOrCreateMaterialData(planet_entity);
-        planet_prim->GetOwner()->GetContext()->GetOrCreateGeometryData(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
+        auto planet_prim = planet_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(planet_entity);
+        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(planet_entity);
+        planet_prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
         MaterialData::MaterialDataAuthoringResource p_res{};
         p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(p_res);
@@ -608,9 +608,9 @@ private:
             transform.SetLocalScale(glm::vec3(1.0f));
             transform.SetMobility(Mobility::Static);
 
-            auto *prim = e->GetContext()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContext()->GetOrCreateMaterialData(e);
-            prim->GetOwner()->GetContext()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
+            auto *prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
             MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();
             material_data_comp->SetDataResource(a_res);

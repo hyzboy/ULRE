@@ -259,7 +259,7 @@ private:
 
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->GetTransform(ecs_world->CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
-        quad_primitive = quad_entity->GetContext()->GetOrCreateGeometryData(quad_entity);
+        quad_primitive = quad_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(quad_entity);
         quad_material_data = ecs_world->GetOrCreateMaterialData(quad_entity);
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -267,7 +267,7 @@ private:
         quad_transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         quad_transform.SetMobility(Mobility::Static);
 
-        quad_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
+        quad_primitive->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(quad_primitive->GetOwnerID())->SetPrimitiveAsset(&quad_asset);
         // 纹理已由配方声明（quad_recipe.AddTexture），实体端不再重复绑定
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 

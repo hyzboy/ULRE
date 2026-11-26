@@ -21,7 +21,7 @@ namespace hgl::ecs
 
             GeometryData *FindGeometryOf(Entity *entity)
             {
-                ECSContext *context = entity ? entity->GetContext() : nullptr;
+                ECSContext *context = entity ? entity->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
 
                 return context ? context->GetGeometryData(entity) : nullptr;
             }

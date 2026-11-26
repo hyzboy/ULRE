@@ -283,14 +283,14 @@ private:
                 transform.SetMobility(Mobility::Static);
                 item_transforms[row][col] = transform;
 
-                auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+                auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
 
                 // A3：Opaque 行最后一格 = 不可接管批的样本（独立 program）
                 const bool as_partial =
                     partial_enabled && (row == 0) && (col == ALPHA_STEPS - 1);
 
-                geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
+                geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(
                         as_partial ? &partial_asset : &mode_asset[row]);
 

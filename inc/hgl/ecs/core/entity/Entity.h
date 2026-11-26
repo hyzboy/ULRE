@@ -11,7 +11,6 @@ namespace hgl
     namespace ecs
     {
         class ECSCoreContext;
-        class ECSContext;
 
         /**
          * Entity - represents game objects with components
@@ -73,7 +72,8 @@ namespace hgl
             /// `GetComponentRow(type) != 0`；无类型号（`None`）恒假 —— 两条都不经掩码。
 
             ECSCoreContext *GetCoreContext() const { return context; }
-            ECSContext *GetContext() const { return reinterpret_cast<ECSContext*>(context); }
+            /// 返回匹配的世界类型；纯 Core 世界不会被误认为渲染世界。
+            template<typename T> T *GetContextAs() const;
 
             /// 场景结构（实体/组件增删）变更通知 —— 挂载/卸载路径的唯一副作用，渲染图据此重 gather
             void MarkSceneDirty() const;

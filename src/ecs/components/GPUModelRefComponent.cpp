@@ -14,7 +14,7 @@ namespace hgl::ecs
     {
         if (row == override_material_row)
             return true;
-        auto *context = owner ? owner->GetContext() : nullptr;
+        auto *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         auto *runtime = context ? context->GetMaterialRuntimeTable() : nullptr;
         if (!runtime || (row != INVALID_MATERIAL_RUNTIME_ROW_ID && !runtime->Get(row)))
         {

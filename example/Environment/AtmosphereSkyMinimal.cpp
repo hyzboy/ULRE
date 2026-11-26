@@ -94,14 +94,14 @@ private:
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = sky_entity->GetContext()->GetOrCreateGeometryData(sky_entity);
+        auto prim_comp = sky_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sky_entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
+        prim_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sky_asset);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

@@ -135,13 +135,13 @@ private:
         // === 步骤4: 建几何资产组件 GeometryData ===
         // 几何/资产侧状态由 GeometryData 承载
         // 注意：需要明确使用 hgl::ecs 命名空间
-        auto ecs_primitive = triangle_entity->GetContext()->GetOrCreateGeometryData(triangle_entity);
+        auto ecs_primitive = triangle_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(triangle_entity);
         const mtl::MaterialRecipe *loaded_recipe = GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/GettingStarted/DrawTriangle.VertexColor");
         if (!loaded_recipe)
             return false;
         triangle_recipe = *loaded_recipe;
         triangle_asset = PrimitiveAsset(geom_triangle, &triangle_recipe, PrimitiveType::Triangles);
-        ecs_primitive->GetOwner()->GetContext()->GetOrCreateGeometryData(ecs_primitive->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
+        ecs_primitive->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(ecs_primitive->GetOwnerID())->SetPrimitiveAsset(&triangle_asset);
         // [A5a] 可见性真值已收敛到实体级（默认即可见）：原组件级 SetVisible(true) 等义调用已删
 
         return true;

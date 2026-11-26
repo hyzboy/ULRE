@@ -402,14 +402,14 @@ private:
                 continue;
 
             hgl::math::AABB local_aabb;
-            if(!rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
+            if(!rm->primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->GetLocalAABB(local_aabb))
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            bbox->primitive_comp = bbox->entity->GetContext()->GetOrCreateGeometryData(bbox->entity);
-            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContext()->GetOrCreateMaterialData(bbox->entity);
+            bbox->primitive_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(bbox->entity);
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(bbox->entity);
 
             bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
 
@@ -421,7 +421,7 @@ private:
             bbox->transform.SetLocalScale(glm::vec3(size.x, size.y, size.z));
             bbox->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            bbox->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
+            bbox->primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(bbox->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&bbox_asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource bbox_struct{};
             bbox_struct =
                 wire.material_data_ssbo_accessors[i % COLOR_COUNT];
@@ -449,8 +449,8 @@ private:
 
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-            rm->primitive_comp = rm->entity->GetContext()->GetOrCreateGeometryData(rm->entity);
-            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContext()->GetOrCreateMaterialData(rm->entity);
+            rm->primitive_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->entity);
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rm->entity);
 
             const float angle = pack_mode_ ? 0.0f
                 : glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
@@ -464,7 +464,7 @@ private:
             rm->transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
             rm->transform.SetMobility(hgl::ecs::Mobility::Static);
 
-            rm->primitive_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
+            rm->primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())->SetPrimitiveAsset(&rm->asset);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
             mesh_struct = pack_mode_
                 ? board_binding_
@@ -496,7 +496,7 @@ private:
             if (rm && rm->primitive_comp)
             {
                 hgl::math::AABB local_aabb;
-                if (rm->primitive_comp->GetOwner()->GetContext()
+                if (rm->primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
                         ->GetOrCreateGeometryData(rm->primitive_comp->GetOwnerID())
                         ->GetLocalAABB(local_aabb))
                 {

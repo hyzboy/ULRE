@@ -181,15 +181,15 @@ private:
 
         auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
-        auto prim_comp = entity->GetContext()->GetOrCreateGeometryData(entity);
-        hgl::ecs::MaterialData *material_data_comp = entity->GetContext()->GetOrCreateMaterialData(entity);
+        auto prim_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
+        hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 
         transform.SetLocalPosition(pos);
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         transform.SetMobility(hgl::ecs::Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(mesh_asset);
+        prim_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(mesh_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource mesh_struct{};
         mesh_struct = mtl_data_ssbo_accessor.GetGlobalSSBOBinding();
         material_data_comp->SetDataResource(mesh_struct);

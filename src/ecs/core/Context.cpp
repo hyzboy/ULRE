@@ -606,7 +606,7 @@ namespace hgl
             MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
-        void ECSContext::OnEntityRowsChanged(const Entity *entity)
+        void ECSContext::OnEntityRowsChanged(const Entity *entity, ComponentType)
         {
             RefreshEntityRow(entity);
         }

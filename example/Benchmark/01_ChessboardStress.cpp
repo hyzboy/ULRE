@@ -488,11 +488,11 @@ private:
     /// 阶段 1 起模板实体的代表图元**不再占竞技场桶容量**（批装配按 GPUModelRef 跳过）。
     void AttachPrimitive(Entity * e, uint32_t tmpl, uint32_t custom_row)
     {
-        auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
-        geometry_data->GetOwner()->GetContext()
+        auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+        geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
             ->GetOrCreateGeometryData(geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
 
-        hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+        hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
         row_resource = base_row;
         material_data->SetDataResource(row_resource);

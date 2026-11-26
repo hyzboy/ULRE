@@ -285,10 +285,10 @@ private:
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
                 transform.SetMobility(Mobility::Static);
 
-                auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+                auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
 
-                geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
+                geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(&stress_asset[i]);
 
                 // 纹理已由配方声明（dither 变体经 parent 继承 base_color/normal，自带 opacity_mask），
@@ -330,10 +330,10 @@ private:
                 transform.SetMobility(Mobility::Static);
                 item_transforms[row][col] = transform;
 
-                auto * geometry_data = e->GetContext()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData * material_data = e->GetContext()->GetOrCreateMaterialData(e);
+                auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
+                hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
 
-                geometry_data->GetOwner()->GetContext()->GetOrCreateGeometryData(
+                geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(
                     geometry_data->GetOwnerID())->SetPrimitiveAsset(
                         (row == 0) ? &opaque_asset : &dither_asset);
 

@@ -557,7 +557,7 @@ namespace hgl
 
             // ── IECSEntityObserver 接口实现 ──
             void OnEntityDestroyed(EntityID id) override;
-            void OnEntityRowsChanged(const Entity *entity) override;
+            void OnEntityRowsChanged(const Entity *entity, ComponentType type) override;
             void OnSceneStructureDirty() override;
 
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──

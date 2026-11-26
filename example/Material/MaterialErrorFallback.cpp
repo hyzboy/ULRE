@@ -359,7 +359,7 @@ private:
             transform.SetMobility(hgl::ecs::Mobility::Static);
 
             auto * geometry_data =
-                entity->GetContext()->GetOrCreateGeometryData(entity->GetEntityID());
+                entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity->GetEntityID());
 
             if (!geometry_data)
             {

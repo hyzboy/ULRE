@@ -324,15 +324,15 @@ public:
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = sphere_entity->GetContext()->GetOrCreateGeometryData(sphere_entity);
-        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContext()->GetOrCreateMaterialData(sphere_entity);
+        auto prim_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(sphere_entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(kSphereRadius, kSphereRadius, kSphereRadius));
         transform.SetMobility(Mobility::Static);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
+        prim_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);
         // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource sphere_struct{};
         sphere_struct = material_data_ssbo_accessor;
@@ -620,15 +620,15 @@ private:
 
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
         cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
-        auto prim_comp = cube.entity->GetContext()->GetOrCreateGeometryData(cube.entity);
-        hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContext()->GetOrCreateMaterialData(cube.entity);
+        auto prim_comp = cube.entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube.entity);
+        hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube.entity);
 
         cube.transform.SetLocalPosition(glm::vec3(cube.x_offset, 0.0f, 0.0f));
         cube.transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         cube.transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         cube.transform.SetMobility(Mobility::Movable);
 
-        prim_comp->GetOwner()->GetContext()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube.asset);
+        prim_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim_comp->GetOwnerID())->SetPrimitiveAsset(&cube.asset);
         // 纹理已由配方文件声明，实体端不再重复绑定
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube.accessor;
