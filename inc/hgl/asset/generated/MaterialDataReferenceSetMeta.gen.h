@@ -33,6 +33,7 @@ namespace hgl::asset::generated
     inline const PropertyMetaInfo Meta_MaterialDataReferenceSet[] =
     {
         { "schema", "schema", "schema", "Default", "", "uint32", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialDataReferenceSet, schema), (uint32_t)sizeof(decltype(hgl::graph::MaterialDataReferenceSet::schema)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "id", "id", "id", "Default", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialDataReferenceSet, id), (uint32_t)sizeof(decltype(hgl::graph::MaterialDataReferenceSet::id)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "instances", "instances", "instances", "Default", "", "ManagedArray<MaterialDataReference>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialDataReferenceSet, instances), (uint32_t)sizeof(decltype(hgl::graph::MaterialDataReferenceSet::instances)), 0u, 0.0, 0.0, 0.0, &Class_MaterialDataReference, PropertyKind::Struct, nullptr, nullptr },
     };
 

@@ -36,7 +36,8 @@ namespace hgl::serialize
         static void Do(Archive &ar, Self &v)
         {
             ar.Field(1, "schema", v.schema);
-            ar.Field(2, "textures", v.textures);
+            ar.Field(2, "id", v.id);
+            ar.Field(3, "textures", v.textures);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_MaterialTextureConfiguration; }

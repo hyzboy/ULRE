@@ -1,5 +1,6 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
 #include <hgl/asset/AssetURI.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/asset/generated/MaterialDataReferenceSetSerialize.gen.h>
 #include <hgl/serialize/FlatCodec.h>
 #include "FlatMaterialAssetFile.h"
@@ -9,39 +10,46 @@ namespace hgl::graph
     namespace
     {
         constexpr char kIdentifier[] = "MDRS";
+    }
 
-        bool Validate(const MaterialDataReferenceSet &set, AnsiString &error)
+    bool ValidateMaterialDataReferenceSet(const MaterialDataReferenceSet &set, AnsiString &error)
+    {
+        error.Clear();
+        if (set.schema != MaterialDataReferenceSetSchema)
         {
-            if (set.schema != 1)
+            error = "unsupported material data reference set schema";
+            return false;
+        }
+        asset::AssetID id;
+        if (!asset::AssetID::Parse(set.id, id))
+        {
+            error = "invalid material data reference set asset ID";
+            return false;
+        }
+
+        for (int i = 0; i < set.instances.GetCount(); ++i)
+        {
+            const MaterialDataReference *ref = set.instances.At(i);
+            if (!ref || ref->uri.IsEmpty())
             {
-                error = "unsupported material data reference set schema";
+                error = AnsiString("missing material data reference at instance ")
+                      + AnsiString::numberOf(i);
                 return false;
             }
 
-            for (int i = 0; i < set.instances.GetCount(); ++i)
+            const asset::AssetURI parsed =
+                asset::AssetURI::Parse(ref->uri, asset::AssetType::MaterialData);
+            if (!parsed.IsValid() || parsed.type != asset::AssetType::MaterialData
+                || parsed.source == asset::AssetSourceKind::RenderTarget
+                || parsed.source == asset::AssetSourceKind::Builtin
+                || (parsed.target == OS_TEXT("@")))
             {
-                const MaterialDataReference *ref = set.instances.At(i);
-                if (!ref || ref->uri.IsEmpty())
-                {
-                    error = AnsiString("missing material data reference at instance ")
-                          + AnsiString::numberOf(i);
-                    return false;
-                }
-
-                const asset::AssetURI parsed =
-                    asset::AssetURI::Parse(ref->uri, asset::AssetType::MaterialData);
-                if (!parsed.IsValid() || parsed.type != asset::AssetType::MaterialData
-                    || parsed.source == asset::AssetSourceKind::RenderTarget
-                    || parsed.source == asset::AssetSourceKind::Builtin
-                    || (parsed.target == OS_TEXT("@")))
-                {
-                    error = AnsiString("invalid material data URI at instance ")
-                          + AnsiString::numberOf(i);
-                    return false;
-                }
+                error = AnsiString("invalid material data URI at instance ")
+                      + AnsiString::numberOf(i);
+                return false;
             }
-            return true;
         }
+        return true;
     }
 
     bool EncodeMaterialDataReferenceSet(const MaterialDataReferenceSet &set,
@@ -49,7 +57,7 @@ namespace hgl::graph
     {
         out.Clear();
         error.Clear();
-        if (!Validate(set, error))
+        if (!ValidateMaterialDataReferenceSet(set, error))
             return false;
         if (!serialize::fb::EncodeToFlatBuffers(out, set, kIdentifier, &error))
         {
@@ -78,7 +86,7 @@ namespace hgl::graph
                 error = "invalid material data reference set buffer";
             return false;
         }
-        if (!Validate(decoded, error))
+        if (!ValidateMaterialDataReferenceSet(decoded, error))
             return false;
         out = static_cast<MaterialDataReferenceSet &&>(decoded);
         return true;

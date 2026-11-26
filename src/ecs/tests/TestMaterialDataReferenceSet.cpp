@@ -1,6 +1,7 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
 #include <hgl/graph/asset/MaterialDataReferenceSetResolve.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 
@@ -12,6 +13,7 @@ using namespace hgl::graph;
 int main()
 {
     MaterialDataReferenceSet original;
+    original.id = asset::AssetID::Create().ToString();
     auto *first = original.instances.Create();
     first->uri = OS_TEXT("mtldata:@oak");
     first->row = 3;
@@ -27,7 +29,7 @@ int main()
     MaterialDataReferenceSet decoded;
     if (!EncodeMaterialDataReferenceSet(original, encoded, error)
         || !DecodeMaterialDataReferenceSet(encoded.GetData(), encoded.GetCount(), decoded, error)
-        || decoded.instances.GetCount() != 3
+        || decoded.id != original.id || decoded.instances.GetCount() != 3
         || decoded.instances[0]->uri != first->uri || decoded.instances[0]->row != 3
         || decoded.instances[1]->uri != second->uri || decoded.instances[1]->row != 1
         || decoded.instances[2]->uri != first->uri || decoded.instances[2]->row != 3)
@@ -49,13 +51,21 @@ int main()
         return 3;
     }
     original.instances[1]->uri = OS_TEXT("mtldata:file:assets/wood.material_data.fb");
-    original.schema = 2;
+    original.schema = 1;
     if (EncodeMaterialDataReferenceSet(original, encoded, error) || error.IsEmpty())
     {
         GLogError(u8"Unsupported schema was not rejected");
         return 6;
     }
-    original.schema = 1;
+    original.schema = 2;
+    const AnsiString saved_id = original.id;
+    original.id = "invalid";
+    if (EncodeMaterialDataReferenceSet(original, encoded, error) || error.IsEmpty())
+    {
+        GLogError(u8"Invalid material reference set asset ID was not rejected");
+        return 13;
+    }
+    original.id = saved_id;
 
     const OSString path = OS_TEXT("TestMaterialDataReferenceSet.tmp");
     if (filesystem::FileExist(path))
@@ -70,7 +80,8 @@ int main()
     const bool overwrite_rejected = saved && !CreateMaterialDataReferenceSetFile(path, original, error);
     MaterialDataReferenceSet unchanged;
     const bool unchanged_ok = overwrite_rejected && LoadMaterialDataReferenceSet(path, unchanged, error)
-                           && unchanged.instances.GetCount() == 3 && unchanged.instances[0]->row == 3;
+                           && unchanged.id == saved_id && unchanged.instances.GetCount() == 3
+                           && unchanged.instances[0]->row == 3;
     const bool removed = saved && filesystem::FileDelete(path);
     if (!loaded_ok || !unchanged_ok || !removed || loaded.instances.GetCount() != 3
         || loaded.instances[2]->row != 3 || loaded.instances[2]->uri != first->uri)
@@ -88,6 +99,7 @@ int main()
     if (!asset || asset->IsFailed())
         return 7;
     MaterialDataReferenceSet refs;
+    refs.id = asset::AssetID::Create().ToString();
     refs.instances.Create()->uri = OS_TEXT("mtldata:@oak");
     auto *other = refs.instances.Create();
     other->uri = OS_TEXT("mtldata:@oak");
@@ -102,6 +114,23 @@ int main()
         GLogError(u8"Material reference resolution failed: %s", error.c_str());
         return 8;
     }
+    const AnsiString refs_id = refs.id;
+    refs.id = "invalid";
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].asset != asset)
+    {
+        GLogError(u8"Invalid reference set ID did not preserve the previous result");
+        return 14;
+    }
+    refs.id = refs_id;
+    refs.schema = 1;
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].asset != asset)
+    {
+        GLogError(u8"Unsupported reference set schema did not preserve the previous result");
+        return 15;
+    }
+    refs.schema = MaterialDataReferenceSetSchema;
     other->row = 2;
     if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
         || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].row != 1)

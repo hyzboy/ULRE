@@ -1,5 +1,6 @@
 #include <hgl/graph/asset/MaterialTextureConfigurationFile.h>
 #include <hgl/graph/asset/TextureURI.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/asset/generated/MaterialTextureConfigurationSerialize.gen.h>
 #include <hgl/serialize/FlatCodec.h>
 #include "FlatMaterialAssetFile.h"
@@ -12,9 +13,15 @@ namespace hgl::graph
 
         bool Validate(const MaterialTextureConfiguration &configuration, AnsiString &error)
         {
-            if (configuration.schema != 1)
+            if (configuration.schema != MaterialTextureConfigurationSchema)
             {
                 error = "unsupported material texture configuration schema";
+                return false;
+            }
+            asset::AssetID id;
+            if (!asset::AssetID::Parse(configuration.id, id))
+            {
+                error = "invalid material texture configuration asset ID";
                 return false;
             }
             for (int i = 0; i < configuration.textures.GetCount(); ++i)

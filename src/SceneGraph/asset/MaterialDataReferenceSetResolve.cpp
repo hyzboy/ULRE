@@ -1,4 +1,5 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetResolve.h>
+#include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
 #include <hgl/asset/AssetURI.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/utf.h>
@@ -10,12 +11,8 @@ namespace hgl::graph::mtl
                                          ValueArray<ResolvedMaterialDataReference> &out,
                                          AnsiString &error)
     {
-        error.Clear();
-        if (set.schema != 1)
-        {
-            error = "unsupported material data reference set schema";
+        if (!ValidateMaterialDataReferenceSet(set, error))
             return false;
-        }
 
         ValueArray<ResolvedMaterialDataReference> resolved;
         resolved.Reserve(set.instances.GetCount());

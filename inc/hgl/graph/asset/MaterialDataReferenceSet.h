@@ -6,6 +6,8 @@
 
 namespace hgl::graph
 {
+    inline constexpr uint32 MaterialDataReferenceSetSchema = 2;
+
     struct HGL_ASSET_STRUCT MaterialDataReference
     {
         OSString uri;       ///< Stable material data asset URI, never a device row.
@@ -14,7 +16,8 @@ namespace hgl::graph
 
     struct HGL_ASSET_STRUCT MaterialDataReferenceSet
     {
-        uint32 schema = 1;
+        uint32 schema = MaterialDataReferenceSetSchema;
+        AnsiString id; ///< Persistent AssetID, independent of file contents.
         ManagedArray<MaterialDataReference> instances; ///< Indexed by original instance index; duplicates are valid.
     };
 }

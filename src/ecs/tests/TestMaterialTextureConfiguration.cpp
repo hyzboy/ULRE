@@ -1,4 +1,5 @@
 #include <hgl/graph/asset/MaterialTextureConfigurationFile.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
 
@@ -8,6 +9,7 @@ using namespace hgl::graph;
 int main()
 {
     MaterialTextureConfiguration original;
+    original.id = asset::AssetID::Create().ToString();
     auto *first = original.textures.Create();
     first->uri = OS_TEXT("tex2d:assets/oak.Tex2D");
     first->auto_mipmaps = true;
@@ -21,7 +23,7 @@ int main()
     MaterialTextureConfiguration decoded;
     if (!EncodeMaterialTextureConfiguration(original, encoded, error)
         || !DecodeMaterialTextureConfiguration(encoded.GetData(), encoded.GetCount(), decoded, error)
-        || decoded.textures.GetCount() != 3
+        || decoded.id != original.id || decoded.textures.GetCount() != 3
         || decoded.textures[0]->uri != first->uri || !decoded.textures[0]->auto_mipmaps
         || decoded.textures[1]->uri != second->uri || decoded.textures[1]->array_layer != 3
         || !decoded.textures[2]->uri.IsEmpty()
@@ -56,13 +58,21 @@ int main()
         GLogError(u8"Truncated texture configuration was not rejected");
         return 2;
     }
-    original.schema = 2;
+    original.schema = 1;
     if (EncodeMaterialTextureConfiguration(original, encoded, error) || error.IsEmpty())
     {
         GLogError(u8"Unsupported texture configuration schema was not rejected");
         return 3;
     }
-    original.schema = 1;
+    original.schema = 2;
+    const AnsiString saved_id = original.id;
+    original.id = "invalid";
+    if (EncodeMaterialTextureConfiguration(original, encoded, error) || error.IsEmpty())
+    {
+        GLogError(u8"Invalid texture configuration asset ID was not rejected");
+        return 8;
+    }
+    original.id = saved_id;
     second->uri = OS_TEXT("texarray:");
     if (EncodeMaterialTextureConfiguration(original, encoded, error) || error.IsEmpty())
     {
@@ -84,7 +94,7 @@ int main()
     const bool overwrite_rejected = saved && !CreateMaterialTextureConfigurationFile(path, original, error);
     MaterialTextureConfiguration unchanged;
     const bool unchanged_ok = overwrite_rejected && LoadMaterialTextureConfiguration(path, unchanged, error)
-                           && unchanged.textures.GetCount() == 3
+                           && unchanged.id == saved_id && unchanged.textures.GetCount() == 3
                            && unchanged.textures[0]->uri == OS_TEXT("tex2d:assets/oak.Tex2D");
     const bool removed = saved && filesystem::FileDelete(path);
     if (!loaded_ok || !unchanged_ok || !removed || loaded.textures.GetCount() != 3

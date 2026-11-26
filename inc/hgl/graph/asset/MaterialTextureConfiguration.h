@@ -6,6 +6,8 @@
 
 namespace hgl::graph
 {
+    inline constexpr uint32 MaterialTextureConfigurationSchema = 2;
+
     struct HGL_ASSET_STRUCT MaterialTextureAssetReference
     {
         OSString uri;  ///< Empty means an unbound slot.
@@ -15,7 +17,8 @@ namespace hgl::graph
 
     struct HGL_ASSET_STRUCT MaterialTextureConfiguration
     {
-        uint32 schema = 1;
+        uint32 schema = MaterialTextureConfigurationSchema;
+        AnsiString id; ///< Persistent AssetID; not part of texture-content equality.
         ManagedArray<MaterialTextureAssetReference> textures; ///< Complete list in recipe layout order.
     };
 

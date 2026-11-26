@@ -34,6 +34,7 @@ namespace hgl::asset::generated
     inline const PropertyMetaInfo Meta_MaterialTextureConfiguration[] =
     {
         { "schema", "schema", "schema", "Default", "", "uint32", nullptr, nullptr, PropertyKind::UInt32, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialTextureConfiguration, schema), (uint32_t)sizeof(decltype(hgl::graph::MaterialTextureConfiguration::schema)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
+        { "id", "id", "id", "Default", "", "AnsiString", nullptr, nullptr, PropertyKind::String, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialTextureConfiguration, id), (uint32_t)sizeof(decltype(hgl::graph::MaterialTextureConfiguration::id)), 0u, 0.0, 0.0, 0.0, nullptr, PropertyKind::None, nullptr, nullptr },
         { "textures", "textures", "textures", "Default", "", "ManagedArray<MaterialTextureAssetReference>", nullptr, nullptr, PropertyKind::PtrArray, PF_Serialized | PF_SerializedToml | PF_SerializedFlatBuffers, (uint32_t)offsetof(hgl::graph::MaterialTextureConfiguration, textures), (uint32_t)sizeof(decltype(hgl::graph::MaterialTextureConfiguration::textures)), 0u, 0.0, 0.0, 0.0, &Class_MaterialTextureAssetReference, PropertyKind::Struct, nullptr, nullptr },
     };
 

@@ -5,6 +5,7 @@
 
 namespace hgl::graph
 {
+    bool ValidateMaterialDataReferenceSet(const MaterialDataReferenceSet &set, AnsiString &error);
     bool EncodeMaterialDataReferenceSet(const MaterialDataReferenceSet &set,
                                        ValueArray<uint8> &out,
                                        AnsiString &error);

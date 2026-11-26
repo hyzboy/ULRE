@@ -35,7 +35,8 @@ namespace hgl::serialize
         static void Do(Archive &ar, Self &v)
         {
             ar.Field(1, "schema", v.schema);
-            ar.Field(2, "instances", v.instances);
+            ar.Field(2, "id", v.id);
+            ar.Field(3, "instances", v.instances);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_MaterialDataReferenceSet; }
