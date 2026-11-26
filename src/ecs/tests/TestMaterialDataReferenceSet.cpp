@@ -116,5 +116,15 @@ int main()
         GLogError(u8"Missing asset did not preserve the previous result");
         return 10;
     }
+    other->uri = OS_TEXT("mtldata:@oak");
+    other->row = 1;
+    registry.RegisterFromToml(OS_TEXT("other-oak.material_data.toml"),
+                              block, static_cast<int>(strlen(block)));
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].asset != asset)
+    {
+        GLogError(u8"Ambiguous asset name was not rejected");
+        return 11;
+    }
     return 0;
 }

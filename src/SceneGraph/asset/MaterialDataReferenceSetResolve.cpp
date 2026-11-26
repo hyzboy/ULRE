@@ -1,5 +1,7 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetResolve.h>
+#include <hgl/asset/AssetURI.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
+#include <hgl/utf.h>
 
 namespace hgl::graph::mtl
 {
@@ -25,6 +27,28 @@ namespace hgl::graph::mtl
                 error = AnsiString("missing material data reference at instance ")
                       + AnsiString::numberOf(i);
                 return false;
+            }
+
+            const asset::AssetURI parsed =
+                asset::AssetURI::Parse(ref->uri, asset::AssetType::MaterialData);
+            if (!parsed.IsFile() && !parsed.IsPack()
+                && !parsed.target.IsEmpty() && parsed.target[0] == OS_TEXT('@'))
+            {
+                const OSString name = parsed.target.SubString(1);
+                int matches = 0;
+                for (int j = 0; j < registry.GetCount(); ++j)
+                {
+                    const MaterialDataBlockAsset *candidate = registry.GetAssetAt(j);
+                    if (candidate && !candidate->GetAssetName().IsEmpty()
+                        && ToOSString(candidate->GetAssetName()) == name)
+                        ++matches;
+                }
+                if (matches > 1)
+                {
+                    error = AnsiString("ambiguous material data name at instance ")
+                          + AnsiString::numberOf(i);
+                    return false;
+                }
             }
 
             MaterialDataBlockAsset *asset = registry.GetOrLoadURI(ref->uri);
