@@ -40,7 +40,8 @@ private:
     OrderedSet<Texture *> texture_set;                                           ///<纹理合集
 
     BidirectionalMap<TextureID,Texture *> texture_by_id;          ///< ID <-> Texture* 双向映射
-    BidirectionalMap<OSString,Texture *> texture_by_filename[2];  ///< 按 auto_mipmaps 分别缓存
+    BidirectionalMap<OSString,Texture *> texture_by_filename[2];       ///< 2D，按 auto_mipmaps 分别缓存
+    BidirectionalMap<OSString,Texture *> texture_cube_by_filename[2];  ///< Cube，按 auto_mipmaps 分别缓存
 
     /// 纹理句柄表（**资产查找与 RenderTarget 绑定**域；不含纹理创建/上传）。
     /// 按文件名 / 数组 URI / (target,attachment) 三种口径去重，明细见该类。
@@ -252,7 +253,7 @@ public: // TextureAsset
 
      * 流式系统在发起读盘前先用它收敛：如果同步路径早已加载过同一个文件，
      * 直接把那张纹理交给句柄，不重复读盘、不重复建纹理。
-     * 查找键与 `LoadTexture2D` 完全一致（原样比较，不做规范化），
+     * 仅查找 2D 纹理，查找键与 `LoadTexture2D` 完全一致（原样比较，不做规范化），
      * 保证「查得到」与「命中缓存」是同一个判据。
      */
     Texture *FindTextureByFilename(const OSString &filename,bool auto_mipmaps=false)const;

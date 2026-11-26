@@ -660,6 +660,29 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 || textures->LoadTexture2D(sync_path, false) != sync_plain
                 || textures->LoadTexture2D(sync_path, true) != sync_mip)
                 return false;
+            const OSString cube_path = OS_TEXT("res/image/Environments/sky_34_2k/sky_34_cubemap_2k/sky_34_cubemap_2k_irradiance.TexCube");
+            Texture2D *face = nullptr;
+            TextureCube *cube_texture = nullptr;
+            if (reverse_creation)
+            {
+                cube_texture = textures->LoadTextureCube(cube_path);
+                face = textures->LoadTexture2D(cube_path);
+            }
+            else
+            {
+                face = textures->LoadTexture2D(cube_path);
+                cube_texture = textures->LoadTextureCube(cube_path);
+            }
+            if (!face || !cube_texture || static_cast<Texture *>(face) == cube_texture
+                || textures->LoadTexture2D(cube_path) != face
+                || textures->LoadTextureCube(cube_path) != cube_texture)
+                Fail("2D and cube texture caches were not isolated");
+            textures->Destory(cube_texture);
+            cube_texture = textures->LoadTextureCube(cube_path);
+            if (!cube_texture || textures->LoadTexture2D(cube_path) != face
+                || textures->LoadTextureCube(cube_path) != cube_texture)
+                Fail("cube cache was not cleared on destruction");
+            GLogInfo(u8"[GMM] TEXTURE kind caches isolated");
         }
         if (selfcheck)
             if (auto overlay = world->GetSystem<ProfOverlaySystem>())

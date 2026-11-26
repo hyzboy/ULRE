@@ -66,6 +66,8 @@ void TextureManager::Release()
 
     for (auto &cache : texture_by_filename)
         cache.Clear();
+    for (auto &cache : texture_cube_by_filename)
+        cache.Clear();
 
     // Clean up texture transfer resources (queue holds fences that need cleanup)
     SAFE_CLEAR(texture_queue);
@@ -177,6 +179,8 @@ void TextureManager::Release(Texture *tex)
     texture_by_id.RemoveByValue(tex);          ///<从ID映射删除
     for (auto &cache : texture_by_filename)
         cache.RemoveByValue(tex);
+    for (auto &cache : texture_cube_by_filename)
+        cache.RemoveByValue(tex);
 }
 
 void TextureManager::Destory(Texture *tex)
@@ -215,6 +219,12 @@ bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *t
     if(filename.IsEmpty()||!texture)
         return(false);
 
+    if(!dynamic_cast<Texture2D *>(texture))
+    {
+        GLogError(u8"[TextureManager] Cannot register a non-2D texture in the 2D filename cache");
+        return(false);
+    }
+
     // 只登记本管理器名下的纹理：否则 Release(tex) 的 RemoveByValue 清不掉这条映射，
     // 会留下指向已销毁纹理的悬垂条目。
     if(!texture_set.Contains(texture))
@@ -246,12 +256,11 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
     // 让 `tex2d:x`、`file:x`、`x.Tex2D` 收敛到同一张纹理。
     const OSString probed=ProbeTextureURI(filename);
 
-    Texture2D *tex;
+    Texture *cached=nullptr;
+    if(texture_by_filename[auto_mipmaps ? 1 : 0].Get(probed,cached))
+        return static_cast<Texture2D *>(cached);
 
-    if(texture_by_filename[auto_mipmaps ? 1 : 0].Get(probed,(Texture *&)tex))
-        return tex;
-
-    tex=CreateTexture2DFromFile(this,probed,auto_mipmaps);
+    Texture2D *tex=CreateTexture2DFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
@@ -406,16 +415,16 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
     // 前缀的由 scheme 定形态。
     const OSString probed=ProbeTextureURI(filename,TextureURIKind::CubeFile);
 
-    TextureCube *tex;
+    Texture *cached=nullptr;
+    if(texture_cube_by_filename[auto_mipmaps ? 1 : 0].Get(probed,cached))
+        return static_cast<TextureCube *>(cached);
 
-    if(texture_by_filename[auto_mipmaps ? 1 : 0].Get(probed,(Texture *&)tex))
-        return tex;
-
-    tex=CreateTextureCubeFromFile(this,probed,auto_mipmaps);
+    TextureCube *tex=CreateTextureCubeFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
-        Add(tex,probed,auto_mipmaps);
+        Add(tex);
+        texture_cube_by_filename[auto_mipmaps ? 1 : 0].Add(probed,tex);
     }
 
     return tex;
