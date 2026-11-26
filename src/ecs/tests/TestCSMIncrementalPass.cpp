@@ -3890,17 +3890,23 @@ int main(int argc, char** argv)
         const SourceContract kIsolationContracts[] =
         {
             // ① 世界私有存储 = ECSContext 的实例成员（每世界一份）
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
               "std::shared_ptr<CameraInfoStorage> camera_info_storage",
               "相机行存储不再是每世界一份（退化成全局 ⇒ 两世界同帧互相覆写）" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldGPUResources.h", OS_TEXT("inc/hgl/ecs/support/render/WorldGPUResources.h"),
               "graph::StructView<graph::WorldAddresses> *world_addresses_table",
               "世界地址表不再是每世界一张（共表 ⇒ 两世界的地址互相覆盖）" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "WorldRenderData render_data;",
+              "渲染数据必须按世界拥有" },
+            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+              "WorldGPUResources gpu_resources;",
+              "GPU 世界资源必须按世界拥有" },
             // ② 世界表写入端：地址只取本世界存储 + 按帧槽轮转
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())",
               "相机行地址不来自本世界存储（跨世界共用一份 ⇒ 同帧互相覆写）；2026-10-07 起同走 0 地址统一口径" },
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "frame_index % graph::kWorldAddressesSlotCount",
               "世界表不再按帧槽轮转（在途帧之间会互踩）" },
             // ③ 相机行写入路径 = 本世界存储；pass 相机必须属本世界
@@ -3974,16 +3980,16 @@ int main(int argc, char** argv)
             // ⑤ T6b/P4：影子数据（ShadowInfo）+ 光源行也是**世界私有**。
             //    以前影子挂在 env profile（EnvironmentInfo::shadow）而 CSM 的 RT/控制器挂世界 ⇒
             //    两个世界共享 kEnvProfileDefault 时会互相覆写同一份影子数据（今天没爆只是因为离屏世界不开 CSM）。
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
               "graph::ShadowInfo shadow_info;",
               "影子数据不再是每世界一份（退回挂 env profile ⇒ 两世界同帧互相覆写）" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
               "LightRowTable light_row_table;",
               "光源行表不再是每世界一份" },
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_shadow = pick(",
               "影子地址不取本世界表（跨世界共用一份 ⇒ 同帧互相覆写；2026-10-07 起同走 0 地址统一口径）" },
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_lights = pick(",
               "光源行地址不取本世界表（2026-10-07 起同走 0 地址统一口径）" },
             { "EnvironmentInfo.h", OS_TEXT("inc/hgl/graph/ubo/EnvironmentInfo.h"),
@@ -4414,7 +4420,7 @@ int main(int argc, char** argv)
               "std::weak_ptr<CameraComponent> default_camera;",
               "默认相机又出现第二份记账（真值只在相机表 slot_owners[0]）",
               true },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
               "camera_info_storage->BindCameraSlot(CameraInfoStorage::kDefaultCameraSlot, camera)",
               "0 号槽（本世界默认相机）不再由世界相机表绑定" },
             // ③ 相机系统：槽号一律问世界；升格默认相机先交回旧槽
@@ -4432,8 +4438,8 @@ int main(int argc, char** argv)
               "slot_releaser",
               "相机系统又挂组件归还挂钩",
               true },
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "升格为默认相机",
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
+              "camera_info_storage->ReleaseCameraSlot(old_slot)",
               "相机升格为默认相机时不再交回旧槽（旧槽永久泄漏，换主相机迟早顶满 16 槽）" },
             // ④ guard：槽与宿主相机一起交给 guard，占用期由弱引用判定
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp"),
@@ -5268,7 +5274,7 @@ int main(int argc, char** argv)
             {
                 // 指针版**直通**（const + 非 const 两条）
                 { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
-                { "return material_authoring_side_table->Find(owner);",     2, "MaterialData EntityID 版必须直通旁表（2026-11 组件退役：记录住世界级旁表）" },
+                { "return render_data.GetMaterialData(owner);",             4, "MaterialData 访问器必须委托世界渲染数据" },
                 // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
                 // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
                 { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
@@ -5279,7 +5285,7 @@ int main(int argc, char** argv)
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
                 { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
-                { "return material_authoring_side_table->GetOrCreate(owner);", 1, "MaterialData「无则创建」EntityID 版必须直通旁表（组件已退役）" },
+                { "return render_data.GetOrCreateMaterialData(owner);",     2, "MaterialData 创建必须委托世界渲染数据" },
                 // §3-②：相机「无则创建」的指针版同样改走世界侧直通（判存在 + 世界侧创建），
                 // 不再经 `GetOrAddComponentOfEntity<T>`（其内部实例化被禁的两个 Entity 模板）。
                 { "if (CameraComponent *existing = GetCameraByEntity(owner))",       1, "相机「无则创建」指针版必须直通判存在（不经 ID→Entity 往返）" },
@@ -5664,14 +5670,14 @@ int main(int argc, char** argv)
             // ③ 旁表收口：写入按 EntityID 建记录、清空落记录字段、摘除在 ~Entity
             //    （2026-11 组件退役：原「组件方法经 GetAuthoringTable 转手」的形态收敛——
             //    取用口 = `ECSContext::GetOrCreateMaterialData` 直通旁表；摘除 = `~Entity`。）
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "return material_authoring_side_table->GetOrCreate(owner);",
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
+              "material_authoring_side_table->GetOrCreate(owner)",
               "授权写入未以 EntityID 为键落旁表" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "has_data_resource = true;",
               "内容行绑定未写进旁表记录（绑定真源丢失）" },
-            { "Entity.cpp", OS_TEXT("src/ecs/core/entity/Entity.cpp"),
-              "context->GetMaterialAuthoringTable()->Remove(id);",
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
+              "material_authoring_side_table->Remove(id);",
               "实体死亡未摘除旁表记录（跨生命周期串味 + 泄漏）" },
             // 句柄语义的时代已结束：OnDetach 现在**整条删除条目**；
             // 禁复活：任何在组件里留「行号不清零」的状态（2026-10-02 关闭期崩溃教训
@@ -5880,8 +5886,8 @@ int main(int argc, char** argv)
               "uint32_t authored_generation = 0;",
               "旁表条目不持授权代数（代数真源无处安放）" },
             // ② 世界级归属（ECSContext 持有 + 取用口）
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "AutoDelete<MaterialAuthoringSideTable> material_authoring_side_table;",
               "旁表不再由世界持有" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
@@ -5962,8 +5968,8 @@ int main(int argc, char** argv)
               "entry && entry->pass == pass",
               "旁表丢了「pass 不匹配即未命中」语义（管线会跨 pass 串味）" },
             // ② 世界级持有 + 取用口
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "std::unique_ptr<MaterialRuntimePipelineTable> material_runtime_pipeline_table;",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "AutoDelete<MaterialRuntimePipelineTable> material_runtime_pipeline_table;",
               "旁表不再由世界持有" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable()",
@@ -5988,9 +5994,12 @@ int main(int argc, char** argv)
               "context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)",
               "管线读取未走旁表" },
             // ⑥ 清理：失效路径 + 销毁路径都摘除
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
               "material_runtime_pipeline_table->Clear(owner);",
               "InvalidateEntityRuntimePipeline 未清旁表条目" },
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
+              "material_runtime_pipeline_table->Clear(id);",
+              "无运行期 slot 时实体销毁仍须清管线旁表" },
             { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/material/MaterialRuntimeTable.cpp"),
               "context->GetMaterialRuntimePipelineTable().Clear(owner);",
               "DestroySlot 未清该实例的管线缓存（跨生命周期串味）" },
@@ -6267,8 +6276,9 @@ int main(int argc, char** argv)
             // ── M8/M9：离屏单帧世界（RenderOnce）缺陷族固化（全族见 doc/future/entity-rows-gpu-cull-plan.md §11.17）──
             // 该拓扑（独立子世界 × 只渲染一帧）没有"第 2 帧自愈"兜底，任何"晚一帧"缺陷都直接
             // 变成"永不绘制"。以下针钉住已修的四层里可源码判定的两层 + 禁两条旧护栏复活。
-            { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),
-              "transform_system->SubmitTransformUpdates();   // M8-needle",
+            { "WorldRenderRunner.cpp", OS_TEXT("src/ecs/support/render/WorldRenderRunner.cpp"),
+              "FrameProfileSpan transform_span(FrameProfileSlot::TransformSubmit);\r\n"
+              "            transform_system->SubmitTransformUpdates();",
               "§9 M8：PrepareRenderPassSetup 必须在 collect/派发**之前**提交变换——`SubmitTransformUpdates` 是 "
               "L2W 矩阵行与实体行 row[Transform] 的唯一落盘点，而 GPU 剔除派发在同帧 RenderFrameSync 就读它们；"
               "只挂绘制录制段（RecordPreparedRenderPhaseRange）⇒ 派发恒读上一帧写入 ⇒ 单帧世界 row[Transform]=0 "
@@ -6299,10 +6309,10 @@ int main(int argc, char** argv)
             // ⇒ 依赖「调用方记得」，而离屏世界正是第二个帧入口 ⇒ 那一入口一出现就是「阴影静默失效」
             // （无断言、无日志）。现在内聚在 BeginManagedRenderFrame 里、以「主帧」为条件执行
             // （离屏帧传 need_swapchain_acquire=false ⇒ 不重复 prepass，嵌套阴影 pass 也不递归）。
-            { "ContextRender.cpp", OS_TEXT("src/ecs/core/ContextRender.cpp"),
-              "if (need_swapchain_acquire)\r\n            "
-              "{\r\n                FrameProfileSpan prepass_span(FrameProfileSlot::ScenePrePass);\r\n"
-              "                ExecuteScenePrePassWorkflow(deltaTime);",
+            { "WorldRenderRunner.cpp", OS_TEXT("src/ecs/support/render/WorldRenderRunner.cpp"),
+              "if (need_swapchain_acquire)\r\n        "
+              "{\r\n            FrameProfileSpan prepass_span(FrameProfileSlot::ScenePrePass);\r\n"
+              "            ExecuteScenePrePassWorkflow(deltaTime);",
               "§9 M12：场景预处理必须在**主帧帧入口**执行（守卫与调用一起钉：只留调用 ⇒ 离屏帧也跑 "
               "prepass；只留守卫 ⇒ 入口又退回「调用方负责」的单入口形态；2026-11 起包体含 prepass 性能账 span，"
               "守卫-计时-调用同块不得拆散）" },
@@ -6603,15 +6613,15 @@ int main(int argc, char** argv)
               "#define light_rows LightRowBufferRef(world_addresses.addr_lights).lights",
               "T6b：光源行的取址宏（行数组本体；下标 = 行号）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "if (!InitializeLightRowTable())",
               "T6b：光源行表与实体两表同批建（缺这条 = 表不存在、地址恒 0）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_lights = pick(",
               "T6b：地址发布（I4：新地址字段必须接写者；只有字段没有写者 = 静默剔空；2026-10-07 起按统一口径 pick(基址+slot×步长, 旧值)）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "UploadLightRowDirtyRows();",
               "T6b：脏行上传接线（缺这条 = CPU 改了光参数但设备镜像不更新）" },
 
@@ -6812,7 +6822,7 @@ int main(int argc, char** argv)
         static const SourceContract kShadowWorldPrivateContracts[] =
         {
             // ① 归属搬家：世界持有 CPU 权威 + 世界私有设备镜像
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldGPUResources.h", OS_TEXT("inc/hgl/ecs/support/render/WorldGPUResources.h"),
               "graph::StructView<graph::ShadowInfo> *shadow_info_view = nullptr;",
               "T6b/P4：影子数据设备镜像不在世界（退回 profile ⇒ 两世界互踩）" },
 
@@ -6824,15 +6834,15 @@ int main(int argc, char** argv)
               "bool ECSContext::InitializeShadowInfoTable()",
               "T6b/P4：影子数据表的建表入口丢失" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "if (!InitializeShadowInfoTable())",
               "T6b/P4：影子数据建表不与其余世界表同批（失败不中止 ⇒ 静默缺地址）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "base[slot] = shadow_info;",
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
+              "base[slot] = context->GetRenderData().GetShadowInfo();",
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),",
               "T6b/P4：影子表按帧槽各一份的步长口径丢失（地址 = 基址 + 帧槽 × 每份字节；2026-10-07 起经 slot_offset 统一口径）" },
 
@@ -6941,7 +6951,7 @@ int main(int argc, char** argv)
               "{ \"addr_ambient_env\",          true  },",
               "T1：新地址字段未在归属门登记（未分类字段 ⇒ 门报错；登记错侧 ⇒ 多世界串数据）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
               "T1：地址只有字段没发布（I4 的历史坑：表里恒 0 ⇒ 静默失效）；2026-10-07 起走统一口径（0 ⇒ 沿用本槽旧值）" },
 
@@ -7087,39 +7097,39 @@ int main(int argc, char** argv)
             //    规则：解不到有效地址（0）⇒ 沿用**本槽**上一份好值；0 基址的按帧槽列**不参与** slot×步长 运算；
             //    写 0 = 让 shader 解引用 0 基址（UB），比沿用一份稍旧的有效地址危险得多；
             //    "从来没有过有效值"（世界刚建）自然保持 0 = 消费者判缺席。
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "const auto pick = [](const uint64_t resolved, const uint64_t previous) -> uint64_t",
               "2026-10-07：口径的单点（resolved==0 ⇒ 沿用 previous）——缺它 = 各路又各写各的" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "return base != 0 ? (base + static_cast<uint64_t>(slot) * per_slot_bytes) : 0;",
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
+              "return b != 0 ? (b + static_cast<uint64_t>(slot) * per_slot_bytes) : 0;",
               "2026-10-07：按帧槽列**不许**把 slot×步长 加到 0 基址上（否则写出 slot×832 这类垃圾地址）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_camera_info = pick(",
               "2026-10-07：相机行列走统一口径（按帧槽列逐条钉住，漏一列 = 该列解不到时把 0 写进表）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_entity_gpu = pick(",
               "2026-10-07：实体行表列（按帧槽切份）走统一口径" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_entity_render_ids = pick(",
               "2026-10-07：实体 4-ID 表列（按帧槽切份）走统一口径" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_lights = pick(",
               "2026-10-07：光源行表列（按帧槽切份）走统一口径" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_l2w = pick(l2w_addr, dst->addr_l2w);",
               "2026-10-07：L2W 池列（口径的首个使用者，B1b）同批并入" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);",
               "2026-10-07：ambient_env 列 —— 原为 `if (addr != 0)` 静默丢值写法（注释说「不写 0」、实现写 0）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "want.addr_shadow = pick(",
               "2026-10-07：影子列（按帧槽切份）—— 原无守卫，未建表时会写 slot×832 垃圾地址" },
 
@@ -7245,7 +7255,7 @@ int main(int argc, char** argv)
               "问题 2(a)：可见性写入点必须对拍（SetVisible 是三个刷新点之一）" },
 
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "VerifyAfterWrite(owner",
+              "VerifyAfterWrite(entity, \"ECSContext::RefreshEntityRow\")",
               "问题 2(a)：组件挂卸写入点必须对拍（问题 2 的『漏刷新』正发生在这里）" },
 
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
