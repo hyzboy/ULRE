@@ -72,7 +72,7 @@ namespace hgl::graph::mtl
         MaterialDataBlockParseError parse_error;            ///<解析失败时的定位信息
 
         OSString                    source_path;            ///<来源文件（可空 = 内存注册）
-        U8String                    resource_id;            ///<资产身份（`mtldata:@<name>` / `mtldata:file:<path>`）
+        U8String                    resource_id;            ///<优先使用持久 AssetID，无 ID 时使用旧名称或路径
         AnsiString                  asset_name;             ///<`AssetObject` 契约要求的稳定名字
 
         AnsiString                  failure_reason;         ///<`Failed` 或上传失败的原因（诊断文案）
@@ -116,7 +116,8 @@ namespace hgl::graph::mtl
 
         const OSString &GetSourcePath() const { return source_path; }
 
-        /// 资产身份：有名走 `mtldata:@<name>`，无名走 `mtldata:file:<path>`
+        /// 资产身份：有 ID 走 `mtldata:id:<id>`；无 ID 时使用旧名称或路径。
+        /// 这是身份标识，并非可直接加载的 URI；按 ID 加载需指定包裹。
         const U8String &GetResourceId() const { return resource_id; }
 
         MaterialDataBlockAssetState GetState() const { return state; }

@@ -167,6 +167,33 @@ namespace
             == OSString(OS_TEXT("res/material/pbr_grid.material_data.toml"));
     }
 
+    bool TestPersistentResourceIdentity()
+    {
+        const char *first =
+            "id = \"01900000-0000-7000-8000-000000000001\"\n"
+            "schema = 1\nname = \"first_name\"\ntarget = \"PBRSurface\"\n"
+            "[[rows]]\nmetallic = 0.1\n";
+        const char *renamed =
+            "id = \"01900000000070008000000000000001\"\n"
+            "schema = 1\nname = \"renamed\"\ntarget = \"PBRSurface\"\n"
+            "[[rows]]\nmetallic = 0.9\n";
+        const char *different =
+            "id = \"01900000000070008000000000000002\"\n"
+            "schema = 1\nname = \"first_name\"\ntarget = \"PBRSurface\"\n"
+            "[[rows]]\nmetallic = 0.1\n";
+        mtl::MaterialDataBlockRegistry registry;
+        auto *a = registry.RegisterFromToml(OS_TEXT("first.material_data.toml"),
+                                           first, static_cast<int>(strlen(first)));
+        auto *b = registry.RegisterFromToml(OS_TEXT("renamed.material_data.toml"),
+                                           renamed, static_cast<int>(strlen(renamed)));
+        auto *c = registry.RegisterFromToml(OS_TEXT("other.material_data.toml"),
+                                           different, static_cast<int>(strlen(different)));
+        return a && b && c && !a->IsFailed() && !b->IsFailed() && !c->IsFailed()
+            && a->GetResourceId() == U8String(u8"mtldata:id:01900000000070008000000000000001")
+            && a->GetResourceId() == b->GetResourceId()
+            && a->GetResourceId() != c->GetResourceId();
+    }
+
     bool TestBinaryHandle()
     {
         hgl::graph::MaterialDataBlockSpec ref_spec;
@@ -489,6 +516,7 @@ int main(int, char **)
 
     Check(TestMetaWiring(), "句柄向检查器宣告块规约元数据");
     Check(TestTomlHandle(), "TOML 来源：授权形态 + 物理行 + 身份");
+    Check(TestPersistentResourceIdentity(), "持久身份不随路径、名称或内容变化");
     Check(TestBinaryHandle(), "MDB1 来源：无授权形态但行信息完整");
     Check(TestFlatHandle(), "FlatBuffers 来源：授权形态与摊平行一致");
     Check(TestBadInputs(), "坏输入留在表里并标 Failed（带定位）");

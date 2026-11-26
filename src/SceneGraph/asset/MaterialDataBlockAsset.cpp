@@ -1,6 +1,7 @@
 #include <hgl/graph/asset/MaterialDataBlockAsset.h>
 
 #include <hgl/asset/AssetURI.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/asset/generated/MaterialDataBlockMeta.gen.h>
 #include <hgl/log/Log.h>
 #include <hgl/utf.h>
@@ -36,6 +37,15 @@ namespace hgl::graph::mtl
             source_path = label;
         else
             source_path.Clear();
+
+        hgl::asset::AssetID id;
+        if (has_spec && hgl::asset::AssetID::Parse(spec.id, id))
+        {
+            resource_id = type_prefix;
+            resource_id += u8":id:";
+            resource_id += ToU8String(id.ToString());
+            return;
+        }
 
         if (!asset_name.IsEmpty())
         {
