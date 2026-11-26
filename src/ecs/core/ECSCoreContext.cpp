@@ -62,8 +62,8 @@ namespace hgl::ecs
         entity->destroying = true;
         OnEntityDestroying(id);
         entity->DetachAllComponents();
-        entity_manager->DestroyEntity(id);
         OnEntityCleanup(id);
+        entity_manager->DestroyEntity(id);
         NotifyEntityDestroyed(id);
     }
 

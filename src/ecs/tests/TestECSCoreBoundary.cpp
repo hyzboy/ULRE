@@ -76,6 +76,22 @@ namespace
         void Observe(hgl::ecs::IECSEntityObserver *observer) { SetEntityObserver(observer); }
     };
 
+    class BoundaryCleanupContext : public hgl::ecs::ECSCoreContext
+    {
+    public:
+        BoundaryCleanupContext() : ECSCoreContext("CleanupBoundary") {}
+        bool cleanup_saw_owner = false;
+        hgl::ecs::EntityID created_during_cleanup;
+
+        void OnEntityCleanup(hgl::ecs::EntityID id) override
+        {
+            cleanup_saw_owner = GetEntity(id) != nullptr;
+            auto *created = CreateEntity();
+            if (created)
+                created_during_cleanup = created->GetEntityID();
+        }
+    };
+
     class BoundaryObserver : public hgl::ecs::IECSEntityObserver
     {
     public:
@@ -263,6 +279,19 @@ int main()
     {
         GLogError(u8"[ECSCoreBoundary] 旧句柄影响了新实体");
         return 15;
+    }
+
+    BoundaryCleanupContext cleanup_world;
+    auto *cleanup_entity = cleanup_world.CreateEntity();
+    if (!cleanup_entity)
+        return 24;
+    const hgl::ecs::EntityID cleanup_id = cleanup_entity->GetEntityID();
+    cleanup_world.DestroyEntity(cleanup_id);
+    if (!cleanup_world.cleanup_saw_owner || !cleanup_world.GetEntity(cleanup_world.created_during_cleanup)
+        || cleanup_world.created_during_cleanup.index == cleanup_id.index)
+    {
+        GLogError(u8"[ECSCoreBoundary] 关联数据清理完成前实体槽被释放");
+        return 25;
     }
 
     int reentrant_detaches = 0;
