@@ -93,7 +93,7 @@ namespace hgl::graph::mtl
                                   ShaderArtifactFileHeader &out_header,
                                   Acceptor acceptor)
     {
-        if (path.IsEmpty())
+        if (path.IsEmpty() || !filesystem::FileExist(path))
             return false;
 
         int64 file_size = 0;

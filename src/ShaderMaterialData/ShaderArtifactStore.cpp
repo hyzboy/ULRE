@@ -130,8 +130,12 @@ namespace hgl::graph::mtl
         if (out_source_digest)
             *out_source_digest = 0;
 
+        const OSString path = GetStagePath(key);
+        if (path.IsEmpty() || !filesystem::FileExist(path))
+            return false;
+
         int64 file_size = 0;
-        void *file_data = filesystem::LoadFileToMemory(GetStagePath(key), file_size);
+        void *file_data = filesystem::LoadFileToMemory(path, file_size);
         if (!file_data)
             return false;
 
