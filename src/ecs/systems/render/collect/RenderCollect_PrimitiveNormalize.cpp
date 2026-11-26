@@ -40,10 +40,10 @@ namespace hgl::ecs
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 
         // 分支 1：实体本身已经拥有合法的模型模板 ID（例如通过 RegisterModelTemplate 注册的多部件模板）
-        if (ref && !ref->automatically_normalized
-         && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+        if (ref && !ref->IsAutomaticallyNormalized()
+         && ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
         {
-            if (const auto *binding = mat_table ? mat_table->FindBinding(ref->template_id) : nullptr)
+            if (const auto *binding = mat_table ? mat_table->FindBinding(ref->GetTemplateID()) : nullptr)
             {
                 auto *runtime = GetRuntimeTable(world);
                 for (int g = 0; g <= binding->groups.GetCount(); ++g)
@@ -72,7 +72,7 @@ namespace hgl::ecs
                 return false;
 
             const auto *tpl_row = registry->GetTypedRow<graph::ssbo::ModelTemplateRow>(
-                graph::GlobalSSBOType::ModelTemplatePool, ref->template_id);
+                graph::GlobalSSBOType::ModelTemplatePool, ref->GetTemplateID());
             if (!tpl_row || tpl_row->part_count == 0 || tpl_row->part_offset == 0)
                 return false;
 
@@ -94,7 +94,7 @@ namespace hgl::ecs
             }
 
             TemplateRenderBinding binding;
-            binding.template_id = ref->template_id;
+            binding.template_id = ref->GetTemplateID();
             if (material_slot.row != INVALID_MATERIAL_RUNTIME_ROW_ID)
                 binding.owned_part_rows.Add(material_slot.row);
 
@@ -192,8 +192,7 @@ namespace hgl::ecs
             ref = entity->AddComponent<GPUModelRefComponent>();
         if (ref)
         {
-            ref->template_id = auto_template_id;
-            ref->automatically_normalized = true;
+            ref->SetTemplateBinding(auto_template_id, true);
         }
 
         return true;
@@ -265,7 +264,7 @@ namespace hgl::ecs
                 carrier_owner->GetComponent<GPUModelRefComponent>();
 
             is_template_carrier = (model_ref
-                && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID);
+                && model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID);
         }
 
         if (item)
@@ -385,7 +384,7 @@ namespace hgl::ecs
 
                     world->GetEntityGPUTable().SetModelFacts(
                         entity_id,
-                        model_ref ? model_ref->template_id : 0u,
+                        model_ref ? model_ref->GetTemplateID() : 0u,
                         model_ref ? model_ref->part_visibility_mask : 0ull,
                         model_ref ? model_ref->custom_data_index : 0u,
                         model_ref ? model_ref->prev_transform_id : 0u,

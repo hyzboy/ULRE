@@ -289,7 +289,7 @@ namespace hgl::ecs
             Fail("WithModelTemplate");
             return *this;
         }
-        ref->template_id = template_id;
+        ref->SetTemplateBinding(template_id);
         return *this;
     }
 

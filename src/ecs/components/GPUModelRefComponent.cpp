@@ -5,6 +5,20 @@
 
 namespace hgl::ecs
 {
+    void GPUModelRefComponent::SetTemplateBinding(const uint32_t id, const bool automatic)
+    {
+        if (template_id == id && automatically_normalized == automatic)
+            return;
+
+        template_id = id;
+        automatically_normalized = automatic;
+        if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
+        {
+            context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+            context->MarkTopologyChanged(TopologyChange::ModelTemplate);
+        }
+    }
+
     void GPUModelRefComponent::OnDetach()
     {
         ClearOverrideMaterialRow();

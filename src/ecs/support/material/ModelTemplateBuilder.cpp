@@ -584,7 +584,7 @@ namespace hgl::ecs
         context->ForEachAliveEntity([&](const Entity *entity)
         {
             const auto *ref = entity->GetComponent<GPUModelRefComponent>();
-            referenced |= ref && ref->template_id == template_id;
+            referenced |= ref && ref->GetTemplateID() == template_id;
         });
         if (referenced)
         {

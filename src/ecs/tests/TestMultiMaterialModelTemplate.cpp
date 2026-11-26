@@ -428,8 +428,8 @@ namespace
         if (!ref_def || !ref_ovr)
             return false;
 
-        ref_def->template_id = kTemplateID;
-        ref_ovr->template_id = kTemplateID;
+        ref_def->SetTemplateBinding(kTemplateID);
+        ref_ovr->SetTemplateBinding(kTemplateID);
 
         // 默认无覆盖
         if (ref_def->HasMaterialOverride())
@@ -438,7 +438,13 @@ namespace
             return false;
 
         // 实体 B 覆盖材质
+        const auto material_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding);
         ref_ovr->SetOverrideMaterialRow(kOverrideRow);
+        const auto changed_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding);
+        if (changed_revision <= material_revision
+         || !ref_ovr->SetOverrideMaterialRow(kOverrideRow)
+         || context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding) != changed_revision)
+            return false;
         if (!ref_ovr->HasMaterialOverride())
             return false;
         if (ref_ovr->GetOverrideMaterialRow() != kOverrideRow)
@@ -517,7 +523,7 @@ namespace
               "BuildSinglePrimitiveModelTemplate",
               "收集系统前置保障必须调用 BuildSinglePrimitiveModelTemplate 自动提升为模板实体" },
             { collect_src,
-              "ref->template_id = auto_template_id",
+              "ref->SetTemplateBinding(auto_template_id, true)",
               "自动提升必须将分配的模板 ID 挂接到实体的 GPUModelRefComponent" },
             { collect_src,
               "EnsurePrimitiveModelTemplate",

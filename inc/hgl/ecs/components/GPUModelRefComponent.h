@@ -25,12 +25,18 @@ namespace hgl::ecs
      */
     struct GPUModelRefComponent : public ComponentRow
     {
-        // ── 核心 ──────────────────────────────────────────────────────────
+    private:
         uint32_t template_id = 0;   ///< 模板池行 ID（0 = 无效/未绑定，见 kInvalidModelTemplateID）
         bool automatically_normalized = false; ///< Collector owns the primitive-to-template binding.
 
+    public:
+        uint32_t GetTemplateID() const { return template_id; }
+        bool IsAutomaticallyNormalized() const { return automatically_normalized; }
+        void SetTemplateBinding(uint32_t id, bool automatic = false);
+
         // ── 可见性 ────────────────────────────────────────────────────────
-        uint64_t part_visibility_mask = 0xFFFFFFFFFFFFFFFFull;  ///< 部件可见位（1 = 渲染；默认全 1）
+        /// 动态事实：完整收集和快路径每帧重发布，直接写入不影响拓扑。
+        uint64_t part_visibility_mask = 0xFFFFFFFFFFFFFFFFull;
 
         // ── 材质覆盖（Instance Material Override）────────────────────────
         /// 若有效（!= INVALID_MATERIAL_RUNTIME_ROW_ID），收集系统生成载体项时

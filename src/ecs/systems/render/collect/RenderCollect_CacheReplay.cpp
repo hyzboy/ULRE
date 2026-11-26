@@ -161,8 +161,8 @@ namespace hgl::ecs
                 const uint32_t group_idx = record.member_kind - 1u;
                 const ModelTemplateMaterialTable *template_table = world->GetModelTemplateMaterialTable();
                 const TemplateRenderBinding *binding = model_ref && template_table
-                    ? template_table->FindBinding(model_ref->template_id) : nullptr;
-                if (!model_ref || model_ref->template_id == graph::ssbo::kInvalidModelTemplateID
+                    ? template_table->FindBinding(model_ref->GetTemplateID()) : nullptr;
+                if (!model_ref || model_ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID
                     || !binding || group_idx >= static_cast<uint32_t>(binding->groups.GetCount()))
                 {
                     ok = false;
@@ -191,7 +191,7 @@ namespace hgl::ecs
                     transform,
                     record.material_row,
                     group_idx,
-                    model_ref->template_id,
+                    model_ref->GetTemplateID(),
                     current_render_pass,
                     cached_pipeline,
                     cached_pipeline_config,

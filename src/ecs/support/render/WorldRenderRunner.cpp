@@ -222,7 +222,7 @@ namespace hgl::ecs
         context->GetComponents<GPUModelRefComponent>(model_refs);
         for (GPUModelRefComponent *ref : model_refs)
         {
-            if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID)
+            if (!ref || ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID)
                 continue;
 
             if (HasPendingMaterialResources(ref->GetOwner()))

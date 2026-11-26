@@ -498,7 +498,7 @@ private:
         material_data->SetDataResource(row_resource);
 
         auto * ref = e->AddComponent<GPUModelRefComponent>();
-        ref->template_id       = tmpl;          // 0 = 非模板实体（素图元路径）
+        ref->SetTemplateBinding(tmpl);          // 0 = 非模板实体（素图元路径）
         ref->custom_data_index = custom_row;
     }
 

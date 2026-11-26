@@ -336,7 +336,7 @@ private:
 
             // 核心：一条模板引用。加/减棋盘 = 增/删这个实体，VRAM 里的模板不动。
             auto * ref = e->AddComponent<GPUModelRefComponent>();
-            ref->template_id      = template_id;
+            ref->SetTemplateBinding(template_id);
             ref->custom_data_index = ((col + row) & 1u) ? custom_dark : custom_light;
         }
 

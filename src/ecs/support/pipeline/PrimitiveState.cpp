@@ -75,7 +75,7 @@ namespace hgl::ecs
             return false;
 
         const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
-        if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+        if (model_ref && model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
             return true;
 
         ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();
@@ -135,7 +135,7 @@ namespace hgl::ecs
             return false;
 
         const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
-        if (model_ref && model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+        if (model_ref && model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
             return true;
 
         ECSContext *context = entity->GetContextAs<hgl::ecs::ECSContext>();

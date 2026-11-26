@@ -133,7 +133,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             models[i] = world->CreateEntity<Entity>("MultiMaterialModel");
             auto transform = world->GetTransform(world->CreateTransform(models[i]->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition({ModelX(i), 0.0f, 0.5f});
-            models[i]->AddComponent<GPUModelRefComponent>()->template_id = template_id;
+            models[i]->AddComponent<GPUModelRefComponent>()->SetTemplateBinding(template_id);
             models[i]->AddComponent<ShadowProxy>();
             if (models[i]->GetComponent<hgl::ecs::GeometryData>())
                 Fail("model must not have representative GeometryData");
@@ -143,7 +143,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (phase == 0u && selfcheck && !core_only)
         {
             ReplaceWithLit(0u);
-            models[2]->GetComponent<GPUModelRefComponent>()->template_id = template_id;
+            models[2]->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(template_id);
             const auto *row = world->GetMaterialRuntimeTable()->Get(EntityRow(lit_seeds[0]));
             placeholder_hash = row->material_texture_configuration_hash;
             const auto *model = registry->GetTypedRow<ssbo::ModelTemplateRow>(
@@ -161,7 +161,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         if (lit_templates[index])
         {
-            models[2]->GetComponent<GPUModelRefComponent>()->template_id = lit_templates[index];
+            models[2]->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(lit_templates[index]);
             world->MarkTopologyChanged(TopologyChange::ModelTemplate);
             return;
         }
@@ -177,7 +177,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (!built || status != ModelTemplateBuildStatus::Ready)
             Fail("ready replacement did not publish");
         lit_templates[index] = built;
-        models[2]->GetComponent<GPUModelRefComponent>()->template_id = built;
+        models[2]->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(built);
         world->MarkTopologyChanged(TopologyChange::ModelTemplate);
     }
 
@@ -187,7 +187,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         auto *part_pool = registry->GetPool(GlobalSSBOType::ModelPartPool);
         const auto template_count = templates->GetActiveCount();
         const auto part_count = part_pool->GetActiveCount();
-        const auto old_id = models[2]->GetComponent<GPUModelRefComponent>()->template_id;
+        const auto old_id = models[2]->GetComponent<GPUModelRefComponent>()->GetTemplateID();
         ModelTemplatePartInput replacement[3];
         for (uint32_t p = 0; p < 3; ++p) replacement[p] = parts[p];
         replacement[1].geometry = nullptr;
@@ -200,7 +200,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (BuildMultiMaterialModelTemplate(registry, world, replacement, 3u, &status)
          || status != ModelTemplateBuildStatus::Pending
          || templates->GetActiveCount() != template_count || part_pool->GetActiveCount() != part_count
-         || models[2]->GetComponent<GPUModelRefComponent>()->template_id != old_id)
+         || models[2]->GetComponent<GPUModelRefComponent>()->GetTemplateID() != old_id)
             Fail("pending replacement allocated rows or changed the visible template");
         GLogInfo(u8"[GMM] Pending replacements preserved template=%u and pool counts", old_id);
     }
@@ -236,7 +236,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
          || templates->GetActiveCount() != template_count || part_pool->GetActiveCount() != part_count
          || world->GetMaterialRuntimeTable()->GetRefCount(SeedRow(0)) != refs
          || world->GetModelTemplateMaterialTable()->FindBinding(template_id) != binding
-         || models[2]->GetComponent<GPUModelRefComponent>()->template_id != template_id)
+         || models[2]->GetComponent<GPUModelRefComponent>()->GetTemplateID() != template_id)
             Fail("allocation failure changed live template, references or pool counts");
         GLogInfo(u8"[GMM] ROLLBACK live destroy rejected; exhausted part pool preserved published template");
     }
@@ -591,7 +591,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (phase == 12) ReplaceWithLit(1u);
         if (phase == 13)
         {
-            c->template_id = template_id;
+            c->SetTemplateBinding(template_id);
             world->SetEntityVisible(ground->GetEntityID(), false);
             for (auto &id : lit_templates)
             {
@@ -605,7 +605,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (phase == 16) models[2]->GetComponent<ShadowProxy>()->SetCastShadow(true);
         if (phase == 17)
         {
-            c->template_id = template_id;
+            c->SetTemplateBinding(template_id);
             if (!DestroyMultiMaterialModelTemplate(registry, world, lit_templates[0]))
                 Fail("shadow template retirement rejected");
             world->SetEntityVisible(ground->GetEntityID(), false);

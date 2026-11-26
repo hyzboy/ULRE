@@ -1033,7 +1033,7 @@ namespace hgl::ecs
 
             const GPUModelRefComponent *ref = entity->GetComponent<GPUModelRefComponent>();
 
-            return ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID;
+            return ref && ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID;
         }
 
         /// 实体 + 世界 ⇒ 收集策略（表是唯一判据）
@@ -2237,7 +2237,7 @@ namespace hgl::ecs
             if (ambient_provider_changed)
             {
                 const auto *ref = entity->GetComponent<GPUModelRefComponent>();
-                if (!ref || ref->automatically_normalized)
+                if (!ref || ref->IsAutomaticallyNormalized())
                     world->GetOrCreateMaterialRuntimeSlot(entity).program_dirty = true;
             }
             if (!EnsurePrimitiveModelTemplate(entity))
@@ -2250,10 +2250,10 @@ namespace hgl::ecs
             // 若在 ModelTemplateMaterialTable 中已注册绑定（自包含 Shading Groups），或无 GeometryData，
             // 则其部件几何与材质常驻 GPU SSBO，无需参与单图元 slot 预扫描。
             const GPUModelRefComponent *scan_model_ref = entity->GetComponent<GPUModelRefComponent>();
-            if (scan_model_ref && scan_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+            if (scan_model_ref && scan_model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
             {
                 const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
-                const bool has_template_binding = template_mat_table && template_mat_table->FindBinding(scan_model_ref->template_id) != nullptr;
+                const bool has_template_binding = template_mat_table && template_mat_table->FindBinding(scan_model_ref->GetTemplateID()) != nullptr;
                 if (has_template_binding || !entity->GetComponent<GeometryData>())
                     continue;
             }
@@ -2474,10 +2474,10 @@ namespace hgl::ecs
             const GPUModelRefComponent *pure_model_ref = entity->GetComponent<GPUModelRefComponent>();
             const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
             const TemplateRenderBinding *binding = (pure_model_ref && template_mat_table)
-                ? template_mat_table->FindBinding(pure_model_ref->template_id) : nullptr;
+                ? template_mat_table->FindBinding(pure_model_ref->GetTemplateID()) : nullptr;
 
             const bool is_model_template = pure_model_ref
-                && pure_model_ref->template_id != graph::ssbo::kInvalidModelTemplateID;
+                && pure_model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID;
 
             if (is_model_template)
             {
@@ -2528,7 +2528,7 @@ namespace hgl::ecs
                     ++cache.dropped_other;
                     cache.RecordDrop(entity_name, entity_id.index, "RenderCollect", reason, message);
                     LogWarning(u8"Model template group skipped: owner=%s template=%u group=%u reason=%s",
-                               entity_name, pure_model_ref->template_id, group, reason);
+                               entity_name, pure_model_ref->GetTemplateID(), group, reason);
                     if (trace)
                         ::strncpy(trace->collect_reason, reason, sizeof(trace->collect_reason) - 1);
                 };
@@ -2595,7 +2595,7 @@ namespace hgl::ecs
                         transform,
                         row_id,
                         g,
-                        pure_model_ref->template_id,
+                        pure_model_ref->GetTemplateID(),
                         render_pass,
                         resolved_pipeline,
                         resolved_pipeline_config,

@@ -46,7 +46,7 @@ namespace
     {
         GPUModelRefComponent ref;
 
-        EXPECT(ref.template_id == 0u);
+        EXPECT(ref.GetTemplateID() == 0u);
         EXPECT(ref.part_visibility_mask == 0xFFFFFFFFFFFFFFFFull);
         EXPECT(ref.custom_data_index == 0u);
         EXPECT(ref.prev_transform_id == 0u);
@@ -121,8 +121,15 @@ namespace
         EXPECT(core_entity && !core_entity->GetContextAs<ECSContext>());
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();
         EXPECT(ref != nullptr);
-        EXPECT(ref->template_id == 0u);
-        ref->template_id = 7u;
+        EXPECT(ref->GetTemplateID() == 0u);
+        const auto initial_template_revision = ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        ref->SetTemplateBinding(7u);
+        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
+        ref->SetTemplateBinding(7u);
+        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
+        ref->SetTemplateBinding(7u, true);
+        EXPECT(ref->IsAutomaticallyNormalized());
+        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 2);
 
         Entity *e2 = ctx.CreateEntity<Entity>("BatchB");
         GPUInstancedModelBatchComponent *batch = e2->AddComponent<GPUInstancedModelBatchComponent>();
@@ -133,7 +140,7 @@ namespace
         ValueArray<GPUModelRefComponent *> refs;
         ctx.GetComponents<GPUModelRefComponent>(refs);
         EXPECT(refs.GetCount() == 1);
-        EXPECT(refs.GetData()[0]->template_id == 7u);
+        EXPECT(refs.GetData()[0]->GetTemplateID() == 7u);
 
         ValueArray<GPUInstancedModelBatchComponent *> batches;
         ctx.GetComponents<GPUInstancedModelBatchComponent>(batches);
@@ -153,7 +160,7 @@ namespace
 
         Entity *stat = ctx.CreateEntity<Entity>("StaticModel");
         GPUModelRefComponent *sref = stat->AddComponent<GPUModelRefComponent>();
-        sref->template_id = 3u;
+        sref->SetTemplateBinding(3u);
         const TransformID sid = ctx.CreateTransform(stat->GetEntityID(), Mobility::Static);
         TransformAccessor stf = ctx.GetTransformByEntity(stat->GetEntityID());
         EXPECT(stf.IsStatic());
@@ -161,7 +168,7 @@ namespace
 
         Entity *dyn = ctx.CreateEntity<Entity>("MovableModel");
         GPUModelRefComponent *dref = dyn->AddComponent<GPUModelRefComponent>();
-        dref->template_id = 4u;
+        dref->SetTemplateBinding(4u);
         const TransformID did = ctx.CreateTransform(dyn->GetEntityID(), Mobility::Movable);
         TransformAccessor dtf = ctx.GetTransformByEntity(dyn->GetEntityID());
         EXPECT(dtf.IsMovable());

@@ -88,7 +88,7 @@ namespace hgl::ecs
                 const GPUModelRefComponent *ref =
                     owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
 
-                if (ref && ref->template_id != graph::ssbo::kInvalidModelTemplateID)
+                if (ref && ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
                     return true;
             }
 
@@ -642,8 +642,8 @@ namespace hgl::ecs
                         const GPUModelRefComponent *ref =
                             owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
 
-                        if (!ref || ref->template_id == graph::ssbo::kInvalidModelTemplateID
-                            || ref->template_id != tpl_item->GetTemplateID())
+                        if (!ref || ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID
+                            || ref->GetTemplateID() != tpl_item->GetTemplateID())
                         {
                             why = "批内项缺少有效模型模板";
                             break;
@@ -653,7 +653,7 @@ namespace hgl::ecs
                         // `template_id` 建一次，稳定帧不再读映射缓冲里的模板行。
                         TemplateFactCache::Result fact_result = TemplateFactCache::Result::Ok;
                         const TemplateFactCache::Facts *facts =
-                            template_facts.Resolve(pool, ref->template_id, fact_result);
+                            template_facts.Resolve(pool, ref->GetTemplateID(), fact_result);
 
                         if (!facts)
                         {
@@ -673,7 +673,7 @@ namespace hgl::ecs
 
                         // 二级组表：本 (pass, 模板, 有效绑定) 独占一段连续组槽
                         uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        const uint64_t route_key = (uint64_t(ref->template_id) << 32)
+                        const uint64_t route_key = (uint64_t(ref->GetTemplateID()) << 32)
                                                  | uint64_t(ref->GetOverrideMaterialRow());
                         if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
                         {
@@ -697,7 +697,7 @@ namespace hgl::ecs
 
                         const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
                         const TemplateRenderBinding *binding = template_mat_table
-                            ? template_mat_table->FindBinding(ref->template_id) : nullptr;
+                            ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
 
                         if (binding && target_group < static_cast<uint32_t>(binding->groups.GetCount()))
                         {
@@ -721,7 +721,7 @@ namespace hgl::ecs
                         uint32_t gi = UINT32_MAX;
 
                         for (uint32_t g = 0; g < uint32_t(template_groups.size()); ++g)
-                            if (template_groups[g].template_id == ref->template_id
+                            if (template_groups[g].template_id == ref->GetTemplateID()
                              && template_groups[g].shading_group == target_group
                              && template_groups[g].group_table_offset == group_table_offset)
                             {
@@ -736,7 +736,7 @@ namespace hgl::ecs
                             template_groups.push_back(TemplateGroupDraft{});
 
                             TemplateGroupDraft &grp = template_groups.back();
-                            grp.template_id        = ref->template_id;
+                            grp.template_id        = ref->GetTemplateID();
                             grp.shading_group      = target_group;
                             grp.group_bucket       = uint32_t(bucket_geometry.size());
                             grp.bucket_count       = grp_bucket_count;
