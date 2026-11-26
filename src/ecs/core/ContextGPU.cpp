@@ -137,6 +137,6 @@ namespace hgl::ecs
 
         bool ECSContext::SyncWorldAddresses()
         {
-            return gpu_resources.SyncWorldAddresses(frame_index);
+            return gpu_resources.SyncWorldAddresses(GetFrameIndex());
         }
 } // namespace hgl::ecs

@@ -68,6 +68,7 @@ namespace hgl
             : ECSCoreContext(name)
             , render_data(this)
             , gpu_resources(this)
+            , render_runner(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
 
@@ -75,11 +76,11 @@ namespace hgl
             spatial_state.Initialize(this, this, this);
 
             // P2：主帧拓扑快照默认开启；宿主可用环境变量（opt-out，`=0` 关闭）或显式 setter 调整。
-            main_frame_topology.SetSnapshotEnabled(GetMainFrameTopologySnapshotEnvDefault());
+            render_runner.GetMainFrameTopology().SetSnapshotEnabled(GetMainFrameTopologySnapshotEnvDefault());
 
             // P3：主帧收集快路径默认开启（独立开关；`IsMainFrameCollectCacheEnabled()`
             // 会额外要求快照本身也开启，所以「P2 关 + P3 开」只会退回完整路径，不会失配）。
-            main_frame_topology.SetCollectCacheEnabled(GetMainFrameCollectCacheEnvDefault());
+            render_runner.GetMainFrameTopology().SetCollectCacheEnabled(GetMainFrameCollectCacheEnvDefault());
         }
 
         ECSContext::~ECSContext()
@@ -256,9 +257,7 @@ namespace hgl
             render_pipelines.clear();
 
             // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
-            render_frame_cache.renderItems.clear();
-            render_frame_cache.cameraInfo = nullptr;
-            render_frame_cache.renderableCount = 0;
+            render_runner.ClearFrameCache();
 
             if (!active)
             {
@@ -277,11 +276,11 @@ namespace hgl
                 ResetComponentDrivenGroups();
                 spatial_state.Clear();
 
-                LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
-                         render_frame_cache.materialBatches.GetCount());
-                render_frame_cache.materialBatches.Clear();
+                LogDebug("[ECSContext] Shutdown(inactive) - releasing material batches");
+                render_runner.ClearMaterialBatches();
 
                 render_data.Clear();
+                render_runner.Shutdown();
 
                 shutdown_in_progress = false;
                 return;
@@ -304,12 +303,12 @@ namespace hgl
             spatial_state.Clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
-            LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
-                     render_frame_cache.materialBatches.GetCount());
-            render_frame_cache.materialBatches.Clear();
+            LogDebug("[ECSContext] Shutdown - releasing material batches");
+            render_runner.ClearMaterialBatches();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
 
             render_data.Clear();
+            render_runner.Shutdown();
 
             // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 只持
             // `weak_ptr<CameraInfoStorage>`，世界先销毁时 lock() 失败 ⇒ 析构自动 no-op，不需要在这里
@@ -385,7 +384,7 @@ namespace hgl
 
         void ECSContext::SetFrameIndex(const uint32_t index)
         {
-            frame_index = index;
+            render_runner.SetFrameIndex(index);
 
             // 世界私有直推：只推进本世界 TransformSystem 的 L2W ring 帧索引
             // （旧静态广播会触达所有世界的 buffer，且静态表析构不摘除留悬空）
@@ -403,12 +402,12 @@ namespace hgl
         {
             // 槽号非法（本帧尚未解析出相机认领的槽 / 槽耗尽）⇒ 退回 **0 号槽**（默认相机 / 常驻 fallback）：
             // 着色器拿到的永远是一个合法行，而不是按 INVALID_SLOT 算出的越界行（会读到别的世界的存储）。
-            const uint32_t slot = CameraInfoStorage::IsValidSlot(pass_scope.GetCameraSlot())
-                                    ? pass_scope.GetCameraSlot()
+            const uint32_t slot = CameraInfoStorage::IsValidSlot(render_runner.GetPassScopeState().GetCameraSlot())
+                                    ? render_runner.GetPassScopeState().GetCameraSlot()
                                     : CameraInfoStorage::kDefaultCameraSlot;
 
             // 行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
-            return CameraInfoStorage::CameraRow(slot, frame_index);
+            return CameraInfoStorage::CameraRow(slot, render_runner.GetFrameIndex());
         }
 
         const graph::CameraInfo* ECSContext::GetActiveCameraInfo()

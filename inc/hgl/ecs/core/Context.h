@@ -34,6 +34,7 @@
 #include<hgl/ecs/support/spatial/WorldSpatialState.h>
 #include<hgl/ecs/support/render/WorldRenderData.h>
 #include<hgl/ecs/support/render/WorldGPUResources.h>
+#include<hgl/ecs/support/render/WorldRenderRunner.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -108,6 +109,7 @@ namespace hgl
         private:
             OBJECT_LOGGER
             friend struct RenderPassSetupTestAccess;
+            friend class WorldRenderRunner;
 
             // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
             //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久
@@ -131,9 +133,9 @@ namespace hgl
             // GPU 侧资源与设备镜像表（世界地址表、实体行表、4-ID 表、光源表、影子表）
             WorldGPUResources gpu_resources;
 
-            RenderFrameCache render_frame_cache;
-            uint32_t frame_index = 0;
-            uint64_t render_submission_serial = 0;
+            // 渲染执行器与调度器（渲染帧生命周期、Pass 调度、阶段驱动与帧缓存）
+            WorldRenderRunner render_runner;
+
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
             /// Supports dynamic enable/disable per SystemGroup
@@ -146,9 +148,6 @@ namespace hgl
 
             /// 用于渲染的目标
             hgl::graph::IRenderTarget* render_target = nullptr;
-
-            /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
-            hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
             /// 本世界的环境 profile（**Env 随世界**，C2）：显式覆盖（`SetEnvProfileID` /
             /// `CreateEnvProfile`）优先；未显式设置时**按需解析本世界 RT 的 env_profile**
@@ -166,23 +165,6 @@ namespace hgl
             /// 消费方（如 EnvironmentSystem 的静态级联阴影缓存）记录上次消费值，
             /// 与当前值不等即知"静态场景已变"，做对应的缓存失效。只增不减。
             uint64_t static_scene_revision = 0;
-
-            /// 主帧拓扑记账（计划 P1 台帐 + P2 快照 + P2/P3 两个开关）。**单世界一份**
-            /// （世界隔离由此天然成立）。与 `static_scene_revision` 的区别：那个只关心
-            /// Static transform（A3 阴影缓存），而台帐覆盖**全部**会改变拓扑的输入。
-            MainFrameTopologyState main_frame_topology;
-
-            /// 当前渲染 Pass 的作用域状态（相机槽 / 移动性过滤 / 阴影上下文）。
-            /// 三者由 RenderTo 的 state_guard 统一保存恢复 ⇒ 合成一个对象。
-            RenderPassScopeState pass_scope;
-
-            /// 场景渲染工作流模式（默认 StandardLitCSM：标准 3D 陆地主光级联阴影）
-            ScenePipelineMode scene_pipeline_mode = ScenePipelineMode::StandardLitCSM;
-
-            std::unique_ptr<RenderSystemCore> render_core;
-
-            /// 自适应渲染图缓存（重 gather 脏标记 + 场景哈希 + 图对象）
-            mutable AdaptiveRenderGraphCache adaptive_graph_cache;
 
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
@@ -287,7 +269,7 @@ namespace hgl
             /// Mark scene structure (entity/component add/remove) as changed.
             /// Called automatically by component attach/detach; next Render re-gathers
             /// stats only when dirty, avoiding a per-frame full entity scan.
-            void MarkSceneStructureDirty() const { adaptive_graph_cache.MarkDirty(); }
+            void MarkSceneStructureDirty() const { render_runner.MarkSceneStructureDirty(); }
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
@@ -323,84 +305,84 @@ namespace hgl
             bool InitializeShadowInfoTable();
 
             void SetFrameIndex(const uint32_t index);
-            uint32_t GetFrameIndex() const { return frame_index; }
+            uint32_t GetFrameIndex() const { return render_runner.GetFrameIndex(); }
             uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
 
-            int GetActiveMobilityFilter() const { return pass_scope.GetMobilityFilter(); }
+            int GetActiveMobilityFilter() const { return render_runner.GetPassScopeState().GetMobilityFilter(); }
 
             /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
             void BumpStaticSceneRevision() { ++static_scene_revision; }
             uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
             /// 拓扑失效台帐（只读访问；写入统一走 `MarkTopologyChanged/MarkDynamicFactChanged`）
-            const PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() const { return main_frame_topology.Ledger(); }
+            const PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() const { return render_runner.GetMainFrameTopology().Ledger(); }
 
             /// 可写访问：**只**给统计累加（`RecordEligibility`）与设备轮询用；
             /// 拓扑/事实的标记仍应走下面的两个具名入口，以免绕过 `MarkSceneStructureDirty`。
-            PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return main_frame_topology.Ledger(); }
+            PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return render_runner.GetMainFrameTopology().Ledger(); }
 
             /// 主帧拓扑快照（P2）。可写访问：构建方（批阶段尾部）与统计读取方共用。
-            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return main_frame_topology.Snapshot(); }
-            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return main_frame_topology.Snapshot(); }
+            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return render_runner.GetMainFrameTopology().Snapshot(); }
+            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return render_runner.GetMainFrameTopology().Snapshot(); }
 
             /// 开/关主帧拓扑快照。**关闭时必须完全不构建**（P2 的零开销保证）。
-            void SetMainFrameTopologySnapshotEnabled(bool enabled) { main_frame_topology.SetSnapshotEnabled(enabled); }
-            bool IsMainFrameTopologySnapshotEnabled() const { return main_frame_topology.IsSnapshotEnabled(); }
+            void SetMainFrameTopologySnapshotEnabled(bool enabled) { render_runner.GetMainFrameTopology().SetSnapshotEnabled(enabled); }
+            bool IsMainFrameTopologySnapshotEnabled() const { return render_runner.GetMainFrameTopology().IsSnapshotEnabled(); }
 
             /// 开/关主帧**收集快路径**（P3）。开启后主帧在满足全部资格条件时直接从
             /// 上一份主帧拓扑快照重建收集结果；条件不满足（任一帧）就退回完整收集，
             /// 不做任何"部分复用"。关闭时整条快路径不存在（零开销）。
-            void SetMainFrameCollectCacheEnabled(bool enabled) { main_frame_topology.SetCollectCacheEnabled(enabled); }
-            bool IsMainFrameCollectCacheEnabled() const { return main_frame_topology.IsCollectCacheEnabled(); }
+            void SetMainFrameCollectCacheEnabled(bool enabled) { render_runner.GetMainFrameTopology().SetCollectCacheEnabled(enabled); }
+            bool IsMainFrameCollectCacheEnabled() const { return render_runner.GetMainFrameTopology().IsCollectCacheEnabled(); }
 
             /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
             /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
             /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
             bool IsMainFrameTopologyPass() const
             {
-                return !IsCurrentPassShadow() && pass_scope.GetMobilityFilter() < 0;
+                return !IsCurrentPassShadow() && render_runner.GetPassScopeState().GetMobilityFilter() < 0;
             }
 
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
             void MarkTopologyChanged(TopologyChange kind, uint32_t count = 1) const
             {
-                main_frame_topology.MarkTopology(kind, count);
+                render_runner.GetMainFrameTopology().MarkTopology(kind, count);
                 MarkSceneStructureDirty();
             }
 
             /// 声明动态事实变更（不改拓扑，只需重新发布到 GPU 行）
             void MarkDynamicFactChanged(DynamicFactChange kind, uint32_t count = 1) const
             {
-                main_frame_topology.MarkDynamicFact(kind, count);
+                render_runner.GetMainFrameTopology().MarkDynamicFact(kind, count);
             }
 
-            bool IsCurrentPassShadow() const { return pass_scope.IsShadowPass(); }
-            bool HasShadowOrigin() const { return pass_scope.HasShadowOrigin(); }
-            const glm::vec3 &GetShadowOrigin() const { return pass_scope.ShadowOrigin(); }
+            bool IsCurrentPassShadow() const { return render_runner.GetPassScopeState().IsShadowPass(); }
+            bool HasShadowOrigin() const { return render_runner.GetPassScopeState().HasShadowOrigin(); }
+            const glm::vec3 &GetShadowOrigin() const { return render_runner.GetPassScopeState().ShadowOrigin(); }
+
+            RenderPassScopeState &GetPassScopeState() { return render_runner.GetPassScopeState(); }
+            const RenderPassScopeState &GetPassScopeState() const { return render_runner.GetPassScopeState(); }
+
+            MainFrameTopologyState &GetMainFrameTopologyState() { return render_runner.GetMainFrameTopology(); }
+            const MainFrameTopologyState &GetMainFrameTopologyState() const { return render_runner.GetMainFrameTopology(); }
 
             void SetScenePipelineMode(ScenePipelineMode mode)
             {
-                if (scene_pipeline_mode == mode)
-                    return;
-
-                scene_pipeline_mode = mode;
-
-                // P1：场景 profile 变化会换渲染图与 pass 集合 ⇒ 主帧拓扑必须重建。
-                MarkTopologyChanged(TopologyChange::PassAndTarget);
-
-                // P2：pass/target 集合变了，已提交快照的批序/批块前提不再成立 ⇒ 显式失效。
-                main_frame_topology.InvalidateSnapshot();
+                render_runner.SetScenePipelineMode(mode);
             }
-            ScenePipelineMode GetScenePipelineMode() const { return scene_pipeline_mode; }
+            ScenePipelineMode GetScenePipelineMode() const { return render_runner.GetScenePipelineMode(); }
 
             void SetRenderSubmissionSerial(const uint64_t serial)
             {
-                render_submission_serial = serial;
+                render_runner.SetRenderSubmissionSerial(serial);
             }
             uint64_t GetRenderSubmissionSerial() const
             {
-                return render_submission_serial;
+                return render_runner.GetRenderSubmissionSerial();
             }
+
+            WorldRenderRunner &GetRenderRunner() { return render_runner; }
+            const WorldRenderRunner &GetRenderRunner() const { return render_runner; }
 
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
 
@@ -421,8 +403,8 @@ namespace hgl
             hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
 
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
-            hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
-            void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { current_render_cmd = cmd; }
+            hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return render_runner.GetCurrentRenderCmd(); }
+            void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { render_runner.SetCurrentRenderCmd(cmd); }
 
             /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
             /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
@@ -915,8 +897,9 @@ namespace hgl
              */
             bool HasPendingRenderableResources() const;
 
-            RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
-            const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }
+            RenderFrameCache& GetRenderFrameCache() { return render_runner.GetRenderFrameCache(); }
+            const RenderFrameCache& GetRenderFrameCache() const { return render_runner.GetRenderFrameCache(); }
+            RenderSystemCore* GetRenderCore() const { return render_runner.GetRenderCore(); }
         };
     }//namespace ecs
 }//namespace hgl
