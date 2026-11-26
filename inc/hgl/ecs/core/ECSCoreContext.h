@@ -30,7 +30,7 @@ namespace hgl::ecs
      * - 零 Vulkan / 零图形 / 零渲染管线依赖
      * - 属于 ULRE.ECS.Core
      */
-    class ECSCoreContext : public Object, public IECSEntityObserver
+    class ECSCoreContext : public Object
     {
         friend class Entity;
     protected:
@@ -42,6 +42,9 @@ namespace hgl::ecs
 
         bool active = false;
         bool shutdown_in_progress = false;
+        IECSEntityObserver *entity_observer = nullptr;
+        bool notifying_entity_observer = false;
+        bool mutating_component = false;
 
     public:
         explicit ECSCoreContext(const char *name = "CoreWorld");
@@ -72,7 +75,7 @@ namespace hgl::ecs
         {
             static_assert(std::is_base_of_v<Entity, T>, "T must derive from hgl::ecs::Entity");
 
-            if (!entity_manager || shutdown_in_progress)
+            if (!CanMutateEntities() || !entity_manager || shutdown_in_progress)
                 return nullptr;
 
             T *entity = entity_manager->CreateEntity<T>(std::forward<Args>(args)...);
@@ -80,7 +83,7 @@ namespace hgl::ecs
                 return nullptr;
 
             entity->SetContext(this);
-            OnEntityCreated(entity);
+            NotifyEntityCreated(entity->GetEntityID());
             return entity;
         }
 
@@ -102,11 +105,12 @@ namespace hgl::ecs
         template<typename T, typename... Args>
         T *CreateComponent(Entity *owner, Args &&...args)
         {
-            if (!owner || owner->destroying || owner->GetCoreContext() != this
+            if (!CanMutateEntities() || !owner || owner->destroying || owner->GetCoreContext() != this
                 || GetEntity(owner->GetEntityID()) != owner)
                 return nullptr;
 
             constexpr ComponentType type = ComponentTypeOf<T>::value;
+            MutationScope scope(mutating_component);
             auto *pool = EnsureTypedPool<T>();
 
             const uint32_t old_row = owner->SetComponentRow(type, 0);
@@ -119,7 +123,7 @@ namespace hgl::ecs
             const uint32_t row = pool->Create(owner, std::forward<Args>(args)...);
             owner->SetComponentRow(type, row);
             OnComponentRowAdded(type);
-            OnEntityRowRefreshed(owner);
+            NotifyEntityRowsChanged(owner);
             owner->MarkSceneDirty();
 
             return pool->Row(row);
@@ -152,17 +156,10 @@ namespace hgl::ecs
 
     public:
         // ── 虚生命周期与变更钩子（派生类扩展渲染副作用）──
-        virtual void OnEntityCreated(Entity *entity) {}
         virtual void OnEntityDestroying(EntityID id) {}
+        virtual void OnEntityCleanup(EntityID id) {}
         virtual void OnComponentRowAdded(ComponentType type) {}
         virtual void OnComponentRowRemoved(ComponentType type) {}
-
-        // IECSEntityObserver 实现
-        void OnEntityDestroyed(EntityID id) override;
-        void OnEntityDeactivated(EntityID id) override;
-        void OnEntityRowRefreshed(Entity *entity) override;
-        void OnComponentRowDestroyed(ComponentType type, uint32_t row) override;
-        void OnSceneStructureDirty() override;
 
         // ── 系统管理 ──
         SystemRegistry &GetSystemRegistry() { return system_registry; }
@@ -199,8 +196,61 @@ namespace hgl::ecs
         virtual void Tick(float deltaTime);
 
     protected:
+        void SetEntityObserver(IECSEntityObserver *observer);
+        bool CanMutateEntities();
         void ClearEntities();
         virtual void RunSystemUpdate(System *system, float deltaTime);
+
+    private:
+        class MutationScope
+        {
+            bool &state;
+            const bool previous;
+        public:
+            explicit MutationScope(bool &value) : state(value), previous(value) { state = true; }
+            ~MutationScope() { state = previous; }
+        };
+
+        void NotifyEntityCreated(EntityID id)
+        {
+            if (entity_observer)
+            {
+                MutationScope scope(notifying_entity_observer);
+                entity_observer->OnEntityCreated(id);
+            }
+        }
+
+        void NotifyEntityRowsChanged(const Entity *entity)
+        {
+            if (entity_observer)
+            {
+                MutationScope scope(notifying_entity_observer);
+                entity_observer->OnEntityRowsChanged(entity);
+            }
+        }
+
+        void NotifySceneStructureDirty()
+        {
+            if (notifying_entity_observer)
+            {
+                LogError(u8"实体观察者回调期间不能重入场景结构通知");
+                return;
+            }
+            if (entity_observer)
+            {
+                MutationScope scope(notifying_entity_observer);
+                entity_observer->OnSceneStructureDirty();
+            }
+        }
+
+        void NotifyEntityDestroyed(EntityID id)
+        {
+            if (entity_observer)
+            {
+                MutationScope scope(notifying_entity_observer);
+                entity_observer->OnEntityDestroyed(id);
+            }
+        }
     };
 
     // ── Entity 组件挂载/卸载内联定义 ──
@@ -232,6 +282,9 @@ namespace hgl::ecs
     template<typename T>
     void Entity::RemoveComponent()
     {
+        if (context && !context->CanMutateEntities())
+            return;
+
         constexpr ComponentType type = ComponentTypeOf<T>::value;
         static_assert(type != ComponentType::None,
                       "组件必须有类型号（T2-c：实体槽 = 按类型行号）");
@@ -243,8 +296,7 @@ namespace hgl::ecs
         if (context)
         {
             context->DestroyComponent(type, row);
-            if (observer)
-                observer->OnEntityRowRefreshed(this);
+            context->NotifyEntityRowsChanged(this);
         }
 
         MarkSceneDirty();

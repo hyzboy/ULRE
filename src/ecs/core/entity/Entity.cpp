@@ -1,5 +1,4 @@
 ﻿#include<hgl/ecs/core/entity/Entity.h>
-#include<hgl/ecs/core/entity/ECSEntityObserver.h>
 #include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/log/Log.h>
 
@@ -19,13 +18,12 @@ namespace hgl
         void Entity::SetContext(ECSCoreContext *ctx)
         {
             context = ctx;
-            observer = ctx;
         }
 
         void Entity::MarkSceneDirty() const
         {
             if (context)
-                context->OnSceneStructureDirty();
+                context->NotifySceneStructureDirty();
         }
 
         uint32_t Entity::SetComponentRow(ComponentType type, uint32_t row)
@@ -44,6 +42,9 @@ namespace hgl
 
         void Entity::DetachAllComponents()
         {
+            if (context && !context->CanMutateEntities())
+                return;
+
             for (uint32_t i = 1; i < COMPONENT_TYPE_COUNT; ++i)
             {
                 const uint32_t row = component_rows[i];
@@ -58,7 +59,7 @@ namespace hgl
             }
 
             if (context)
-                context->OnEntityRowRefreshed(this);
+                context->NotifyEntityRowsChanged(this);
 
             MarkSceneDirty();
         }

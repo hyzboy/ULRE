@@ -71,6 +71,7 @@ namespace hgl
             , render_runner(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
+            SetEntityObserver(this);
 
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
             spatial_state.Initialize(this, this, this);
@@ -86,6 +87,7 @@ namespace hgl
         ECSContext::~ECSContext()
         {
             Shutdown();
+            SetEntityObserver(nullptr);
         }
 
         bool ECSContext::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target)
@@ -248,7 +250,7 @@ namespace hgl
 
         void ECSContext::Shutdown()
         {
-            if (shutdown_in_progress)
+            if (!CanMutateEntities() || shutdown_in_progress)
                 return;
 
             shutdown_in_progress = true;
@@ -593,26 +595,20 @@ namespace hgl
             spatial_state.OnEntityDestroy(id);
         }
 
+        void ECSContext::OnEntityCleanup(const EntityID id)
+        {
+            render_data.DestroyEntityData(id);
+        }
+
         void ECSContext::OnEntityDestroyed(const EntityID id)
         {
             DeactivateEntityRow(id);
-            render_data.DestroyEntityData(id);
             MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
-        void ECSContext::OnEntityDeactivated(const EntityID id)
-        {
-            DeactivateEntityRow(id);
-        }
-
-        void ECSContext::OnEntityRowRefreshed(Entity *entity)
+        void ECSContext::OnEntityRowsChanged(const Entity *entity)
         {
             RefreshEntityRow(entity);
-        }
-
-        void ECSContext::OnComponentRowDestroyed(const ComponentType type, const uint32_t row)
-        {
-            DestroyComponent(type, row);
         }
 
         void ECSContext::OnSceneStructureDirty()

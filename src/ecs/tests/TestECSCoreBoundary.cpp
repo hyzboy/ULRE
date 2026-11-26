@@ -68,6 +68,43 @@ namespace
             ++tick_count;
         }
     };
+
+    class BoundaryObservedContext : public hgl::ecs::ECSCoreContext
+    {
+    public:
+        BoundaryObservedContext() : ECSCoreContext("ObservedBoundary") {}
+        void Observe(hgl::ecs::IECSEntityObserver *observer) { SetEntityObserver(observer); }
+    };
+
+    class BoundaryObserver : public hgl::ecs::IECSEntityObserver
+    {
+    public:
+        BoundaryObservedContext *world = nullptr;
+        int created = 0;
+        int refreshed = 0;
+        int destroyed = 0;
+        bool destroyed_handle_invalid = false;
+        bool attempt_reentry = false;
+        bool reentry_succeeded = false;
+
+        void OnEntityCreated(hgl::ecs::EntityID id) override
+        {
+            ++created;
+            if (attempt_reentry && world)
+            {
+                world->DestroyEntity(id);
+                world->Shutdown();
+                world->Observe(nullptr);
+            }
+        }
+        void OnEntityRowsChanged(const hgl::ecs::Entity *entity) override;
+        void OnSceneStructureDirty() override {}
+        void OnEntityDestroyed(hgl::ecs::EntityID id) override
+        {
+            ++destroyed;
+            destroyed_handle_invalid = world && !world->GetEntity(id);
+        }
+    };
 }//namespace
 
 namespace hgl::ecs
@@ -77,6 +114,24 @@ namespace hgl::ecs
     {
         static constexpr ComponentType value = ComponentType::Lines;
     };
+}
+
+void BoundaryObserver::OnEntityRowsChanged(const hgl::ecs::Entity *entity)
+{
+    ++refreshed;
+    if (attempt_reentry && world && entity)
+    {
+        auto *owner = world->GetEntity(entity->GetEntityID());
+        if (owner)
+        {
+            owner->RemoveComponent<BoundaryTestComponent>();
+            if (owner->AddComponent<BoundaryTestComponent>())
+                reentry_succeeded = true;
+            owner->MarkSceneDirty();
+        }
+        world->DestroyEntity(entity->GetEntityID());
+        world->Shutdown();
+    }
 }
 
 int main()
@@ -203,6 +258,43 @@ int main()
         GLogError(u8"[ECSCoreBoundary] 旧句柄影响了新实体");
         return 15;
     }
+
+    int reentrant_detaches = 0;
+    bool reentrant_owner_alive = false;
+    auto *reentrant = lifecycle.CreateEntity();
+    if (!reentrant || !reentrant->AddComponent<BoundaryTestComponent>(&reentrant_detaches, &reentrant_owner_alive, true))
+        return 20;
+    const hgl::ecs::EntityID reentrant_id = reentrant->GetEntityID();
+    if (!reentrant->AddComponent<BoundaryTestComponent>(&reentrant_detaches, &reentrant_owner_alive, true)
+        || lifecycle.GetEntity(reentrant_id) != reentrant || reentrant_detaches != 1)
+        return 21;
+    reentrant->RemoveComponent<BoundaryTestComponent>();
+    if (lifecycle.GetEntity(reentrant_id) != reentrant || reentrant_detaches != 2 || !reentrant_owner_alive)
+        return 22;
+
+    BoundaryObservedContext observed;
+    BoundaryObserver observer;
+    observer.world = &observed;
+    observer.attempt_reentry = true;
+    observed.Observe(&observer);
+    auto *observed_entity = observed.CreateEntity();
+    if (!observed_entity || !observed_entity->AddComponent<BoundaryTestComponent>())
+        return 16;
+    observed.DestroyEntity(observed_entity);
+    if (observer.created != 1 || observer.refreshed != 2 || observer.destroyed != 1
+        || !observer.destroyed_handle_invalid || observer.reentry_succeeded)
+    {
+        GLogError(u8"[ECSCoreBoundary] 实体通知次数或销毁时序不正确");
+        return 17;
+    }
+
+    observed.Observe(nullptr);
+    observed_entity = observed.CreateEntity();
+    if (!observed_entity || !observed_entity->AddComponent<BoundaryTestComponent>())
+        return 18;
+    observed.DestroyEntity(observed_entity);
+    if (observer.created != 1 || observer.destroyed != 1)
+        return 19;
 
     GLogInfo(u8"[ECSCoreBoundary] Core 层自足性与解耦闸门全部通过（零图形依赖）");
     return 0;

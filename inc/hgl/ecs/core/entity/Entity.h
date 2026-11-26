@@ -3,7 +3,6 @@
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/ecs/core/entity/EntityHandle.h>
-#include<hgl/ecs/core/entity/ECSEntityObserver.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<cstdint>
 
@@ -44,7 +43,6 @@ namespace hgl
             uint32_t component_rows[COMPONENT_TYPE_COUNT] = {};
 
             ECSCoreContext *context = nullptr;   ///< 所属的 ECSCoreContext，不拥有
-            IECSEntityObserver *observer = nullptr; ///< 实体生命周期观察者
 
         public:
 
@@ -76,8 +74,6 @@ namespace hgl
 
             ECSCoreContext *GetCoreContext() const { return context; }
             ECSContext *GetContext() const { return reinterpret_cast<ECSContext*>(context); }
-
-            IECSEntityObserver *GetEntityObserver() const { return observer; }
 
             /// 场景结构（实体/组件增删）变更通知 —— 挂载/卸载路径的唯一副作用，渲染图据此重 gather
             void MarkSceneDirty() const;

@@ -92,7 +92,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IECSEntityObserver
         {
         public:
 
@@ -109,13 +109,11 @@ namespace hgl
             friend class WorldRenderRunner;
 
             // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
-            //   **必须声明在 `entity_manager` 之前**：成员按声明逆序析构 ⇒ 表比实体活得久
-            //   （`~Entity` 会回写本表的 `Active` 位；表先死就会写到已释放内存）。
+            // Shutdown 在派生成员析构前清理实体并注销观察者。
             EntityGPUTable entity_gpu_table;
             uint64_t render_diagnostic_world_id = 0;
 
-            /// T3d-3a：实体 4-ID 表（世界私有；与 `entity_gpu_table` 同批声明 ⇒ 同一条析构逆序纪律，
-            /// `~Entity` 经 `DeactivateEntityRow` 同时清两表，两表都必须比 `entity_manager` 活得久）
+            /// T3d-3a：实体 4-ID 表（世界私有；销毁通知同时清理两表）
             EntityRenderIDTable entity_render_id_table;
 
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
@@ -181,12 +179,13 @@ namespace hgl
             /// 组件行增/删 ⇒ 系统组计数（A2/P-4 的挂卸驱动路径；组归属取自类型表）
             void OnComponentRowAdded(ComponentType type) override;
             void OnComponentRowRemoved(ComponentType type) override;
-            void OnEntityCreated(Entity *entity) override
+            void OnEntityCreated(EntityID id) override
             {
-                entity_gpu_table.Activate(entity->GetEntityID());
+                entity_gpu_table.Activate(id);
                 MarkTopologyChanged(TopologyChange::EntityStructure);
             }
             void OnEntityDestroying(EntityID id) override;
+            void OnEntityCleanup(EntityID id) override;
 
             bool EnsureRenderCoreInitialized();
             void ExecuteScenePrePassWorkflow(float deltaTime);
@@ -558,9 +557,7 @@ namespace hgl
 
             // ── IECSEntityObserver 接口实现 ──
             void OnEntityDestroyed(EntityID id) override;
-            void OnEntityDeactivated(EntityID id) override;
-            void OnEntityRowRefreshed(Entity *entity) override;
-            void OnComponentRowDestroyed(ComponentType type, uint32_t row) override;
+            void OnEntityRowsChanged(const Entity *entity) override;
             void OnSceneStructureDirty() override;
 
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
@@ -646,7 +643,7 @@ namespace hgl
             EntityGPUTable&       GetEntityGPUTable()       { return entity_gpu_table; }
             const EntityGPUTable& GetEntityGPUTable() const { return entity_gpu_table; }
 
-            /// 实体销毁路径：清 `Active`（由 `~Entity` 调用 —— 实体生死是**单一入口**）
+            /// 实体销毁通知：清 `Active`。
             /// T3d-3a：同入口清实体 4-ID 表行（两表的生死口径必须一致：消费者先判
             /// `EntityGPU.Active`、4-ID 行同时归零 ⇒ 不会出现"行表已死、id 还在"的残值）
             void DeactivateEntityRow(EntityID id)
@@ -677,7 +674,7 @@ namespace hgl
             void CommitShadowInfo(const uint32_t frame_slot);
 
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
-            void RefreshEntityRow(Entity *entity)
+            void RefreshEntityRow(const Entity *entity)
             {
                 entity_gpu_table.Refresh(entity);
                 entity_gpu_table.VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）

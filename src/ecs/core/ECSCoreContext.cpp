@@ -24,7 +24,7 @@ namespace hgl::ecs
 
     void ECSCoreContext::Shutdown()
     {
-        if (shutdown_in_progress)
+        if (!CanMutateEntities() || shutdown_in_progress)
             return;
         shutdown_in_progress = true;
         active = false;
@@ -53,6 +53,8 @@ namespace hgl::ecs
 
     void ECSCoreContext::DestroyEntity(EntityID id)
     {
+        if (!CanMutateEntities())
+            return;
         Entity *entity = GetEntity(id);
         if (!entity || entity->destroying)
             return;
@@ -61,7 +63,25 @@ namespace hgl::ecs
         OnEntityDestroying(id);
         entity->DetachAllComponents();
         entity_manager->DestroyEntity(id);
-        OnEntityDestroyed(id);
+        OnEntityCleanup(id);
+        NotifyEntityDestroyed(id);
+    }
+
+    bool ECSCoreContext::CanMutateEntities()
+    {
+        if (!notifying_entity_observer && !mutating_component)
+            return true;
+
+        LogError(u8"实体观察者或组件生命周期回调期间不能修改实体或组件生命周期");
+        return false;
+    }
+
+    void ECSCoreContext::SetEntityObserver(IECSEntityObserver *observer)
+    {
+        if (!CanMutateEntities())
+            return;
+
+        entity_observer = observer;
     }
 
     void ECSCoreContext::ClearEntities()
@@ -91,30 +111,9 @@ namespace hgl::ecs
         if (!pool)
             return;
 
+        MutationScope scope(mutating_component);
         pool->DestroyRow(row);
         OnComponentRowRemoved(type);
-    }
-
-    void ECSCoreContext::OnEntityDestroyed(EntityID id)
-    {
-        OnEntityDeactivated(id);
-    }
-
-    void ECSCoreContext::OnEntityDeactivated(EntityID)
-    {
-    }
-
-    void ECSCoreContext::OnEntityRowRefreshed(Entity *)
-    {
-    }
-
-    void ECSCoreContext::OnComponentRowDestroyed(ComponentType type, uint32_t row)
-    {
-        DestroyComponent(type, row);
-    }
-
-    void ECSCoreContext::OnSceneStructureDirty()
-    {
     }
 
     void ECSCoreContext::SetSystemGroupEnabled(SystemGroupID group, bool enabled)
