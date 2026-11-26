@@ -446,13 +446,26 @@ namespace hgl::graph::mtl
             }
         }
 
-        MaterialDataBlockAsset *cached = FindAssetByPath(load_path);
-        if (cached)
-            return cached;
+        MaterialDataBlockAsset *result = FindAssetByPath(load_path);
+        if (!result)
+        {
+            LoadFile(load_path);
+            result = FindAssetByPath(load_path);
+        }
 
-        LoadFile(load_path);
-
-        return FindAssetByPath(load_path);
+        hgl::asset::AssetID requested;
+        if (result && !result->IsFailed() && parsed.IsPack() && parsed.GetIDTarget(requested)
+            && result->HasSpec() && !result->GetSpec().id.IsEmpty())
+        {
+            hgl::asset::AssetID actual;
+            if (!hgl::asset::AssetID::Parse(result->GetSpec().id, actual) || actual != requested)
+            {
+                GLogError(u8"[MaterialDataBlockRegistry] 数据块身份与包裹索引不一致: %s",
+                          hgl::asset::AssetURISegmentToAnsi(uri).c_str());
+                return nullptr;
+            }
+        }
+        return result;
     }
 
     bool MaterialDataBlockRegistry::GetRowBinding(GlobalSSBOBufferRegistry *pool,

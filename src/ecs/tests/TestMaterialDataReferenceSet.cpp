@@ -191,6 +191,48 @@ namespace
             ok = filesystem::FileDelete(second_path) && ok;
         return filesystem::DeletePath(root) && ok;
     }
+
+    bool TestStaleBlockIndex()
+    {
+        const asset::AssetID indexed_id = asset::AssetID::Create();
+        const asset::AssetID actual_id = asset::AssetID::Create();
+        const OSString root = OSString(OS_TEXT("material-stale-index-"))
+                            + ToOSString(indexed_id.ToString());
+        const OSString path = filesystem::JoinPathWithFilename(root, OS_TEXT("block.material_data.toml"));
+        if (filesystem::IsDirectory(root) || filesystem::FileExist(root) || !filesystem::MakePath(root))
+            return false;
+        const AnsiString suffix = "\"\nschema = 1\nname = \"block\"\ntarget = \"PBRSurface\"\n"
+                                  "[[rows]]\nmetallic = 0.1\n";
+        const AnsiString indexed = AnsiString("id = \"") + indexed_id.ToString() + suffix;
+        const AnsiString actual = AnsiString("id = \"") + actual_id.ToString() + suffix;
+        const int64 indexed_size = static_cast<int64>(strlen(indexed.c_str()));
+        const int64 actual_size = static_cast<int64>(strlen(actual.c_str()));
+        bool ok = filesystem::SaveMemoryToFile(path, indexed.c_str(), indexed_size) == indexed_size;
+        AssetSourceMountConfig config;
+        config.name = "material_stale_index_test";
+        config.root = root;
+        config.load_manifest = false;
+        config.save_manifest = false;
+        AnsiString error;
+        const bool mounted = ok && MountAssetSource(config, &error);
+        ok = mounted && filesystem::SaveMemoryToFile(path, actual.c_str(), actual_size) == actual_size;
+        if (ok)
+        {
+            const OSString uri = OSString(OS_TEXT("mtldata:pack(material_stale_index_test):"))
+                               + ToOSString(asset::MakeAssetIDTarget(indexed_id));
+            mtl::MaterialDataBlockRegistry uncached;
+            mtl::MaterialDataBlockRegistry cached;
+            auto *physical = cached.GetOrLoadURI(path);
+            ok = physical && !physical->IsFailed() && physical->GetSpec().id == actual_id.ToString()
+              && !uncached.GetOrLoadURI(uri) && !cached.GetOrLoadURI(uri)
+              && cached.GetOrLoadURI(path) == physical;
+        }
+        if (mounted)
+            UnmountAssetSource(config.name);
+        if (filesystem::FileExist(path))
+            ok = filesystem::FileDelete(path) && ok;
+        return filesystem::DeletePath(root) && ok;
+    }
 }
 
 int main()
@@ -356,6 +398,11 @@ int main()
     {
         GLogError(u8"Persistent material data ID reference failed after remount or rename");
         return 16;
+    }
+    if (!TestStaleBlockIndex())
+    {
+        GLogError(u8"Stale material data block index was not rejected");
+        return 17;
     }
     return 0;
 }

@@ -100,6 +100,7 @@ namespace hgl::graph::mtl
          * URI 门面：`mtldata:@<name>` 查表，`mtldata:file:<path>` / 裸路径按需加载。
          *
          * 类型段写了别的类型（`geo:...`）⇒ 明确报错返回 nullptr，不当路径去读盘。
+         * 包裹 ID 请求若与文件内 ID 不一致则失败；无内嵌 ID 的旧文件只能依赖索引。
          */
         MaterialDataBlockAsset *GetOrLoadURI(const OSString &uri);
 
