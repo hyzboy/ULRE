@@ -12,6 +12,7 @@
 //
 // 纯数据往返，不依赖设备 / 窗口，因此在 CI 里也能跑。
 #include <hgl/asset/AssetObject.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/asset/generated/MaterialDataBlockMeta.gen.h>
 #include <hgl/asset/generated/MaterialDataBlockSerialize.gen.h>
 #include <hgl/graph/asset/MaterialDataBlockSpec.h>
@@ -84,10 +85,10 @@ namespace
 
     bool TestMetaWiring()
     {
-        // 行规约是 14 个并集字段（标准 7 + 高级 7）；块规约是 schema/name/target/rows 四个。
+        // 行规约是 14 个并集字段（标准 7 + 高级 7）。
         if (codec::Class_MaterialDataRowSpec.property_count != 14)
             return false;
-        if (codec::Class_MaterialDataBlockSpec.property_count != 4)
+        if (codec::Class_MaterialDataBlockSpec.property_count != 5)
             return false;
 
         if (codec::Class_MaterialDataRowSpec.struct_size != sizeof(MaterialDataRowSpec))
@@ -252,6 +253,48 @@ namespace
         }
 
         return true;
+    }
+
+    bool TestPersistentIdentity()
+    {
+        mtl::MaterialDataBlockFileData data;
+        MaterialDataBlockSpec spec;
+        if (!Parse(kPbrBlock, data, &spec) || !spec.id.IsEmpty())
+            return false;
+
+        const asset::AssetID id = asset::AssetID::Create();
+        spec.id = id.ToString();
+        AnsiString text;
+        if (!mtl::WriteMaterialDataBlockToml(spec, text))
+            return false;
+
+        asset::AssetID extracted;
+        if (!asset::ExtractAssetIDFromHeader(text.c_str(), strlen(text.c_str()), extracted)
+            || extracted != id)
+            return false;
+
+        MaterialDataBlockSpec parsed;
+        if (!Parse(text.c_str(), data, &parsed) || parsed.id != spec.id)
+            return false;
+
+        ValueArray<uint8> encoded;
+        if (!mtl::EncodeMaterialDataBlockFlat(spec, encoded)
+            || !mtl::DecodeMaterialDataBlockFlat(encoded.GetData(), encoded.GetCount(), parsed)
+            || parsed.id != spec.id)
+            return false;
+
+        spec.id = "invalid";
+        if (mtl::WriteMaterialDataBlockToml(spec, text)
+            || mtl::EncodeMaterialDataBlockFlat(spec, encoded))
+            return false;
+        if (!serialize::fb::EncodeToFlatBuffers(encoded, spec)
+            || mtl::DecodeMaterialDataBlockFlat(encoded.GetData(), encoded.GetCount(), parsed))
+            return false;
+
+        const char invalid[] =
+            "id = \"00000000000000000000000000000000\"\n"
+            "schema = 1\nname = \"bad\"\ntarget = \"PBRSurface\"\n[[rows]]\n";
+        return Rejected(invalid, mtl::MaterialDataBlockParseResult::InvalidValue);
     }
 
     bool TestBinaryRoundTrip()
@@ -515,6 +558,7 @@ int main()
     Check(TestPbrBlock(), "PBR 块摊平");
     Check(TestEmissiveAndTransmission(), "Emissive / Transmission 行");
     Check(TestTextRoundTrip(), "文本往返不改变 GPU 字节");
+    Check(TestPersistentIdentity(), "材质数据块持久身份往返和校验");
     Check(TestBinaryRoundTrip(), "MDB1 二进制往返 + 视图零拷贝");
     Check(TestBinaryRejectsBadHeader(), "MDB1 坏头必须被拒绝");
     Check(TestTextRejects(), "文本坏输入必须报错");

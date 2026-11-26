@@ -14,6 +14,7 @@
  *
  * ```toml
  * schema = 1
+ * id     = "0190f2c1000070008000000000000001" # 可选；重命名后保持不变
  * name   = "PBRSpheresGrid"
  * target = "PBRSurface"        # 决定落哪个池、行宽多少（见 GlobalSSBOTypes.h）
  *
@@ -125,5 +126,8 @@ namespace hgl::graph
 
         HGL_PROPERTY(EditAnywhere, Category = "Block")
         ValueArray<MaterialDataRowSpec> rows;                       ///<行数据（顺序即池内行序）
+
+        HGL_PROPERTY(EditAnywhere, Category = "Block")
+        AnsiString id;                                              ///<持久资产身份；旧资产可以为空
     };
 }//namespace hgl::graph

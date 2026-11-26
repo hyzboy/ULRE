@@ -111,7 +111,7 @@ namespace
         const asset::ClassMetaInfo *meta = handle->GetClassMetaInfo();
 
         return meta == &asset::generated::Class_MaterialDataBlockSpec
-            && meta->property_count == 4
+            && meta->property_count == 5
             && meta->struct_size == sizeof(hgl::graph::MaterialDataBlockSpec);
     }
 

@@ -20,6 +20,8 @@
  * 也不会有「schema 漂移但没人发现」这一类问题。真正需要**零解析直通 GPU** 的
  * 场景走 `MDB1`（`MaterialDataBlockFile.h`）—— 那是定长头 + 行区，比
  * FlatBuffers 的 vtable 更贴近显存布局。
+ * 规约中可选的持久 ID 随 FlatBuffers 往返；包索引目前从 TOML 文件头或清单
+ * 获取 ID，不会直接从 FlatBuffers 中提取。
  *
  * ── 与 TOML 入口的语义差异（有意为之） ────────────────────────────────────
  *
@@ -30,6 +32,7 @@
  */
 
 #include <hgl/asset/generated/MaterialDataBlockSerialize.gen.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/graph/asset/MaterialDataBlockSpec.h>
 #include <hgl/graph/ssbo/GlobalSSBOTypes.h>
 #include <hgl/mtl/MaterialDataBlock.h>
@@ -51,6 +54,14 @@ namespace hgl::graph::mtl
                                            AnsiString *out_error = nullptr)
     {
         out_bytes.Clear();
+
+        hgl::asset::AssetID id;
+        if (!spec.id.IsEmpty() && !hgl::asset::AssetID::Parse(spec.id, id))
+        {
+            if (out_error)
+                *out_error = "invalid material data block asset ID";
+            return false;
+        }
 
         if (GetGlobalSSBOTypeStructStride(spec.target) == 0)
         {
@@ -85,6 +96,14 @@ namespace hgl::graph::mtl
         if (!hgl::serialize::fb::VerifyAndDecodeFlatBuffers<MaterialDataBlockSpec>(
                 data, static_cast<size_t>(size), out_spec, nullptr, out_error))
             return false;
+
+        hgl::asset::AssetID id;
+        if (!out_spec.id.IsEmpty() && !hgl::asset::AssetID::Parse(out_spec.id, id))
+        {
+            if (out_error)
+                *out_error = "invalid material data block asset ID";
+            return false;
+        }
 
         if (GetGlobalSSBOTypeStructStride(out_spec.target) == 0)
         {

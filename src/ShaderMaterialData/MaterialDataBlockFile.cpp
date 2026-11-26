@@ -2,6 +2,7 @@
 
 #include <hgl/asset/generated/MaterialDataBlockMeta.gen.h>
 #include <hgl/asset/generated/MaterialDataBlockSerialize.gen.h>
+#include <hgl/asset/AssetID.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/serialize/Archive.h>
 #include <hgl/serialize/MetaSchema.h>
@@ -384,6 +385,7 @@ namespace hgl::graph::mtl
             // 取值/形态错误交给生成的序列化。
             AnsiString bad_path;
             AnsiString bad_key;
+            hgl::asset::AssetID asset_id;
             if (!hgl::serialize::ValidateKeysByMeta(
                     root, hgl::asset::generated::Class_MaterialDataBlockSpec,
                     AnsiString(), bad_path, bad_key))
@@ -393,6 +395,12 @@ namespace hgl::graph::mtl
             }
             else if (!ReadSpec(root, spec, error))
             {
+                result = MaterialDataBlockParseResult::InvalidValue;
+            }
+            else if (!spec.id.IsEmpty()
+                     && !hgl::asset::AssetID::Parse(spec.id, asset_id))
+            {
+                error.Record("id", spec.id.c_str(), "无效的资产 ID");
                 result = MaterialDataBlockParseResult::InvalidValue;
             }
             else if (!IsContentRowType(spec.target))
@@ -448,6 +456,9 @@ namespace hgl::graph::mtl
 
         if (!IsContentRowType(spec.target))
             return false;
+        hgl::asset::AssetID asset_id;
+        if (!spec.id.IsEmpty() && !hgl::asset::AssetID::Parse(spec.id, asset_id))
+            return false;
 
         // 先走通用序列化拿到「并集形态」的值树：键名拼写、标量/向量格式、
         // 枚举文本全部由 AssetGen 产物单点决定，这里不重复实现。
@@ -466,10 +477,19 @@ namespace hgl::graph::mtl
         hgl::serialize::Value root;
         root.SetTable();
 
+        if (!spec.id.IsEmpty())
+        {
+            hgl::serialize::Value *dst = root.AddField("id", 0);
+            const hgl::serialize::Value *src = full.FindFieldExact("id");
+            if (!dst || !src)
+                return false;
+            dst->CopyFrom(*src);
+        }
+
         for (int i = 0; i < full.GetFieldCount(); ++i)
         {
             const char *name = full.GetFieldName(i);
-            if (!name || strcmp(name, "rows") == 0)
+            if (!name || strcmp(name, "rows") == 0 || strcmp(name, "id") == 0)
                 continue;
 
             hgl::serialize::Value *dst = root.AddField(name, 0);

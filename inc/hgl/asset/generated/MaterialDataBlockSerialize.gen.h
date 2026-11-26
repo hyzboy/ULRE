@@ -50,6 +50,7 @@ namespace hgl::serialize
             ar.Field(2, "name", v.name);
             ar.Field(3, "target", v.target);
             ar.Field(4, "rows", v.rows);
+            ar.Field(5, "id", v.id);
         }
         static const hgl::asset::ClassMetaInfo *Meta()
         { return &hgl::asset::generated::Class_MaterialDataBlockSpec; }
