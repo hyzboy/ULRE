@@ -90,7 +90,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public Object, public graph::RenderTargetObserver
+        class ECSContext : public Object, public graph::RenderTargetObserver, public IECSEntityObserver
         {
         public:
 
@@ -680,6 +680,13 @@ namespace hgl
             /// ⚠ 读取端（`GetResourceNamePrefix()`）零调用者，2026-10-10 审计 §1.1 已删；写入端保留。
             void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
 
+            // ── IECSEntityObserver 接口实现 ──
+            void OnEntityDestroyed(EntityID id) override;
+            void OnEntityDeactivated(EntityID id) override;
+            void OnEntityRowRefreshed(Entity *entity) override;
+            void OnComponentRowDestroyed(ComponentType type, uint32_t row) override;
+            void OnSceneStructureDirty() override;
+
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
             //   `GetTypedPool` / `EnsureTypedPool` / `CreateComponent` / `GetComponentByRow` /
             //   `GetComponents` 的定义在本类内下方（`RenderFrameCache` 访问器之后的区块，
@@ -1168,6 +1175,12 @@ namespace hgl
         };
 
         // ── Entity 组件挂载/卸载（T2-c：实现在这里 —— 模板体需要完整的 ECSContext）──
+
+        inline void Entity::SetContext(ECSContext *ctx)
+        {
+            context = ctx;
+            observer = ctx;
+        }
 
         template<typename T, typename... Args>
         T *Entity::AddComponent(Args &&...args)

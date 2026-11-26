@@ -142,6 +142,7 @@ set(ECS_CORE_HEADERS
     "core/MainFrameTopologyState.h"
     "core/RenderPassScopeState.h"
     "core/entity/ComponentRow.h"
+    "core/entity/ECSEntityObserver.h"
     "core/entity/Entity.h"
     "core/entity/EntityGPU.h"
     "core/entity/EntityHandle.h"

@@ -1,5 +1,5 @@
 ﻿#include<hgl/ecs/core/entity/Entity.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/entity/ECSEntityObserver.h>
 #include<hgl/log/Log.h>
 
 namespace hgl
@@ -18,21 +18,17 @@ namespace hgl
             // T3b：实体行表清 `Active`（实体已死；其余字段保留供诊断）——
             // 实体生死是**单一入口**：所有销毁路径（DestroyEntity / Clear / 世界 Shutdown）
             // 都会走到显式 `~Entity()`（T2-a 块池的约定）。
-            if (context)
+            // 材质授权记录也随实体死亡在此摘除。
+            if (observer)
             {
-                context->DeactivateEntityRow(id);
-
-                // 2026-11（MaterialData 组件退役）：材质授权记录随实体死亡摘除——
-                // 原 `MaterialData::OnDetach` 的旁表清理搬到这里（记录以 EntityID 为键、
-                // 住世界级旁表；Remove 只是哈希删项，不碰任何设备级池）。
-                context->GetMaterialAuthoringTable()->Remove(id);
+                observer->OnEntityDestroyed(id);
             }
         }
 
         void Entity::MarkSceneDirty() const
         {
-            if (context)
-                context->MarkSceneStructureDirty();
+            if (observer)
+                observer->OnSceneStructureDirty();
         }
 
         uint32_t Entity::SetComponentRow(ComponentType type, uint32_t row)
@@ -60,12 +56,12 @@ namespace hgl
 
                 component_rows[i] = 0;
 
-                if (context)
-                    context->DestroyComponent(static_cast<ComponentType>(i), row);
+                if (observer)
+                    observer->OnComponentRowDestroyed(static_cast<ComponentType>(i), row);
             }
 
-            if (context)
-                context->RefreshEntityRow(this);        // T3b：实体行表随全卸同步
+            if (observer)
+                observer->OnEntityRowRefreshed(this);        // T3b：实体行表随全卸同步
 
             MarkSceneDirty();
         }

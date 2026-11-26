@@ -747,6 +747,33 @@ namespace hgl
                 SetSystemGroupEnabled(group, false);
         }
 
+        void ECSContext::OnEntityDestroyed(const EntityID id)
+        {
+            DeactivateEntityRow(id);
+            if (material_authoring_side_table)
+                material_authoring_side_table->Remove(id);
+        }
+
+        void ECSContext::OnEntityDeactivated(const EntityID id)
+        {
+            DeactivateEntityRow(id);
+        }
+
+        void ECSContext::OnEntityRowRefreshed(Entity *entity)
+        {
+            RefreshEntityRow(entity);
+        }
+
+        void ECSContext::OnComponentRowDestroyed(const ComponentType type, const uint32_t row)
+        {
+            DestroyComponent(type, row);
+        }
+
+        void ECSContext::OnSceneStructureDirty()
+        {
+            MarkSceneStructureDirty();
+        }
+
         void ECSContext::ClearComponentPools()
         {
             // 显式析构全部行（卸载钩子 + ~T），再把池整个丢掉（块随池析构释放）。
