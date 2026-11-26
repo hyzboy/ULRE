@@ -64,8 +64,8 @@ void TextureManager::Release()
     if (texture_by_id.GetCount() > 0)
         texture_by_id.Clear();
 
-    if (texture_by_filename.GetCount() > 0)
-        texture_by_filename.Clear();
+    for (auto &cache : texture_by_filename)
+        cache.Clear();
 
     // Clean up texture transfer resources (queue holds fences that need cleanup)
     SAFE_CLEAR(texture_queue);
@@ -152,7 +152,7 @@ const TextureID TextureManager::Add(Texture *tex)
     return tex->GetID();
 }
 
-const TextureID TextureManager::Add(Texture *tex,const OSString &tn)
+const TextureID TextureManager::Add(Texture *tex,const OSString &tn,bool auto_mipmaps)
 {
     TextureID id=Add(tex);
 
@@ -160,7 +160,7 @@ const TextureID TextureManager::Add(Texture *tex,const OSString &tn)
         return id;
 
     if(!tn.IsEmpty())
-        texture_by_filename.Add(tn,tex);
+        texture_by_filename[auto_mipmaps ? 1 : 0].Add(tn,tex);
 
     return id;
 }
@@ -175,7 +175,8 @@ void TextureManager::Release(Texture *tex)
 
     texture_set.Delete(tex);
     texture_by_id.RemoveByValue(tex);          ///<从ID映射删除
-    texture_by_filename.RemoveByValue(tex);    ///<从文件名映射删除
+    for (auto &cache : texture_by_filename)
+        cache.RemoveByValue(tex);
 }
 
 void TextureManager::Destory(Texture *tex)
@@ -196,20 +197,20 @@ void TextureManager::Destory(Texture *tex)
     Release(tex);    ///<从文件名映射删除
 }
 
-Texture *TextureManager::FindTextureByFilename(const OSString &filename)const
+Texture *TextureManager::FindTextureByFilename(const OSString &filename,bool auto_mipmaps)const
 {
     if(filename.IsEmpty())
         return(nullptr);
 
     Texture *tex=nullptr;
 
-    if(!texture_by_filename.Get(filename,tex))
+    if(!texture_by_filename[auto_mipmaps ? 1 : 0].Get(filename,tex))
         return(nullptr);
 
     return tex;
 }
 
-bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *texture)
+bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *texture,bool auto_mipmaps)
 {
     if(filename.IsEmpty()||!texture)
         return(false);
@@ -221,10 +222,11 @@ bool TextureManager::RegisterTextureFilename(const OSString &filename,Texture *t
 
     Texture *existing=nullptr;
 
-    if(texture_by_filename.Get(filename,existing))
+    auto &cache=texture_by_filename[auto_mipmaps ? 1 : 0];
+    if(cache.Get(filename,existing))
         return(existing==texture);
 
-    texture_by_filename.Add(filename,texture);
+    cache.Add(filename,texture);
 
     return(true);
 }
@@ -246,14 +248,14 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
 
     Texture2D *tex;
 
-    if(texture_by_filename.Get(probed,(Texture *&)tex))
+    if(texture_by_filename[auto_mipmaps ? 1 : 0].Get(probed,(Texture *&)tex))
         return tex;
 
     tex=CreateTexture2DFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
-        Add(tex,probed);
+        Add(tex,probed,auto_mipmaps);
 
     //#ifdef _DEBUG
     //    DebugUtils *du=device->GetDebugUtils();
@@ -406,14 +408,14 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
 
     TextureCube *tex;
 
-    if(texture_by_filename.Get(probed,(Texture *&)tex))
+    if(texture_by_filename[auto_mipmaps ? 1 : 0].Get(probed,(Texture *&)tex))
         return tex;
 
     tex=CreateTextureCubeFromFile(this,probed,auto_mipmaps);
 
     if(tex)
     {
-        Add(tex,probed);
+        Add(tex,probed,auto_mipmaps);
     }
 
     return tex;

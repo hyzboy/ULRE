@@ -18,6 +18,7 @@
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
@@ -81,6 +82,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     uint32_t retired_id = 0, retired_first = 0;
     uint32_t baseline_templates = 0, baseline_parts = 0, baseline_refs[3]{};
     uint32_t lifecycle_cycles = 0, lifecycle_frames = 0;
+    TextureAsset *mipmap_variants[2]{};
+    bool mipmap_checked = false;
 
     MaterialRuntimeRowID EntityRow(const Entity *entity) const
     {
@@ -628,6 +631,36 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         }
         if (selfcheck && !core_only)
             world->GetSystem<TextureStreamingSystem>()->SetEnabled(false);
+        if (selfcheck && !core_only)
+        {
+            auto *textures = GetManager<TextureManager>();
+            if (!textures) return false;
+            const OSString async_path = OS_TEXT("res/image/pbr/AlphaChecker/baseColor.Tex2D");
+            for (uint32_t n = 0; n < 2; ++n)
+            {
+                const uint32_t i = reverse_creation ? 1u - n : n;
+                mipmap_variants[i] = textures->CreateTextureAsset(async_path, i != 0u);
+            }
+            if (!mipmap_variants[0] || !mipmap_variants[1] || mipmap_variants[0] == mipmap_variants[1])
+                return false;
+            const OSString sync_path = OS_TEXT("res/image/pbr/AlphaChecker/white.Tex2D");
+            Texture2D *sync[2]{};
+            for (uint32_t n = 0; n < 2; ++n)
+            {
+                const uint32_t i = reverse_creation ? 1u - n : n;
+                sync[i] = textures->LoadTexture2D(sync_path, i != 0u);
+            }
+            auto *sync_plain = sync[0];
+            auto *sync_mip = sync[1];
+            GLogInfo(u8"[GMM] MIPMAP sync plain=%p levels=%u generated=%p levels=%u",
+                     sync_plain, sync_plain ? sync_plain->GetMipLevel() : 0u,
+                     sync_mip, sync_mip ? sync_mip->GetMipLevel() : 0u);
+            if (!sync_plain || !sync_mip || sync_plain == sync_mip
+                || sync_plain->GetMipLevel() != 1 || sync_mip->GetMipLevel() != 9
+                || textures->LoadTexture2D(sync_path, false) != sync_plain
+                || textures->LoadTexture2D(sync_path, true) != sync_mip)
+                return false;
+        }
         if (selfcheck)
             if (auto overlay = world->GetSystem<ProfOverlaySystem>())
                 overlay->Disable();
@@ -759,6 +792,24 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         if (selfcheck && template_id && phase < 17u)
         {
+            if (!core_only && phase >= 9u && !mipmap_checked)
+            {
+                if (!mipmap_variants[0]->IsReady() || !mipmap_variants[1]->IsReady())
+                    return;
+                auto *textures = GetManager<TextureManager>();
+                auto *plain = mipmap_variants[0]->GetTexture();
+                auto *generated = mipmap_variants[1]->GetTexture();
+                const OSString &path = mipmap_variants[0]->GetFilename();
+                if (!textures || plain == generated || plain->GetMipLevel() != 1
+                    || generated->GetMipLevel() != 9
+                    || textures->FindTextureByFilename(path, false) != plain
+                    || textures->FindTextureByFilename(path, true) != generated
+                    || textures->LoadTexture2D(path, false) != plain
+                    || textures->LoadTexture2D(path, true) != generated)
+                    Fail("mipmap variants were not isolated");
+                mipmap_checked = true;
+                GLogInfo(u8"[GMM] MIPMAP variants ready");
+            }
             if (phase >= 9u && (!lit_recipes[0].textures[0].asset->IsReady()
                             || !lit_recipes[1].textures[0].asset->IsReady()))
                 return;

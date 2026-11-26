@@ -348,7 +348,7 @@ namespace hgl::graph
             {
                 if(!meta.source_path.IsEmpty())
                 {
-                    U8String id(u8"texfile:");
+                    U8String id(auto_mipmaps ? u8"texfile-mipmap:" : u8"texfile:");
 
                     id+=ToU8String(meta.source_path);
                     return id;
@@ -360,7 +360,7 @@ namespace hgl::graph
             {
                 if(!meta.source_path.IsEmpty())
                 {
-                    U8String id(u8"texcubefile:");
+                    U8String id(auto_mipmaps ? u8"texcubefile-mipmap:" : u8"texcubefile:");
 
                     id+=ToU8String(meta.source_path);
                     return id;
@@ -373,7 +373,7 @@ namespace hgl::graph
                 if(!meta.source_path.IsEmpty())
                 {
                     // 与 File 同路径但不同身份：投影语义不同，绑定槽位不可互换。
-                    U8String id(u8"texoctfile:");
+                    U8String id(auto_mipmaps ? u8"texoctfile-mipmap:" : u8"texoctfile:");
 
                     id+=ToU8String(meta.source_path);
                     return id;

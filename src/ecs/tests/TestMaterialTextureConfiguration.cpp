@@ -1,4 +1,5 @@
 #include <hgl/graph/asset/MaterialTextureConfigurationFile.h>
+#include <hgl/graph/module/TextureManager.h>
 #include <hgl/asset/AssetID.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
@@ -6,8 +7,35 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+namespace
+{
+    bool TestMipmapHandleIdentity()
+    {
+        TextureManager manager(nullptr);
+        TextureAsset *plain = manager.CreateTextureAsset(OS_TEXT("mipmap-test-a.Tex2D"), false);
+        TextureAsset *generated = manager.CreateTextureAsset(OS_TEXT("mipmap-test-a.Tex2D"), true);
+        TextureAsset *generated_first = manager.CreateTextureAsset(OS_TEXT("mipmap-test-b.Tex2D"), true);
+        TextureAsset *plain_second = manager.CreateTextureAsset(OS_TEXT("mipmap-test-b.Tex2D"), false);
+        const bool ok = plain && generated && generated_first && plain_second
+            && plain != generated && generated_first != plain_second
+            && !plain->GetAutoMipmaps() && generated->GetAutoMipmaps()
+            && generated_first->GetAutoMipmaps() && !plain_second->GetAutoMipmaps()
+            && plain->GetResourceId() != generated->GetResourceId()
+            && generated_first->GetResourceId() != plain_second->GetResourceId()
+            && manager.CreateTextureAsset(OS_TEXT("mipmap-test-a.Tex2D"), false) == plain
+            && manager.CreateTextureAsset(OS_TEXT("mipmap-test-a.Tex2D"), true) == generated;
+        manager.Release();
+        return ok;
+    }
+}
+
 int main()
 {
+    if (!TestMipmapHandleIdentity())
+    {
+        GLogError(u8"Mipmap loading options did not produce distinct texture identities");
+        return 9;
+    }
     MaterialTextureConfiguration original;
     original.id = asset::AssetID::Create().ToString();
     auto *first = original.textures.Create();

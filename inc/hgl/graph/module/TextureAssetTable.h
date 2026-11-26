@@ -18,7 +18,7 @@ namespace hgl::graph
      * 只维护「谁引用哪个文件 / 哪个 RT 附件」这张句柄表与去重规则。
      *
      * 三条去重口径（各自一份判据，互不混用）：
-     * - **文件**：`MakeLoadedFileKey(path)` + `kind`（同路径用 `file:` / `cubefile:` 引用是两张纹理）；
+     * - **文件**：`MakeLoadedFileKey(path)` + `kind` + `auto_mipmaps`；
      * - **纹理数组**：规范化后的 URI 文本；
      * - **RenderTarget**：`(target, attachment)`，附件名缺省为 color。
      *

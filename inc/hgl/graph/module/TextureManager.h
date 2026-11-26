@@ -40,7 +40,7 @@ private:
     OrderedSet<Texture *> texture_set;                                           ///<纹理合集
 
     BidirectionalMap<TextureID,Texture *> texture_by_id;          ///< ID <-> Texture* 双向映射
-    BidirectionalMap<OSString,Texture *> texture_by_filename;     ///< Filename <-> Texture* 双向映射
+    BidirectionalMap<OSString,Texture *> texture_by_filename[2];  ///< 按 auto_mipmaps 分别缓存
 
     /// 纹理句柄表（**资产查找与 RenderTarget 绑定**域；不含纹理创建/上传）。
     /// 按文件名 / 数组 URI / (target,attachment) 三种口径去重，明细见该类。
@@ -55,7 +55,7 @@ private:
     uint64_t texture_frame_serial_=0;
 
     const TextureID Add(Texture *);
-    const TextureID Add(Texture *,const OSString &);
+    const TextureID Add(Texture *,const OSString &,bool auto_mipmaps);
 
 public:
 
@@ -198,7 +198,7 @@ public: // TextureAsset
     /**
      * 取（无则建）文件名对应的纹理句柄。
      *
-     * 同一个文件（按 `MakeLoadedFileKey` 规范化后比较）只创建一个句柄 ⇒ 多个材质
+     * 同一个文件、来源类型和 mipmap 设置只创建一个句柄 ⇒ 多个材质
      * 共享同一份「未加载 / 加载中 / 就绪」状态，也只会有一次读盘与一次上传。
      * 返回的句柄**初始为 `MetaOnly`**（只有文件名），由 `TextureStreamingSystem`
      * 驱动异步加载；也可以直接调用 `LoadPayload()` 走同步路径。
@@ -255,11 +255,11 @@ public: // TextureAsset
      * 查找键与 `LoadTexture2D` 完全一致（原样比较，不做规范化），
      * 保证「查得到」与「命中缓存」是同一个判据。
      */
-    Texture *FindTextureByFilename(const OSString &filename)const;
+    Texture *FindTextureByFilename(const OSString &filename,bool auto_mipmaps=false)const;
 
     /// 流式加载完成后回填「文件名 → 纹理」，让后续 `LoadTexture2D` 命中同一张（不重复创建）。
     /// 同文件名已映射到别的纹理时不覆盖（先到者优先），返回 false。
-    bool RegisterTextureFilename(const OSString &filename,Texture *texture);
+    bool RegisterTextureFilename(const OSString &filename,Texture *texture,bool auto_mipmaps=false);
 
 };//class TextureManager
 }//namespace hgl::graph

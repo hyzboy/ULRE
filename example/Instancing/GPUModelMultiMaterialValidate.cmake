@@ -62,7 +62,8 @@ foreach(run 0 1 2)
     endif()
     string(REGEX MATCHALL "\\[GMM\\] FRAME phase=[0-9]+ sample=[0-9]+ hash=[0-9a-fA-F]+" frames "${log}")
     list(LENGTH frames frame_count)
-    if(frame_count LESS 51 OR NOT log MATCHES "\\[GMM\\] LIFETIME cycle=3"
+    if(frame_count LESS 51 OR NOT log MATCHES "\\[GMM\\] MIPMAP variants ready"
+       OR NOT log MATCHES "\\[GMM\\] LIFETIME cycle=3"
        OR NOT log MATCHES "\\[GMM\\] ROLLBACK live destroy rejected")
         message(FATAL_ERROR "Multi-material cache=${cache} did not complete all acceptance samples")
     endif()

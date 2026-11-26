@@ -59,7 +59,8 @@ namespace hgl::ecs
             // 回填「文件名 → 纹理」：此后同步的 LoadTexture2D(同一文件) 直接复用这张，
             // 同一个文件不会因为走了哪条路径而出现两张纹理。
             if (graph::TextureManager *tm = asset->GetTextureManager())
-                tm->RegisterTextureFilename(asset->GetFilename(), task->target_texture);
+                tm->RegisterTextureFilename(asset->GetFilename(), task->target_texture,
+                                            asset->GetAutoMipmaps());
 
             const U8String u8_filename = ToU8String(asset->GetFilename());
 
@@ -383,7 +384,7 @@ namespace hgl::ecs
             }
 
             // 收敛捷径：同步路径已经加载过这个文件 ⇒ 直接认领那张纹理，不重复读盘建纹理。
-            if (graph::Texture *ready = tex_manager->FindTextureByFilename(filename))
+            if (graph::Texture *ready = tex_manager->FindTextureByFilename(filename, asset->GetAutoMipmaps()))
             {
                 asset->CommitAsyncTexture(ready);
                 ++claimed;

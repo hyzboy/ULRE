@@ -64,6 +64,7 @@ namespace hgl::graph
             TextureAsset *exist=assets[i];
 
             if (exist && exist->GetSourceKind() == uri.kind
+                && exist->GetAutoMipmaps() == auto_mipmaps
                 && MakeLoadedFileKey(exist->GetFilename()) == key)
             {
                 // 追踪用：命中已有句柄 ⇒ 谁在引用它（配方名由调用方 MaterialRecipeRegistry 打）
