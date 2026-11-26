@@ -1,0 +1,77 @@
+#include <hgl/graph/asset/MaterialTextureConfigurationFile.h>
+#include <hgl/filesystem/FileSystem.h>
+#include <hgl/log/Log.h>
+
+using namespace hgl;
+using namespace hgl::graph;
+
+int main()
+{
+    MaterialTextureConfiguration original;
+    auto *first = original.textures.Create();
+    first->uri = OS_TEXT("tex2d:assets/oak.Tex2D");
+    first->auto_mipmaps = true;
+    auto *second = original.textures.Create();
+    second->uri = OS_TEXT("texarray:@bark");
+    second->array_layer = 3;
+    original.textures.Create();
+
+    AnsiString error;
+    ValueArray<uint8> encoded;
+    MaterialTextureConfiguration decoded;
+    if (!EncodeMaterialTextureConfiguration(original, encoded, error)
+        || !DecodeMaterialTextureConfiguration(encoded.GetData(), encoded.GetCount(), decoded, error)
+        || decoded.textures.GetCount() != 3
+        || decoded.textures[0]->uri != first->uri || !decoded.textures[0]->auto_mipmaps
+        || decoded.textures[1]->uri != second->uri || decoded.textures[1]->array_layer != 3
+        || !decoded.textures[2]->uri.IsEmpty())
+    {
+        GLogError(u8"Material texture configuration round trip failed: %s", error.c_str());
+        return 1;
+    }
+
+    if (DecodeMaterialTextureConfiguration(encoded.GetData(), 4, decoded, error)
+        || decoded.textures.GetCount() != 3 || error.IsEmpty())
+    {
+        GLogError(u8"Truncated texture configuration was not rejected");
+        return 2;
+    }
+    original.schema = 2;
+    if (EncodeMaterialTextureConfiguration(original, encoded, error) || error.IsEmpty())
+    {
+        GLogError(u8"Unsupported texture configuration schema was not rejected");
+        return 3;
+    }
+    original.schema = 1;
+    second->uri = OS_TEXT("texarray:");
+    if (EncodeMaterialTextureConfiguration(original, encoded, error) || error.IsEmpty())
+    {
+        GLogError(u8"Invalid texture reference was not rejected");
+        return 4;
+    }
+    second->uri = OS_TEXT("texarray:@bark");
+
+    const OSString path = OS_TEXT("TestMaterialTextureConfiguration.tmp");
+    if (filesystem::FileExist(path))
+    {
+        GLogError(u8"Refusing to overwrite an existing test file");
+        return 5;
+    }
+    const bool saved = CreateMaterialTextureConfigurationFile(path, original, error);
+    MaterialTextureConfiguration loaded;
+    const bool loaded_ok = saved && LoadMaterialTextureConfiguration(path, loaded, error);
+    original.textures[0]->uri = OS_TEXT("tex2d:assets/willow.Tex2D");
+    const bool overwrite_rejected = saved && !CreateMaterialTextureConfigurationFile(path, original, error);
+    MaterialTextureConfiguration unchanged;
+    const bool unchanged_ok = overwrite_rejected && LoadMaterialTextureConfiguration(path, unchanged, error)
+                           && unchanged.textures.GetCount() == 3
+                           && unchanged.textures[0]->uri == OS_TEXT("tex2d:assets/oak.Tex2D");
+    const bool removed = saved && filesystem::FileDelete(path);
+    if (!loaded_ok || !unchanged_ok || !removed || loaded.textures.GetCount() != 3
+        || loaded.textures[1]->array_layer != 3)
+    {
+        GLogError(u8"Material texture configuration file round trip failed: %s", error.c_str());
+        return 6;
+    }
+    return 0;
+}

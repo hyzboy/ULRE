@@ -262,6 +262,8 @@ set(SG_ASSET_MATERIAL_FILES ${SG_INCLUDE_PATH}/asset/MaterialRecipeAsset.h
                             ${SG_INCLUDE_PATH}/asset/MaterialDataReferenceSet.h
                             ${SG_INCLUDE_PATH}/asset/MaterialDataReferenceSetFile.h
                             ${SG_INCLUDE_PATH}/asset/MaterialDataReferenceSetResolve.h
+                            ${SG_INCLUDE_PATH}/asset/MaterialTextureConfiguration.h
+                            ${SG_INCLUDE_PATH}/asset/MaterialTextureConfigurationFile.h
                             ${SG_INCLUDE_PATH}/asset/MaterialAsyncCompile.h
                             ${SG_INCLUDE_PATH}/asset/MaterialAsyncLoadLane.h
                             asset/MaterialRecipeAsset.cpp
@@ -271,6 +273,8 @@ set(SG_ASSET_MATERIAL_FILES ${SG_INCLUDE_PATH}/asset/MaterialRecipeAsset.h
                             asset/MaterialDataBlockObject.cpp
                             asset/MaterialDataReferenceSetFile.cpp
                             asset/MaterialDataReferenceSetResolve.cpp
+                            asset/FlatMaterialAssetFile.h
+                            asset/MaterialTextureConfigurationFile.cpp
                             asset/MaterialAsyncCompile.cpp
                             asset/MaterialAsyncLoadLane.cpp)
 

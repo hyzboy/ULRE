@@ -547,6 +547,7 @@ add_ecs_test(TestMaterialRecipeFile tests/TestMaterialRecipeFile.cpp)
 # 材质数据块：授权行 → 物理行摊平、MDB1 二进制往返、坏输入拒绝。
 add_ecs_test(TestMaterialDataBlockCodec tests/TestMaterialDataBlockCodec.cpp)
 add_ecs_test(TestMaterialDataReferenceSet tests/TestMaterialDataReferenceSet.cpp)
+add_ecs_test(TestMaterialTextureConfiguration tests/TestMaterialTextureConfiguration.cpp)
 
 # 全局 SSBO 连续行区间与数据块整段上传（块→视图零拷贝、未就绪时 fail-closed、分配策略契约）。
 add_ecs_test(TestGlobalSSBORowRange tests/TestGlobalSSBORowRange.cpp)
@@ -792,6 +793,8 @@ if(BUILD_TESTING)
 
     add_test(NAME TestMaterialDataReferenceSet COMMAND TestMaterialDataReferenceSet)
     set_tests_properties(TestMaterialDataReferenceSet PROPERTIES LABELS "ecs;material_data;asset" TIMEOUT 120)
+    add_test(NAME TestMaterialTextureConfiguration COMMAND TestMaterialTextureConfiguration)
+    set_tests_properties(TestMaterialTextureConfiguration PROPERTIES LABELS "ecs;material;asset" TIMEOUT 120)
 
     add_test(
         NAME TestGlobalSSBORowRange

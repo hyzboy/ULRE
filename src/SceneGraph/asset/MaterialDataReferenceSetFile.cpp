@@ -1,18 +1,14 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
 #include <hgl/asset/AssetURI.h>
 #include <hgl/asset/generated/MaterialDataReferenceSetSerialize.gen.h>
-#include <hgl/filesystem/FileSystem.h>
-#include <hgl/io/FileInputStream.h>
-#include <hgl/io/FileOutputStream.h>
 #include <hgl/serialize/FlatCodec.h>
-#include <hgl/type/Smart.h>
+#include "FlatMaterialAssetFile.h"
 
 namespace hgl::graph
 {
     namespace
     {
         constexpr char kIdentifier[] = "MDRS";
-        constexpr int64 kMaximumFileSize = 64 * 1024 * 1024;
 
         bool Validate(const MaterialDataReferenceSet &set, AnsiString &error)
         {
@@ -61,7 +57,7 @@ namespace hgl::graph
                 error = "failed to encode material data reference set";
             return false;
         }
-        if (out.GetCount() > kMaximumFileSize)
+        if (out.GetCount() > detail::MaterialAssetMaximumFileSize)
         {
             out.Clear();
             error = "material data reference set exceeds maximum file size";
@@ -75,7 +71,7 @@ namespace hgl::graph
     {
         error.Clear();
         MaterialDataReferenceSet decoded;
-        if (!data || size > static_cast<size_t>(kMaximumFileSize)
+        if (!data || size > static_cast<size_t>(detail::MaterialAssetMaximumFileSize)
             || !serialize::fb::VerifyAndDecodeFlatBuffers(data, size, decoded, kIdentifier, &error))
         {
             if (error.IsEmpty())
@@ -91,26 +87,7 @@ namespace hgl::graph
     bool LoadMaterialDataReferenceSet(const OSString &path,
                                       MaterialDataReferenceSet &out, AnsiString &error)
     {
-        error.Clear();
-        io::OpenFileInputStream input(path);
-        if (!input)
-        {
-            error = "cannot open material data reference set";
-            return false;
-        }
-        const int64 size = input->GetSize();
-        if (size <= 0 || size > kMaximumFileSize)
-        {
-            error = "invalid material data reference set file size";
-            return false;
-        }
-        AutoDeleteArray<uint8> bytes(static_cast<size_t>(size));
-        if (!bytes || input->Read(bytes.data(), size) != size)
-        {
-            error = "cannot read material data reference set";
-            return false;
-        }
-        return DecodeMaterialDataReferenceSet(bytes.data(), static_cast<size_t>(size), out, error);
+        return detail::LoadFlatMaterialAsset(path, out, error, DecodeMaterialDataReferenceSet);
     }
 
     bool CreateMaterialDataReferenceSetFile(const OSString &path,
@@ -119,21 +96,6 @@ namespace hgl::graph
         ValueArray<uint8> bytes;
         if (!EncodeMaterialDataReferenceSet(set, bytes, error))
             return false;
-        AutoDelete<io::FileOutputStream> output(
-            io::CreateFileOutputStream(path, io::FileOpenMode::Create));
-        if (!output)
-        {
-            error = "cannot create material data reference set";
-            return false;
-        }
-        if (output->Write(bytes.GetData(), bytes.GetCount()) != bytes.GetCount())
-        {
-            error = "cannot write material data reference set";
-            output->Close();
-            if (!filesystem::FileDelete(path))
-                error += "; cannot remove incomplete file";
-            return false;
-        }
-        return true;
+        return detail::CreateFlatMaterialAsset(path, bytes, error);
     }
 }

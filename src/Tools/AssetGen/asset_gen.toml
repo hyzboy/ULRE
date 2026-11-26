@@ -207,6 +207,12 @@ scan          = ["inc/hgl/graph/asset/MaterialDataReferenceSet.h"]
 serialize     = "inc/hgl/asset/generated/MaterialDataReferenceSetSerialize.gen.h"
 meta          = "inc/hgl/asset/generated/MaterialDataReferenceSetMeta.gen.h"
 
+[group.MaterialTextureConfiguration]
+namespace     = "hgl::graph"
+scan          = ["inc/hgl/graph/asset/MaterialTextureConfiguration.h"]
+serialize     = "inc/hgl/asset/generated/MaterialTextureConfigurationSerialize.gen.h"
+meta          = "inc/hgl/asset/generated/MaterialTextureConfigurationMeta.gen.h"
+
 # ── 环境资产规约 ────────────────────────────────────────────────────────────
 # `*.env.toml` 的字段契约真源：把「画什么天 + 用什么天光」从示例里的硬编码搬进
 # 可授权文件。跨字段业务规则（schema 版本、`sh9.bands` 必须正好 9 条、只在
