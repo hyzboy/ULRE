@@ -31,7 +31,7 @@ namespace hgl::graph::mtl
 
             const asset::AssetURI parsed =
                 asset::AssetURI::Parse(ref->uri, asset::AssetType::MaterialData);
-            if (!parsed.IsFile() && !parsed.IsPack()
+            if (!parsed.IsFile()
                 && !parsed.target.IsEmpty() && parsed.target[0] == OS_TEXT('@'))
             {
                 const OSString name = parsed.target.SubString(1);

@@ -126,5 +126,13 @@ int main()
         GLogError(u8"Ambiguous asset name was not rejected");
         return 11;
     }
+    refs.instances[0]->uri = OS_TEXT("mtldata:pack(res):@oak");
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error != "ambiguous material data name at instance 0"
+        || resolved.GetCount() != 3 || resolved[0].asset != asset)
+    {
+        GLogError(u8"Ambiguous asset name with a pack source was not rejected");
+        return 12;
+    }
     return 0;
 }
