@@ -191,6 +191,7 @@ namespace hgl::ecs
             if (!light_row_buffer)
                 return;
 
+            auto &light_row_table = render_data.GetLightRowTable();
             UploadDirtyRowsHelper<LightRowTable, graph::LightRow>(
                 light_row_table, light_row_table.GetDirtySet(), light_row_view, LightRowTable::kCapacity,
                 [](const LightRowTable &t, uint32_t idx) { return t.Row(idx); });
@@ -292,6 +293,7 @@ namespace hgl::ecs
             if (light_row_buffer)
                 return true;
 
+            auto &light_row_table = render_data.GetLightRowTable();
             light_row_table.Ensure();
 
             const VkDeviceSize one_copy = VkDeviceSize(LightRowTable::kCapacity)
@@ -394,7 +396,7 @@ namespace hgl::ecs
 
             const uint32_t slot = frame_slot % graph::kWorldAddressesSlotCount;
 
-            base[slot] = shadow_info;
+            base[slot] = render_data.GetShadowInfo();
             shadow_info_view->Commit();
         }
 
@@ -507,6 +509,7 @@ namespace hgl::ecs
             const auto slot_offset = [slot](const uint64_t base, const uint64_t per_slot_bytes) -> uint64_t
             { return base != 0 ? (base + static_cast<uint64_t>(slot) * per_slot_bytes) : 0; };
 
+            auto *camera_info_storage = render_data.GetCameraInfoStorage();
             want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())
                                          ? camera_info_storage->GetGPUBase() : 0,
                                          dst->addr_camera_info);

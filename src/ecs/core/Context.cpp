@@ -66,24 +66,12 @@ namespace hgl
 
         ECSContext::ECSContext(const AnsiString& name)
             : ECSCoreContext(name)
-            , material_variant_table(std::make_unique<MaterialVariantTable>())
-            , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
-            , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>(this))
-            , material_runtime_pipeline_table(std::make_unique<MaterialRuntimePipelineTable>())
-            , model_template_material_table(std::make_unique<ModelTemplateMaterialTable>(this))
-            , camera_info_storage(std::make_shared<CameraInfoStorage>())
+            , render_data(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
 
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
             spatial_state.Initialize(this, this, this);
-
-            // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
-            // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
-            material_runtime_table->SetContext(this);
-
-            // 模板材质表绑定本世界指针
-            model_template_material_table->SetContext(this);
 
             // P2：主帧拓扑快照默认开启；宿主可用环境变量（opt-out，`=0` 关闭）或显式 setter 调整。
             main_frame_topology.SetSnapshotEnabled(GetMainFrameTopologySnapshotEnvDefault());
@@ -115,13 +103,10 @@ namespace hgl
 
             // 世界私有相机行存储（相机 = 世界级观察者数据）：16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，
             // 0 号槽恒为本世界默认相机。定稿见 doc/world-addresses-and-camera-model-plan.md §2。
-            if (camera_info_storage && !camera_info_storage->IsReady())
+            if (!render_data.InitializeDeviceResources(device, GetName()))
             {
-                if (!camera_info_storage->Create(device, GetName().c_str()))
-                {
-                    LogError("[ECSContext::Initialize] 世界相机行存储（CameraInfoStorage）创建失败");
-                    return false;
-                }
+                LogError("[ECSContext::Initialize] 世界相机行存储（CameraInfoStorage）创建失败");
+                return false;
             }
 
             // 世界地址表（WorldAddresses，SSBO + 持久 BDA）：表内是本世界的 world 私有地址，
@@ -295,8 +280,7 @@ namespace hgl
                          render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
 
-                if (model_template_material_table)
-                    model_template_material_table->Clear();
+                render_data.Clear();
 
                 shutdown_in_progress = false;
                 return;
@@ -324,8 +308,7 @@ namespace hgl
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
 
-            if (model_template_material_table)
-                model_template_material_table->Clear();
+            render_data.Clear();
 
             // 相机槽拥有者的安全网由 **弱引用** 提供：`CameraSlotGuard` 只持
             // `weak_ptr<CameraInfoStorage>`，世界先销毁时 lock() 失败 ⇒ 析构自动 no-op，不需要在这里
@@ -396,10 +379,6 @@ namespace hgl
             }
 
             world_addresses_addr = 0;
-
-            // 常驻 fallback 相机随世界销毁（不是 Entity 组件 ⇒ 不走 entity_manager->Clear()）；
-            // 它若正占着 0 号槽，槽账目已随相机表一起销毁 —— 不再有第二份 default_camera 要清。
-            fallback_camera = nullptr;
 
             shutdown_in_progress = false;
         }
@@ -490,31 +469,22 @@ namespace hgl
 
         CameraComponent* ECSContext::GetCamera(const uint32_t slot) const
         {
-            return camera_info_storage ? camera_info_storage->GetSlotOwner(slot) : nullptr;
+            return render_data.GetCamera(slot);
         }
 
         CameraComponent* ECSContext::GetDefaultCamera() const
         {
-            // 默认相机 = **0 号槽的宿主**（没有第二份 weak_ptr 记账：相机销毁 ⇒ 弱引用失效 ⇒
-            // 这里自然返回 nullptr，下一次三级解析重新指名）。
-            return GetCamera(CameraInfoStorage::kDefaultCameraSlot);
+            return render_data.GetDefaultCamera();
         }
 
         bool ECSContext::SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera)
         {
-            if (!camera_info_storage)
-                return false;
-
-            // 0 号槽唯一：改绑即顶替原宿主（常驻 fallback 被实体相机顶替时**不需要**额外动作）。
-            return camera_info_storage->BindCameraSlot(CameraInfoStorage::kDefaultCameraSlot, camera);
+            return render_data.SetDefaultCamera(camera);
         }
 
         uint32_t ECSContext::GetCameraSlot(const CameraComponent* camera) const
         {
-            if (!camera || !camera_info_storage)
-                return CameraComponent::kInvalidSlot;
-
-            return camera_info_storage->FindSlot(camera);
+            return render_data.GetCameraSlot(camera);
         }
 
         namespace
@@ -610,92 +580,17 @@ namespace hgl
 
         bool ECSContext::ReleaseCameraSlot(const CameraComponent* camera)
         {
-            if (!camera_info_storage)
-                return false;
-
-            return camera_info_storage->ReleaseCameraSlot(camera);
+            return render_data.ReleaseCameraSlot(camera);
         }
 
         bool ECSContext::EnsureCameraSlot(CameraComponent* camera, const bool is_default)
         {
-            if (!camera || !camera_info_storage)
-                return false;
-
-            // 槽的宿主必须是 shared_ptr 持有者（槽账目 = 宿主弱引用）：实体组件（注册表）/ 作者 /
-            // 系统（CameraSlotGuard）都满足；栈上或裸 new 的相机拿不到槽 ⇒ fail-fast 留痕
-            // （宁可它不出图，也不能按越界行号写到别的世界去）。
-            auto owner = std::static_pointer_cast<CameraComponent>(camera->weak_from_this().lock());
-            if (!owner)
-            {
-                GLogError("[ECSContext] 相机 \"%s\" 没有 shared_ptr 宿主，无法认领相机槽"
-                          "（槽账目按宿主弱引用计占用期）", camera->GetName().c_str());
-                return false;
-            }
-
-            if (is_default)
-            {
-                // 0 号槽 = 本世界默认相机专属（三级解析的落点，含常驻 fallback）。
-                // 「升格为默认相机」时若它原持**普通槽**，先把旧槽交回（否则那个槽会一直挂在这个
-                // 相机名下、迟早把 16 个槽顶满）；0 号槽唯一 ⇒ 改绑即让原宿主（含常驻 fallback）让位。
-                const uint32_t old_slot = camera_info_storage->FindSlot(camera);
-                if (old_slot != CameraInfoStorage::INVALID_SLOT
-                 && old_slot != CameraInfoStorage::kDefaultCameraSlot)
-                    camera_info_storage->ReleaseCameraSlot(old_slot);
-
-                if (!SetDefaultCamera(owner))
-                    return false;
-
-                camera->world_owner = this;
-                return true;
-            }
-
-            if (camera_info_storage->FindSlot(camera) != CameraInfoStorage::INVALID_SLOT)
-                return true;    // 已认领（幂等）
-
-            if (!camera_info_storage->IsReady())
-                return false;   // 行池未就绪：保持未认领 ⇒ 发布时跳过并一次性告警（fail-fast）
-
-            const uint32_t slot = camera_info_storage->AcquireCameraSlot(owner);
-
-            if (slot == CameraInfoStorage::INVALID_SLOT)
-            {
-                GLogError("[ECSContext] 世界相机槽耗尽（上限 %u）：相机 \"%s\" 未拿到槽，"
-                          "本帧不会发布它的相机行——检查是否有相机未归还",
-                          CameraInfoStorage::kSlotCapacity, camera->GetName().c_str());
-                return false;
-            }
-
-            camera->world_owner = this;
-            return true;
+            return render_data.EnsureCameraSlot(camera, is_default);
         }
 
         CameraComponent* ECSContext::EnsureFallbackCamera()
         {
-            // 已存在 ⇒ 重新回到"默认相机"位置（可能被实体相机顶替过一轮，现在世界又没相机了）：
-            // 重新成为 0 号槽的宿主。
-            if (fallback_camera)
-            {
-                SetDefaultCamera(fallback_camera);
-                return fallback_camera.get();
-            }
-
-            // 三级解析第 ④ 级：世界内没有任何相机组件，但渲染**必须**有一个相机 ⇒ 在 (0,0,0) 强制生成。
-            // 常驻（创建后一直活着）、占 0 号槽、**不是实体组件**（CollectCameras() 看不到它，
-            // 因此不会参与"最小 EntityID.index"的选主，也不会被当作实体相机的重复项）。
-            auto camera = std::make_shared<CameraComponent>("WorldFallbackCamera");
-            camera->position       = math::Vector3f(0.0f, 0.0f, 0.0f);
-            camera->target         = math::Vector3f(0.0f, 0.0f, 1.0f);
-            camera->is_main_camera = false;
-            camera->matrix_dirty   = true;
-            camera->world_owner    = this;
-
-            fallback_camera = camera;
-            SetDefaultCamera(camera);
-
-            GLogInfo("[ECS] %s: 世界内没有相机 ⇒ 在 (0,0,0) 生成常驻 fallback 相机（占 0 号槽）",
-                     GetName().c_str());
-
-            return fallback_camera.get();
+            return render_data.EnsureFallbackCamera();
         }
 
         // ── T2-c：组件行 → 系统组计数（组归属是**类型属性**，取自类型表）──
@@ -734,8 +629,7 @@ namespace hgl
         void ECSContext::OnEntityDestroyed(const EntityID id)
         {
             DeactivateEntityRow(id);
-            if (material_authoring_side_table)
-                material_authoring_side_table->Remove(id);
+            render_data.OnEntityDestroyed(id);
         }
 
         void ECSContext::OnEntityDeactivated(const EntityID id)
@@ -844,32 +738,32 @@ namespace hgl
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
         {
-            return material_authoring_side_table->Find(owner);
+            return render_data.GetMaterialData(owner);
         }
 
         const MaterialData* ECSContext::GetMaterialData(EntityID owner) const
         {
-            return material_authoring_side_table->Find(owner);
+            return render_data.GetMaterialData(owner);
         }
 
         MaterialData* ECSContext::GetMaterialData(Entity *owner)
         {
-            return owner ? material_authoring_side_table->Find(owner->GetEntityID()) : nullptr;
+            return render_data.GetMaterialData(owner);
         }
 
         const MaterialData* ECSContext::GetMaterialData(const Entity *owner) const
         {
-            return owner ? material_authoring_side_table->Find(owner->GetEntityID()) : nullptr;
+            return render_data.GetMaterialData(owner);
         }
 
         MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)
         {
-            return material_authoring_side_table->GetOrCreate(owner);
+            return render_data.GetOrCreateMaterialData(owner);
         }
 
         MaterialData* ECSContext::GetOrCreateMaterialData(Entity *owner)
         {
-            return owner ? material_authoring_side_table->GetOrCreate(owner->GetEntityID()) : nullptr;
+            return render_data.GetOrCreateMaterialData(owner);
         }
 
         GeometryData* ECSContext::GetGeometryData(EntityID owner)
@@ -905,7 +799,7 @@ namespace hgl
         void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)
         {
             // B5-b：管线缓存已迁到世界级旁表（slot 里不放指针）
-            material_runtime_pipeline_table->Clear(owner);
+            render_data.InvalidateEntityRuntimePipeline(owner);
 
             // P1：解析出的 shader/管线身份失效 ⇒ 材质批的键可能变（拓扑类别）。
             MarkTopologyChanged(TopologyChange::MaterialBinding);

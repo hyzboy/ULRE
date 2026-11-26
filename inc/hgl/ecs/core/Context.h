@@ -32,6 +32,7 @@
 #include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include<hgl/ecs/support/spatial/WorldSpatialState.h>
+#include<hgl/ecs/support/render/WorldRenderData.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -117,53 +118,14 @@ namespace hgl
             /// `~Entity` 经 `DeactivateEntityRow` 同时清两表，两表都必须比 `entity_manager` 活得久）
             EntityRenderIDTable entity_render_id_table;
 
-            /// T6b：光源行表（`LightRow`，世界私有；**行 0 = 主方向光**）。
-            /// 与上两表同域（世界的 GPU 行数据），但没有 `~Entity` 回写者 ⇒ 声明位置不涉及析构逆序。
-            LightRowTable light_row_table;
-
-            /// T6b/P4：影子数据（`graph::ShadowInfo`）的 **CPU 权威**（世界私有）。
-            /// 以前它挂在 env profile（`EnvironmentInfo::shadow`）而 CSM 的 RT/控制器挂世界 ⇒
-            /// 两个世界共享 default profile 时互相覆写；现在随世界。写者 = `MainLightShadowSystem`
-            /// （经 `EditShadowInfo`），设备侧由 `CommitShadowInfo` 在提交点写本帧槽。
-            graph::ShadowInfo shadow_info;
-
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
             SystemGroupActivity system_group_activity;
 
             // 空间域聚合状态（变换槽位与行存储、包围盒行存储、可见性集合）
             WorldSpatialState spatial_state;
 
-            // A3 材质变体表（v2 §9.3）：按**静态键**去重的 program/recipe 运行期记录。
-            // program 归本世界 GraphicsContext 的 ShaderProgramManager 缓存所有 ⇒ 表随世界
-            // 存亡，不会跨 GraphicsContext 混用悬垂 program。访问范式同 visibility_storage。
-            std::unique_ptr<MaterialVariantTable> material_variant_table;
-
-            // A4 材质运行期表（v2 §9.3）：**共享行**（同授权态多实体 interned 到同一行：
-            // 变体 ID / 材质 SSBO 行与地址 / 纹理引用行与 hash / 已解析配方缓存）
-            // + **每实例小记录 slot**（当前 pass/LOD/dither 选择器、D9 重试与降频计数、
-            // 每实体授权代跟踪副本、脏标志）。行归零经 refcount 回收，回收时退休该行的
-            // 纹理配置池行（GPU 绑定随行存亡）。访问范式同 visibility_storage /
-            // material_variant_table。原材质运行期组件已在本步一并删除，无旧读法残留。
-            std::unique_ptr<MaterialRuntimeTable> material_runtime_table;
-
-            /// B4-iii-b：材质**重类型授权数据**旁表（配方覆盖 / 具名纹理资源），
-            /// 按材质组件行行号索引；设备级行里只留 POD（授权位 + revision）。
-            std::unique_ptr<MaterialAuthoringSideTable> material_authoring_side_table;
-
-
-            /// B5-b：每实例 × 每 pass 的**运行期管线缓存**（slot 里不放指针 ⇒ 落这里；
-            /// 见 support/MaterialRuntimePipelineTable.h）。
-            std::unique_ptr<MaterialRuntimePipelineTable> material_runtime_pipeline_table;
-
-            /// Step 1.4：模板材质表（template_id -> TemplateRenderBinding，管理多材质模板的共享材质行生命周期）
-            std::unique_ptr<ModelTemplateMaterialTable> model_template_material_table;
-
-            // 世界私有**相机表**：相机是**世界级资源**（16 槽 × 帧槽数，0 号槽恒为本世界默认相机）。
-            // 行空间 + **槽账目（槽 → 宿主相机）** 都在这里，是"相机属于哪个世界 / 哪个槽"的唯一真源；
-            // 定稿见 doc/world-addresses-and-camera-model-plan.md §2（A6 起组件不再自持槽号）。
-            /// 相机表（**shared_ptr**：行池的持有者是世界；CameraSlotGuard 只持弱引用 ——
-            /// 世界先销毁时它的析构自动变 no-op，不会触碰已释放的行池）
-            std::shared_ptr<CameraInfoStorage> camera_info_storage;
+            // CPU 渲染数据底座（光源行表、阴影参数、材质表组、世界相机表与常驻 Fallback）
+            WorldRenderData render_data;
 
             // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
             // kWorldAddressesSlotStride），基址经 pc_root.addr_world_addresses 下发 ——
@@ -221,13 +183,6 @@ namespace hgl
             graph::EnvProfileID env_profile = graph::kEnvProfileDefault;
             bool env_profile_explicit = false;   ///< true ⇒ 用 `env_profile`；false ⇒ 跟随本世界 RT
             bool env_profile_owned = false;      ///< true ⇒ Shutdown 时 `Release()` 归还（本世界创建）
-
-            /// 常驻 fallback 相机（三级解析第 ④ 级的产物）：世界内一个相机组件都没有时，渲染仍必须
-            /// 有一个相机。它由世界直接持有，且**不是实体组件**（`CollectCameras()` 看不到它）。
-            /// 注意：它**占没占 0 号槽由相机表说了算**（`camera_info_storage` 的槽账目）。
-            /// （本世界默认相机 = 0 号槽的宿主，**不再**另存一份 weak_ptr：真值只有一份，相机销毁后
-            ///  弱引用自动失效，不会让地址复用者"继承"默认相机身份。）
-            std::shared_ptr<CameraComponent> fallback_camera;
 
             // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
 
@@ -597,10 +552,10 @@ namespace hgl
 
             bool IsFallbackCamera(const CameraComponent* camera) const
             {
-                return camera != nullptr && camera == fallback_camera.get();
+                return render_data.IsFallbackCamera(camera);
             }
 
-            CameraComponent* GetFallbackCamera() const { return fallback_camera.get(); }
+            CameraComponent* GetFallbackCamera() const { return render_data.GetFallbackCamera(); }
 
             // ---- A1 车道等待列表 ----
 
@@ -752,16 +707,17 @@ namespace hgl
 
             // ── T6b：光源行表（`LightRow`，世界私有；行 0 = 主方向光）──
             //   写者 = LightSystem 的编辑入口；本表只被世界的「脏行 → 设备镜像」上传播径读。
-            LightRowTable&       GetLightRowTable()       { return light_row_table; }
-            const LightRowTable& GetLightRowTable() const { return light_row_table; }
+            LightRowTable&       GetLightRowTable()       { return render_data.GetLightRowTable(); }
+            const LightRowTable& GetLightRowTable() const { return render_data.GetLightRowTable(); }
 
             // ── T6b/P4：影子数据（`ShadowInfo`，世界私有）──────────────────────────
             /// 编辑本世界的影子数据（CPU 权威；GPU 侧由 `CommitShadowInfo` 在提交点写本帧槽）
-            graph::ShadowInfo       *EditShadowInfo()       { return &shadow_info; }
+            graph::ShadowInfo       *EditShadowInfo()       { return render_data.EditShadowInfo(); }
             // 2026-10-10（审计 §1.1）：只读 `GetShadowInfo()` 已删除 —— 它唯一的调用者是同样零外部调用者的
             // `MainLightShadowSystem::GetShadowInfo()`（一并删除）；读影子数据请经 `EditShadowInfo()`。
 
-            void SetShadowInfo(const graph::ShadowInfo &info) { shadow_info = info; }
+            const graph::ShadowInfo &GetShadowInfo() const  { return render_data.GetShadowInfo(); }
+            void SetShadowInfo(const graph::ShadowInfo &info) { render_data.SetShadowInfo(info); }
 
             /// 提交点（交换链帧 acquire 之后）把 CPU 权威的影子数据写进**本帧槽**的设备副本。
             void CommitShadowInfo(const uint32_t frame_slot);
@@ -842,56 +798,59 @@ namespace hgl
             TransformDataStorage* GetTransformStorage() { return spatial_state.GetTransformStorage(); }
             const TransformDataStorage* GetTransformStorage() const { return spatial_state.GetTransformStorage(); }
 
+            WorldRenderData&       GetRenderData()       { return render_data; }
+            const WorldRenderData& GetRenderData() const { return render_data; }
+
             /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
-            MaterialVariantTable* GetMaterialVariantTable() { return material_variant_table.get(); }
-            const MaterialVariantTable* GetMaterialVariantTable() const { return material_variant_table.get(); }
+            MaterialVariantTable* GetMaterialVariantTable() { return render_data.GetMaterialVariantTable(); }
+            const MaterialVariantTable* GetMaterialVariantTable() const { return render_data.GetMaterialVariantTable(); }
 
             /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
             /// B5-b 运行期管线旁表（键 = 实体；按 pass 比对）
-            MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return *material_runtime_pipeline_table; }
-            const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return *material_runtime_pipeline_table; }
+            MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return render_data.GetMaterialRuntimePipelineTable(); }
+            const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return render_data.GetMaterialRuntimePipelineTable(); }
 
 
-            MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return material_authoring_side_table.get(); }
-            const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return material_authoring_side_table.get(); }
+            MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return render_data.GetMaterialAuthoringTable(); }
+            const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return render_data.GetMaterialAuthoringTable(); }
 
-            MaterialRuntimeTable* GetMaterialRuntimeTable() { return material_runtime_table.get(); }
-            const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return material_runtime_table.get(); }
+            MaterialRuntimeTable* GetMaterialRuntimeTable() { return render_data.GetMaterialRuntimeTable(); }
+            const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return render_data.GetMaterialRuntimeTable(); }
 
-            ModelTemplateMaterialTable* GetModelTemplateMaterialTable() { return model_template_material_table.get(); }
-            const ModelTemplateMaterialTable* GetModelTemplateMaterialTable() const { return model_template_material_table.get(); }
+            ModelTemplateMaterialTable* GetModelTemplateMaterialTable() { return render_data.GetModelTemplateMaterialTable(); }
+            const ModelTemplateMaterialTable* GetModelTemplateMaterialTable() const { return render_data.GetModelTemplateMaterialTable(); }
 
             /// 实体 → 材质运行期 slot（无则创建）。命名向 `GetOrCreateMaterialData` 看齐。
             /// ⚠ stage B 会换成**值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回引用。
             MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(EntityID owner)
             {
-                return material_runtime_table->GetOrCreateSlot(owner);
+                return render_data.GetOrCreateMaterialRuntimeSlot(owner);
             }
 
             /// 指针版（作者/引擎手里已有实体）
             MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(Entity *owner)
             {
-                return material_runtime_table->GetOrCreateSlot(owner->GetEntityID());
+                return render_data.GetOrCreateMaterialRuntimeSlot(owner ? owner->GetEntityID() : EntityID{});
             }
 
             /// 实体 → 材质运行期 slot（无则 nullptr）
             MaterialRuntimeSlot* GetMaterialRuntimeSlot(EntityID owner)
             {
-                return material_runtime_table->GetSlot(owner);
+                return render_data.GetMaterialRuntimeSlot(owner);
             }
 
             MaterialRuntimeSlot* GetMaterialRuntimeSlot(Entity *owner)
             {
-                return material_runtime_table->GetSlot(owner->GetEntityID());
+                return owner ? render_data.GetMaterialRuntimeSlot(owner->GetEntityID()) : nullptr;
             }
 
             /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
-            CameraInfoStorage* GetCameraInfoStorage() { return camera_info_storage.get(); }
-            const CameraInfoStorage* GetCameraInfoStorage() const { return camera_info_storage.get(); }
+            CameraInfoStorage* GetCameraInfoStorage() { return render_data.GetCameraInfoStorage(); }
+            const CameraInfoStorage* GetCameraInfoStorage() const { return render_data.GetCameraInfoStorage(); }
 
             /// 槽拥有者（CameraSlotGuard / 归还挂钩）用：弱引用 ⇒ 世界先销毁时 lock 失败 = 安全 no-op
-            std::weak_ptr<CameraInfoStorage> GetCameraInfoStorageWeak() const { return camera_info_storage; }
+            std::weak_ptr<CameraInfoStorage> GetCameraInfoStorageWeak() const { return render_data.GetCameraInfoStorageWeak(); }
 
             /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
             uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;
@@ -911,11 +870,7 @@ namespace hgl
             void DestroyEntity(EntityID id) override
             {
                 spatial_state.OnEntityDestroy(id);
-
-                // 材质运行期 slot 同理：slot 持共享行的引用计数，实体没了必须释放
-                // （否则共享行永远不归零 ⇒ 纹理配置池行泄漏、行表只增不减）。
-                if (material_runtime_table)
-                    material_runtime_table->DestroySlot(id);
+                render_data.OnEntityDestroy(id);
 
                 if (entity_manager)
                     entity_manager->DestroyEntity(id);
