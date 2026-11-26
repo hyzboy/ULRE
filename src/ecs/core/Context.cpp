@@ -628,6 +628,22 @@ namespace hgl
                 transform_system->SetWorld(this);
                 transform_system->SetEnabled(true);
             }
+
+        }
+
+        void ECSContext::OnEntityVisibilityChanged(EntityID id, bool visible)
+        {
+            entity_gpu_table.SetVisible(id, visible);
+            MarkDynamicFactChanged(DynamicFactChange::Visibility);
+            BumpStaticSceneRevision();
+        }
+
+        void ECSContext::OnTransformChanged(TransformID, uint32_t change_mask)
+        {
+            if (change_mask & ToChangeMask(TransformChange::Parent))
+                MarkDynamicFactChanged(DynamicFactChange::Visibility);
+            if (change_mask & ToChangeMask(TransformChange::Mobility))
+                MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
         uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const

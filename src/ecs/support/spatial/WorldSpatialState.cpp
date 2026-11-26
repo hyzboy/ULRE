@@ -229,6 +229,12 @@ namespace hgl::ecs
         }
     }
 
+    void WorldSpatialState::NotifyTransformChanged(TransformID id, uint32_t change_mask)
+    {
+        if (observer)
+            observer->OnTransformChanged(id, change_mask);
+    }
+
     TransformID WorldSpatialState::GetTransformID(EntityID owner) const
     {
         const TransformDataStorage* storage = static_cast<const TransformDataStorage*>(transform_storage);
@@ -282,13 +288,17 @@ namespace hgl::ecs
 
     void WorldSpatialState::SetEntityVisible(EntityID id, bool visible)
     {
-        if (!visibility_storage)
+        if (!visibility_storage || !core_context || !core_context->GetEntity(id))
             return;
 
+        const bool changed = visibility_storage->IsDirectlyInvisible(id) == visible;
         if (visible)
             visibility_storage->SetVisible(id);
         else
             visibility_storage->SetInvisible(id);
+
+        if (changed && observer)
+            observer->OnEntityVisibilityChanged(id, visible);
     }
 
     bool WorldSpatialState::IsEntityVisible(EntityID id) const

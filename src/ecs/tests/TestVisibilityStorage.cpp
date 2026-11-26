@@ -64,12 +64,21 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        world.SetEntityVisible(id,false);
+        const auto initial_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
+        const auto initial_shadow_revision = world.GetStaticSceneRevision();
+        world.GetSpatialState().SetEntityVisible(id,false);
         if (world.IsEntityVisible(id) || !world.GetVisibilityStorage()->IsDirectlyInvisible(id))
         {
             GLogError(u8"Test 1 Failed: 置隐后查询结果不对");
             return 10;
         }
+
+        const auto hidden_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
+        world.SetEntityVisible(id,false);
+        if (hidden_revision != initial_revision + 1
+            || world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != hidden_revision
+            || world.GetStaticSceneRevision() != initial_shadow_revision + 1)
+            return 10;
 
         if (world.GetVisibilityStorage()->GetInvisibleCount() != 1)
         {
@@ -114,7 +123,10 @@ int main(int argc, char** argv)
             return 11;
         }
 
+        const auto parent_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         world.GetTransform(child_transform).SetParent(parent_transform);
+        if (world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != parent_revision + 1)
+            return 11;
 
         if (!world.IsEntityVisible(child_id))
         {
@@ -183,6 +195,18 @@ int main(int argc, char** argv)
             GLogError(u8"Test 3 Failed: 实体销毁后不可见标记未回收（同索引新实体会继承旧状态）");
             return 12;
         }
+
+        auto *replacement = world.CreateEntity<Entity>("Replacement");
+        if (!replacement)
+            return 12;
+        const EntityID replacement_id = replacement->GetEntityID();
+        world.SetEntityVisible(id, false);
+        world.GetSpatialState().SetEntityVisible(id, false);
+        if (!world.IsEntityVisible(replacement_id)
+            || !EntityGPUTable::IsActive(*world.GetEntityGPUTable().Row(replacement_id))
+            || !(world.GetEntityGPUTable().Row(replacement_id)->flags & uint32_t(EntityGPUFlags::Visible))
+            || world.GetVisibilityStorage()->GetInvisibleCount() != 0)
+            return 12;
 
         GLogInfo(u8"Test 3 Passed: 实体销毁回收不可见标记。");
     }

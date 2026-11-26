@@ -24,6 +24,7 @@ namespace hgl::ecs
      */
     class VisibilityDataStorage
     {
+        friend class WorldSpatialState;
     private:
         ankerl::unordered_dense::set<EntityID> invisible_entities;
         mutable hgl::Mutex mutex;
@@ -36,12 +37,12 @@ namespace hgl::ecs
         /// Set the context for hierarchical visibility checks
         void SetContext(ECSContext* ctx) { context = ctx; }
 
-        /// Mark entity as invisible
+    private:
+        /// 世界空间域是唯一写入方。
         void SetInvisible(EntityID entity_id);
-
-        /// Mark entity as visible
         void SetVisible(EntityID entity_id);
 
+    public:
         /// Check if entity is invisible (O(1) lookup)
         /// Also checks ancestor chain for hierarchical visibility
         bool IsInvisible(EntityID entity_id) const;

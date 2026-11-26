@@ -102,6 +102,8 @@ namespace hgl
             ~ECSContext() override;
 
             void OnTransformRegistered(TransformID id, bool isMovable) override;
+            void OnTransformChanged(TransformID id, uint32_t change_mask) override;
+            void OnEntityVisibilityChanged(EntityID id, bool visible) override;
 
         private:
             OBJECT_LOGGER
@@ -687,6 +689,9 @@ namespace hgl
             ///（只写自己 ⇒ 行位与含继承的权威失步）。权威链见 doc/visibility-authority-chain.md。
             void SetEntityVisible(EntityID id, bool visible)
             {
+                if (!GetEntity(id))
+                    return;
+
                 spatial_state.SetEntityVisible(id, visible);
 
                 // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）

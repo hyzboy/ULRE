@@ -63,7 +63,11 @@ namespace hgl::ecs
         Entity *owner = GetOwner();
         ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         if (context)
+        {
+            if (MaterialData *material_data = context->GetMaterialData(owner))
+                material_data->BumpAuthoredGeneration();
             context->MarkTopologyChanged(TopologyChange::GeometryBinding);
+        }
     }
 
     void GeometryData::SetPrimitiveVariantIndex(const uint32_t index)

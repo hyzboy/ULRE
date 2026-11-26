@@ -111,6 +111,9 @@ namespace hgl
                 storage->CopyChildren(child,grand);
                 stack.insert(stack.end(),grand.begin(),grand.end());
             }
+
+            if (ECSContext *world = GetContext())
+                world->GetSpatialState().NotifyTransformChanged(id, change_mask);
         }
 
         // D4：运行期写 Static 物体的一次性告警。

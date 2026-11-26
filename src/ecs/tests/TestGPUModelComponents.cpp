@@ -119,6 +119,14 @@ namespace
         ECSCoreContext core("CoreOnly");
         Entity *core_entity = core.CreateEntity();
         EXPECT(core_entity && !core_entity->GetContextAs<ECSContext>());
+        auto *geometry = ctx.GetOrCreateGeometryData(e1);
+        auto *material = ctx.GetOrCreateMaterialData(e1);
+        EXPECT(geometry && material);
+        const auto authored = material->GetAuthoredGeneration();
+        geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
+        EXPECT(material->GetAuthoredGeneration() == authored + 1);
+        geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
+        EXPECT(material->GetAuthoredGeneration() == authored + 1);
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();
         EXPECT(ref != nullptr);
         EXPECT(ref->GetTemplateID() == 0u);

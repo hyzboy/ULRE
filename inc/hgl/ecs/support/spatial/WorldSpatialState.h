@@ -21,6 +21,8 @@ namespace hgl::ecs
     public:
         virtual ~IWorldSpatialObserver() = default;
         virtual void OnTransformRegistered(TransformID id, bool isMovable) {}
+        virtual void OnTransformChanged(TransformID id, uint32_t change_mask) {}
+        virtual void OnEntityVisibilityChanged(EntityID id, bool visible) {}
     };
 
     /**
@@ -35,6 +37,8 @@ namespace hgl::ecs
      */
     class WorldSpatialState
     {
+        friend class ECSContext;
+        friend class TransformAccessor;
     private:
         ECSCoreContext* core_context = nullptr;
         ECSContext* context = nullptr;
@@ -56,8 +60,11 @@ namespace hgl::ecs
         WorldSpatialState(const WorldSpatialState&) = delete;
         WorldSpatialState& operator=(const WorldSpatialState&) = delete;
 
-        void Initialize(ECSCoreContext* core_ctx, ECSContext* ctx = nullptr, IWorldSpatialObserver* obs = nullptr);
-        void SetObserver(IWorldSpatialObserver* obs) { observer = obs; }
+    private:
+        void Initialize(ECSCoreContext* core_ctx, ECSContext* ctx, IWorldSpatialObserver* obs);
+        void NotifyTransformChanged(TransformID id, uint32_t change_mask);
+
+    public:
         void Clear();
 
         /// 实体销毁时的空间数据统一回收入口（变换行、包围盒行、可见性状态）
