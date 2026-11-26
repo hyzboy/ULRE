@@ -209,6 +209,9 @@ namespace hgl::ecs
             return INVALID_TRANSFORM_ID;
         }
 
+        if (observer)
+            observer->OnTransformMembershipChanged(id);
+
         return id;
     }
 
@@ -217,16 +220,20 @@ namespace hgl::ecs
         if (!IsValidTransformID(id))
             return;
 
+        TransformDataStorage* storage = transform_storage;
+        if (!storage || storage->GetGeneration(id) == 0)
+            return;
+
         UnregisterTransform(id);
 
-        if (TransformDataStorage* storage = transform_storage)
-        {
-            const TransformID parent = storage->GetParent(id);
-            if (IsValidTransformID(parent))
-                storage->RemoveChild(parent, id);
+        const TransformID parent = storage->GetParent(id);
+        if (IsValidTransformID(parent))
+            storage->RemoveChild(parent, id);
 
-            storage->Deallocate(id);
-        }
+        storage->Deallocate(id);
+
+        if (observer)
+            observer->OnTransformMembershipChanged(id);
     }
 
     void WorldSpatialState::NotifyTransformChanged(TransformID id, uint32_t change_mask)

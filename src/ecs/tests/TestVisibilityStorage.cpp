@@ -114,10 +114,12 @@ int main(int argc, char** argv)
         const EntityID child_id  = child->GetEntityID();
 
         // 建立父子关系（可见性上溯走的是变换父链 ⇒ 必须有变换行）
+        const auto topology_before_transform = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
         const TransformID parent_transform = world.CreateTransform(parent_id,Mobility::Static);
         const TransformID child_transform  = world.CreateTransform(child_id,Mobility::Movable);
 
-        if (!IsValidTransformID(parent_transform) || !IsValidTransformID(child_transform))
+        if (!IsValidTransformID(parent_transform) || !IsValidTransformID(child_transform)
+            || world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_transform + 2)
         {
             GLogError(u8"Test 2 Failed: 建变换行失败");
             return 11;
@@ -163,6 +165,15 @@ int main(int argc, char** argv)
         }
 
         GLogInfo(u8"Test 2 Passed: 祖先不可见 ⇒ 后代不可见（后代自身非“直接”不可见）。");
+
+        const auto topology_before_destroy = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
+        world.DestroyTransform(child_transform);
+        world.DestroyTransform(child_transform);
+        if (world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_destroy + 1)
+        {
+            GLogError(u8"Test 2 Failed: 变换销毁未正确通知拓扑变化");
+            return 11;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

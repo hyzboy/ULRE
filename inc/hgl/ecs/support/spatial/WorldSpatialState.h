@@ -21,6 +21,7 @@ namespace hgl::ecs
     public:
         virtual ~IWorldSpatialObserver() = default;
         virtual void OnTransformRegistered(TransformID id, bool isMovable) {}
+        virtual void OnTransformMembershipChanged(TransformID id) {}
         virtual void OnTransformChanged(TransformID id, uint32_t change_mask) {}
         virtual void OnEntityVisibilityChanged(EntityID id, bool visible) {}
     };

@@ -638,6 +638,11 @@ namespace hgl
             BumpStaticSceneRevision();
         }
 
+        void ECSContext::OnTransformMembershipChanged(TransformID)
+        {
+            MarkTopologyChanged(TopologyChange::EntityStructure);
+        }
+
         void ECSContext::OnTransformChanged(TransformID, uint32_t change_mask)
         {
             if (change_mask & ToChangeMask(TransformChange::Parent))

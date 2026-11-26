@@ -102,6 +102,7 @@ namespace hgl
             ~ECSContext() override;
 
             void OnTransformRegistered(TransformID id, bool isMovable) override;
+            void OnTransformMembershipChanged(TransformID id) override;
             void OnTransformChanged(TransformID id, uint32_t change_mask) override;
             void OnEntityVisibilityChanged(EntityID id, bool visible) override;
 
