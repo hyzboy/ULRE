@@ -12,6 +12,7 @@ namespace hgl::graph
     bool DecodeMaterialDataReferenceSet(const void *data, size_t size,
                                        MaterialDataReferenceSet &out,
                                        AnsiString &error);
+    // Reads a physical path or an asset URI through the mounted asset sources.
     bool LoadMaterialDataReferenceSet(const OSString &path,
                                       MaterialDataReferenceSet &out,
                                       AnsiString &error);

@@ -1,5 +1,6 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
 #include <hgl/graph/asset/MaterialDataReferenceSetResolve.h>
+#include <hgl/graph/asset/MaterialTextureConfigurationFile.h>
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/asset/AssetID.h>
@@ -16,6 +17,53 @@ using namespace hgl::graph;
 
 namespace
 {
+    bool TestMountedMaterialFiles()
+    {
+        const OSString root = OSString(OS_TEXT("material-files-"))
+                            + ToOSString(asset::AssetID::Create().ToString());
+        const OSString set_path = filesystem::JoinPathWithFilename(root, OS_TEXT("set.mdrs"));
+        const OSString texture_path = filesystem::JoinPathWithFilename(root, OS_TEXT("textures.mtcf"));
+        if (filesystem::IsDirectory(root) || filesystem::FileExist(root) || !filesystem::MakePath(root))
+            return false;
+
+        MaterialDataReferenceSet set;
+        set.id = asset::AssetID::Create().ToString();
+        set.instances.Create()->uri = OS_TEXT("mtldata:@oak");
+        MaterialTextureConfiguration textures;
+        textures.id = asset::AssetID::Create().ToString();
+        textures.textures.Create()->uri = OS_TEXT("tex2d:oak.Tex2D");
+        AnsiString error;
+        bool ok = CreateMaterialDataReferenceSetFile(set_path, set, error)
+               && CreateMaterialTextureConfigurationFile(texture_path, textures, error);
+        AssetSourceMountConfig config;
+        config.name = "material_files_test";
+        config.root = root;
+        config.load_manifest = false;
+        config.save_manifest = false;
+        const bool mounted = ok && MountAssetSource(config, &error);
+        ok = mounted && ok;
+        MaterialDataReferenceSet loaded_set;
+        MaterialTextureConfiguration loaded_textures;
+        if (ok)
+            ok = LoadMaterialDataReferenceSet(OS_TEXT("pack(material_files_test):set.mdrs"), loaded_set, error)
+              && LoadMaterialTextureConfiguration(OS_TEXT("pack(material_files_test):textures.mtcf"), loaded_textures, error)
+              && loaded_set.id == set.id && loaded_set.instances.GetCount() == 1
+              && loaded_textures.id == textures.id && loaded_textures.textures.GetCount() == 1
+              && !LoadMaterialDataReferenceSet(OS_TEXT("pack(material_files_test):missing.mdrs"), loaded_set, error)
+              && !error.IsEmpty() && loaded_set.id == set.id
+              && !LoadMaterialDataReferenceSet(OS_TEXT("geo:pack(material_files_test):set.mdrs"), loaded_set, error)
+              && !error.IsEmpty() && loaded_set.id == set.id;
+        if (mounted)
+            UnmountAssetSource(config.name);
+        if (filesystem::FileExist(set_path))
+            ok = filesystem::FileDelete(set_path) && ok;
+        if (filesystem::FileExist(texture_path))
+            ok = filesystem::FileDelete(texture_path) && ok;
+        if (!filesystem::DeletePath(root))
+            ok = false;
+        return ok;
+    }
+
     bool TestPersistentReference()
     {
         const asset::AssetID id = asset::AssetID::Create();
@@ -79,6 +127,11 @@ namespace
 int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestMaterialDataReferenceSet"));
+    if (!TestMountedMaterialFiles())
+    {
+        GLogError(u8"Mounted material asset file loading failed");
+        return 14;
+    }
     MaterialDataReferenceSet original;
     original.id = asset::AssetID::Create().ToString();
     auto *first = original.instances.Create();

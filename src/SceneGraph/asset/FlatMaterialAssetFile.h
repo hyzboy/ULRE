@@ -1,7 +1,8 @@
 #pragma once
 
 #include <hgl/filesystem/FileSystem.h>
-#include <hgl/io/FileInputStream.h>
+#include <hgl/graph/asset/AssetSourceMount.h>
+#include <hgl/io/InputStream.h>
 #include <hgl/io/FileOutputStream.h>
 #include <hgl/type/Smart.h>
 #include <hgl/type/ValueArray.h>
@@ -15,10 +16,17 @@ namespace hgl::graph::detail
                                bool (*decode)(const void *, size_t, T &, AnsiString &))
     {
         error.Clear();
-        io::OpenFileInputStream input(path);
+        const asset::AssetURI uri = asset::AssetURI::Parse(path, asset::AssetType::Unknown);
+        if (uri.HasType())
+        {
+            error = "material asset URI has an incompatible type";
+            return false;
+        }
+        AutoDelete<io::InputStream> input(OpenAssetInputStream(path, asset::AssetType::Unknown, &error));
         if (!input)
         {
-            error = "cannot open material asset";
+            if (error.IsEmpty())
+                error = "cannot open material asset";
             return false;
         }
         const int64 size = input->GetSize();
