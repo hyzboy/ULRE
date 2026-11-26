@@ -4,10 +4,12 @@
 #include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/graph/asset/AssetSourceMount.h>
 #include <hgl/asset/AssetID.h>
+#include <hgl/asset/AssetSource.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/filesystem/Path.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
+#include <hgl/io/MemoryInputStream.h>
 #include <hgl/utf.h>
 
 #include <cstring>
@@ -17,6 +19,73 @@ using namespace hgl::graph;
 
 namespace
 {
+    class MemoryMaterialSource final : public asset::AssetSource
+    {
+        asset::AssetID set_id;
+        asset::AssetID texture_id;
+        asset::AssetID stale_set_id;
+        asset::AssetID stale_texture_id;
+        ValueArray<uint8> &set_bytes;
+        ValueArray<uint8> &texture_bytes;
+
+    public:
+        MemoryMaterialSource(const asset::AssetID &set, const asset::AssetID &texture,
+                             const asset::AssetID &stale_set, const asset::AssetID &stale_texture,
+                             ValueArray<uint8> &set_data, ValueArray<uint8> &texture_data)
+            : AssetSource("material_memory_test"), set_id(set), texture_id(texture),
+              stale_set_id(stale_set), stale_texture_id(stale_texture),
+              set_bytes(set_data), texture_bytes(texture_data) {}
+
+        io::InputStream *Open(const asset::AssetID &id) override
+        {
+            ValueArray<uint8> *data = id == set_id || id == stale_set_id ? &set_bytes
+                                    : id == texture_id || id == stale_texture_id ? &texture_bytes : nullptr;
+            if (!data) return nullptr;
+            ManagedArray<io::MemoryInputStream> streams;
+            if (!streams.Create(data->GetData(), data->GetCount())) return nullptr;
+            return streams.DetachAt(0);
+        }
+    };
+
+    bool TestIndexedMemoryMaterialFiles()
+    {
+        const asset::AssetID set_id = asset::AssetID::Create();
+        const asset::AssetID texture_id = asset::AssetID::Create();
+        const asset::AssetID stale_set_id = asset::AssetID::Create();
+        const asset::AssetID stale_texture_id = asset::AssetID::Create();
+        MaterialDataReferenceSet set;
+        set.id = set_id.ToString();
+        set.instances.Create()->uri = OS_TEXT("mtldata:@oak");
+        MaterialTextureConfiguration textures;
+        textures.id = texture_id.ToString();
+        textures.textures.Create()->uri = OS_TEXT("tex2d:oak.Tex2D");
+        ValueArray<uint8> set_bytes, texture_bytes;
+        AnsiString error;
+        if (!EncodeMaterialDataReferenceSet(set, set_bytes, error)
+            || !EncodeMaterialTextureConfiguration(textures, texture_bytes, error))
+            return false;
+        ManagedArray<MemoryMaterialSource> sources;
+        auto *source = sources.Create(set_id, texture_id, stale_set_id, stale_texture_id,
+                                      set_bytes, texture_bytes);
+        if (!source || !asset::RegisterAssetsSource("material_memory_test", source))
+            return false;
+        sources.DetachAt(0);
+        const OSString prefix = OS_TEXT("pack(material_memory_test):");
+        MaterialDataReferenceSet loaded_set;
+        MaterialTextureConfiguration loaded_textures;
+        const bool ok =
+            LoadMaterialDataReferenceSet(prefix + ToOSString(asset::MakeAssetIDTarget(set_id)), loaded_set, error)
+            && LoadMaterialTextureConfiguration(prefix + ToOSString(asset::MakeAssetIDTarget(texture_id)), loaded_textures, error)
+            && loaded_set.id == set.id && loaded_textures.id == textures.id
+            && !LoadMaterialDataReferenceSet(prefix + ToOSString(asset::MakeAssetIDTarget(stale_set_id)), loaded_set, error)
+            && error == "material asset ID does not match the requested ID"
+            && loaded_set.id == set.id && loaded_set.instances.GetCount() == 1
+            && !LoadMaterialTextureConfiguration(prefix + ToOSString(asset::MakeAssetIDTarget(stale_texture_id)), loaded_textures, error)
+            && error == "material asset ID does not match the requested ID"
+            && loaded_textures.id == textures.id && loaded_textures.textures.GetCount() == 1;
+        return asset::UnregisterAssetsSource("material_memory_test") && ok;
+    }
+
     bool TestMountedMaterialFiles()
     {
         const OSString root = OSString(OS_TEXT("material-files-"))
@@ -127,7 +196,7 @@ namespace
 int main()
 {
     hgl::logger::InitLogger(OS_TEXT("TestMaterialDataReferenceSet"));
-    if (!TestMountedMaterialFiles())
+    if (!TestMountedMaterialFiles() || !TestIndexedMemoryMaterialFiles())
     {
         GLogError(u8"Mounted material asset file loading failed");
         return 14;

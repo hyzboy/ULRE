@@ -41,7 +41,21 @@ namespace hgl::graph::detail
             error = "cannot read material asset";
             return false;
         }
-        return decode(bytes.data(), static_cast<size_t>(size), out, error);
+        T decoded;
+        if (!decode(bytes.data(), static_cast<size_t>(size), decoded, error))
+            return false;
+        asset::AssetID requested;
+        if (uri.IsPack() && asset::ParseAssetIDTarget(ToU8String(uri.target), requested))
+        {
+            asset::AssetID actual;
+            if (!asset::AssetID::Parse(decoded.id, actual) || actual != requested)
+            {
+                error = "material asset ID does not match the requested ID";
+                return false;
+            }
+        }
+        out = static_cast<T &&>(decoded);
+        return true;
     }
 
     inline bool CreateFlatMaterialAsset(const OSString &path, const ValueArray<uint8> &bytes,
