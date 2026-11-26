@@ -18,4 +18,23 @@ namespace hgl::graph
         uint32 schema = 1;
         ManagedArray<MaterialTextureAssetReference> textures; ///< Complete list in recipe layout order.
     };
+
+    // This compares authored references only; a reusable GPU row also requires
+    // an independently verified matching texture layout and device.
+    inline bool HasSameTextureReferences(const MaterialTextureConfiguration &left,
+                                         const MaterialTextureConfiguration &right)
+    {
+        if (left.schema != right.schema || left.textures.GetCount() != right.textures.GetCount())
+            return false;
+
+        for (int i = 0; i < left.textures.GetCount(); ++i)
+        {
+            const MaterialTextureAssetReference *a = left.textures.At(i);
+            const MaterialTextureAssetReference *b = right.textures.At(i);
+            if (!a || !b || a->uri != b->uri || a->array_layer != b->array_layer
+                || a->auto_mipmaps != b->auto_mipmaps)
+                return false;
+        }
+        return true;
+    }
 }

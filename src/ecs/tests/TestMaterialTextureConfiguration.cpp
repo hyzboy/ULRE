@@ -24,10 +24,30 @@ int main()
         || decoded.textures.GetCount() != 3
         || decoded.textures[0]->uri != first->uri || !decoded.textures[0]->auto_mipmaps
         || decoded.textures[1]->uri != second->uri || decoded.textures[1]->array_layer != 3
-        || !decoded.textures[2]->uri.IsEmpty())
+        || !decoded.textures[2]->uri.IsEmpty()
+        || !HasSameTextureReferences(original, decoded))
     {
         GLogError(u8"Material texture configuration round trip failed: %s", error.c_str());
         return 1;
+    }
+
+    decoded.textures[0]->uri = OS_TEXT("tex2d:assets/willow.Tex2D");
+    const bool detects_uri_change = !HasSameTextureReferences(original, decoded);
+    decoded.textures[0]->uri = first->uri;
+    decoded.textures[0]->auto_mipmaps = false;
+    const bool detects_mipmap_change = !HasSameTextureReferences(original, decoded);
+    decoded.textures[0]->auto_mipmaps = true;
+    decoded.textures[1]->array_layer = 0;
+    const bool detects_layer_change = !HasSameTextureReferences(original, decoded);
+    decoded.textures[1]->array_layer = 3;
+    MaterialTextureConfiguration shorter;
+    shorter.textures.Create()->uri = first->uri;
+    if (!detects_uri_change || !detects_mipmap_change || !detects_layer_change
+        || !HasSameTextureReferences(original, decoded)
+        || HasSameTextureReferences(original, shorter))
+    {
+        GLogError(u8"Material texture reference comparison did not compare the whole list");
+        return 7;
     }
 
     if (DecodeMaterialTextureConfiguration(encoded.GetData(), 4, decoded, error)
