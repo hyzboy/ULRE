@@ -1,6 +1,10 @@
 #include <hgl/graph/asset/MaterialDataReferenceSetFile.h>
+#include <hgl/graph/asset/MaterialDataReferenceSetResolve.h>
+#include <hgl/graph/asset/MaterialDataBlockRegistry.h>
 #include <hgl/filesystem/FileSystem.h>
 #include <hgl/log/Log.h>
+
+#include <cstring>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -73,6 +77,44 @@ int main()
     {
         GLogError(u8"Material reference set file round trip failed: %s", error.c_str());
         return 5;
+    }
+
+    const char block[] =
+        "schema = 1\nname = \"oak\"\ntarget = \"PBRSurface\"\n"
+        "[[rows]]\nmetallic = 0.1\n[[rows]]\nmetallic = 0.2\n";
+    mtl::MaterialDataBlockRegistry registry;
+    auto *asset = registry.RegisterFromToml(OS_TEXT("oak.material_data.toml"),
+                                             block, static_cast<int>(strlen(block)));
+    if (!asset || asset->IsFailed())
+        return 7;
+    MaterialDataReferenceSet refs;
+    refs.instances.Create()->uri = OS_TEXT("mtldata:@oak");
+    auto *other = refs.instances.Create();
+    other->uri = OS_TEXT("mtldata:@oak");
+    other->row = 1;
+    refs.instances.Create()->uri = OS_TEXT("mtldata:@oak");
+    ValueArray<mtl::ResolvedMaterialDataReference> resolved;
+    if (!mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || resolved.GetCount() != 3 || resolved[0].asset != asset
+        || resolved[1].asset != asset || resolved[1].row != 1
+        || resolved[2].asset != asset || resolved[2].row != 0)
+    {
+        GLogError(u8"Material reference resolution failed: %s", error.c_str());
+        return 8;
+    }
+    other->row = 2;
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].row != 1)
+    {
+        GLogError(u8"Out-of-range resolution did not preserve the previous result");
+        return 9;
+    }
+    other->uri = OS_TEXT("mtldata:@missing");
+    if (mtl::ResolveMaterialDataReferenceSet(refs, registry, resolved, error)
+        || error.IsEmpty() || resolved.GetCount() != 3 || resolved[1].row != 1)
+    {
+        GLogError(u8"Missing asset did not preserve the previous result");
+        return 10;
     }
     return 0;
 }
