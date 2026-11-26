@@ -532,6 +532,14 @@ Render       → 空实现（绘制由 PrimitiveRenderSystem 直读帧缓存发�
 
 ## 9. 帧缓存与生命周期
 
+### 实体及关联数据的所有权和同步通知
+
+`ECSCoreContext` 协调实体和组件生命周期；`EntityManager` 管理槽位和 generation，组件池拥有组件行，`WorldSpatialState` 拥有空间数据，`WorldRenderData` 拥有其材质及管线关联数据。实体仅持行号和非拥有 Core 指针，`GetContextAs<T>()` 用类型检查获取派生世界，纯 Core 世界不会被当成渲染世界。
+
+销毁按有效 ID 标记实体、清理空间数据、卸载组件、销毁实体槽、清理渲染关联数据，再同步发布仅含 ID 的销毁事实。组件卸载期间运行期材质数据仍存活；Shutdown 复用逐实体销毁并保留槽 generation。观察者不拥有数据或执行必要清理，行刷新回调中的实体仅在回调期间有效；回调不得重入实体/组件生命周期或更换观察者。观察者由绑定方负责在自身销毁前注销。
+
+渲染侧将变化映射到拓扑或动态事实；模型模板绑定变化使对应管线失效，部件掩码及其他逐帧动态字段仍由完整收集和快路径重发布。CPU 逻辑失效不意味着 GPU 资源立即释放，仍需遵守原有引用计数、帧槽及退休同步规则。
+
 - `ECSContext::PrepareRenderPassSetup` 在每次主帧或离屏 pass 的 collect 之前推进并清空 `RenderFrameCache`；帧边界不依赖 Primitive 系统。Line 渲染缓冲按 `IRenderTarget::GetCurrentFrameIndex()` 分槽，每槽只在对应 RT 等待前次提交完成后复用。
 - `GPUCullSystem` 的 gather、间接命令及可见计数输出在帧槽间共享：剔除与消费绘制必须提交到同一图形队列，且上一轮消费的绘制提交必须先于下一轮剔除提交。剔除前的 GPU 屏障等待此前访问，剔除后的屏障使写入对间接绘制及图形着色器可见；不能仅依赖队列提交顺序。该保守方案会限制跨帧流水线重叠。批标签和布局虽按帧槽分份，CPU 重写前仍须等待该槽上次剔除的 fence；命令缓冲重录使用同一等待。
 - 交换链图像的获取信号量等待阶段与首次颜色布局转换的源阶段共用 `SemaphoreSubmit::SwapchainAcquireStage`；改变图像首次使用阶段时必须同时维护两者的执行依赖。

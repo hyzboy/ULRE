@@ -38,10 +38,11 @@ namespace hgl::ecs
         void SetCastShadow(bool enable);
 
         float GetMaxDistance() const { return max_cast_distance; }
-        void SetMaxDistance(float dist) { max_cast_distance = dist; }
+        void SetMaxDistance(float dist);
 
         // ── 接收控制 (Receiver) ──
         bool CanReceiveShadow() const { return receive_shadow; }
+        /// 每帧由完整收集和快路径重新发布，无需拓扑失效。
         void SetReceiveShadow(bool enable) { receive_shadow = enable; }
 
         // ── 局部偏差 ──

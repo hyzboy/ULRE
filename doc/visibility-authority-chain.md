@@ -1,5 +1,7 @@
 # 可见性权威链（定稿）：三种表示 / 两种极性 / 传播规则
 
+> **当前入口补充**：`ECSContext::SetEntityVisible` 和 `WorldSpatialState::SetEntityVisible` 均经空间域写入权威集合，过期实体 ID 被拒绝。值变时空间域同步通知渲染侧，更新该实体的直接 GPU 镜像并记动态事实，同时保守失效静态阴影。完整收集和快路径仍逐帧按祖先链重发有效可见性；以下历史说明中的「唯一写者」应理解为空间域入口。
+
 > **性质**：**契约文档**（不是计划）。它把此前只散在三个文件头注里的语义**收在一处**。
 > **出处**：`doc/analysis/ecs-audit-2026-10/06-visibility-three-representations.md`（问题详述 + 三个处置选项）；本档 = 该报告 **§五 选项 (c)** 的落地件。
 > **关联**：ECS 层主档 `doc/ecs-layer-architecture-and-frame-flow.md`（§5 组件层 / §6 Tick 系统层）；策略表那条审计见 `doc/archive/analysis/ecs-audit-2026-10/07-material-four-key-spaces.md`（③ 的消费面）。

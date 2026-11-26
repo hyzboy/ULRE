@@ -1,6 +1,7 @@
 #include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/ecs/components/GPUInstancedModelBatchComponent.h>
 #include <hgl/ecs/components/GeometryData.h>
+#include <hgl/ecs/components/ShadowProxy.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
@@ -125,6 +126,13 @@ namespace
         const auto authored = material->GetAuthoredGeneration();
         geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
         EXPECT(material->GetAuthoredGeneration() == authored + 1);
+        auto *shadow = e1->AddComponent<ShadowProxy>();
+        EXPECT(shadow);
+        const auto shadow_revision = ctx.GetStaticSceneRevision();
+        shadow->SetMaxDistance(25.0f);
+        EXPECT(ctx.GetStaticSceneRevision() == shadow_revision + 1);
+        shadow->SetMaxDistance(25.0f);
+        EXPECT(ctx.GetStaticSceneRevision() == shadow_revision + 1);
         geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
         EXPECT(material->GetAuthoredGeneration() == authored + 1);
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();

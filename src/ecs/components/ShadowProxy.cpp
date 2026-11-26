@@ -19,6 +19,16 @@ namespace hgl::ecs
         }
     }
 
+    void ShadowProxy::SetMaxDistance(const float distance)
+    {
+        if (max_cast_distance == distance)
+            return;
+
+        max_cast_distance = distance;
+        if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
+            context->BumpStaticSceneRevision();
+    }
+
     ShadowProxy *GetShadowProxy(Entity *owner)
     {
         if (!owner)
