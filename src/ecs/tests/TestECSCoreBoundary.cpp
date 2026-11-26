@@ -34,7 +34,32 @@ namespace
 
         explicit BoundaryProbeObject(const char *name) : Object(name) {}
     };
+
+    struct BoundaryTestComponent : public hgl::ecs::ComponentRow
+    {
+        int value = 42;
+    };
+
+    class BoundaryTestSystem : public hgl::ecs::System
+    {
+    public:
+        int tick_count = 0;
+
+        void Update(float dt) override
+        {
+            ++tick_count;
+        }
+    };
 }//namespace
+
+namespace hgl::ecs
+{
+    template<>
+    struct ComponentTypeOf<BoundaryTestComponent>
+    {
+        static constexpr ComponentType value = ComponentType::Lines;
+    };
+}
 
 int main()
 {
@@ -59,22 +84,61 @@ int main()
     hgl::ecs::ECSCoreContext core_ctx("BoundaryCoreWorld");
     core_ctx.SetActive(true);
 
+    // 1. 系统注册与帧驱动验证
+    auto sys = core_ctx.RegisterSystem<BoundaryTestSystem>();
+    if (!sys || core_ctx.GetSystem<BoundaryTestSystem>() != sys)
+    {
+        GLogError(u8"[ECSCoreBoundary] RegisterSystem / GetSystem 契约失效");
+        return 3;
+    }
+
+    core_ctx.Tick(0.016f);
+    if (sys->tick_count != 1)
+    {
+        GLogError(u8"[ECSCoreBoundary] Tick 系统派发契约失效");
+        return 4;
+    }
+
+    // 2. 实体分配与寻址验证
     auto *entity = core_ctx.CreateEntity();
     if (!entity)
     {
         GLogError(u8"[ECSCoreBoundary] ECSCoreContext::CreateEntity 失败");
-        return 3;
+        return 5;
     }
 
     if (core_ctx.GetEntity(entity->GetEntityID()) != entity)
     {
         GLogError(u8"[ECSCoreBoundary] ECSCoreContext::GetEntity 寻址不匹配");
-        return 4;
+        return 6;
+    }
+
+    // 3. 组件池与组件挂载验证
+    auto *comp = entity->AddComponent<BoundaryTestComponent>();
+    if (!comp || comp->value != 42)
+    {
+        GLogError(u8"[ECSCoreBoundary] AddComponent 契约失效");
+        return 7;
+    }
+
+    const uint32_t comp_row = entity->GetComponentRow(hgl::ecs::ComponentType::Lines);
+    if (comp_row == 0 || core_ctx.GetComponentByRow<BoundaryTestComponent>(comp_row) != comp)
+    {
+        GLogError(u8"[ECSCoreBoundary] GetComponentByRow 寻址不匹配");
+        return 8;
+    }
+
+    // 4. 组件销毁与实体销毁
+    entity->RemoveComponent<BoundaryTestComponent>();
+    if (entity->GetComponentRow(hgl::ecs::ComponentType::Lines) != 0)
+    {
+        GLogError(u8"[ECSCoreBoundary] RemoveComponent 契约失效");
+        return 9;
     }
 
     core_ctx.DestroyEntity(entity);
     core_ctx.Shutdown();
 
-    GLogInfo(u8"[ECSCoreBoundary] Core 层自足性通过（无图形后端依赖）");
+    GLogInfo(u8"[ECSCoreBoundary] Core 层自足性与解耦闸门全部通过（零图形依赖）");
     return 0;
 }
