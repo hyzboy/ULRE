@@ -33,6 +33,7 @@
 #include<hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include<hgl/ecs/support/spatial/WorldSpatialState.h>
 #include<hgl/ecs/support/render/WorldRenderData.h>
+#include<hgl/ecs/support/render/WorldGPUResources.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -127,36 +128,8 @@ namespace hgl
             // CPU 渲染数据底座（光源行表、阴影参数、材质表组、世界相机表与常驻 Fallback）
             WorldRenderData render_data;
 
-            // 世界地址表（WorldAddresses）：世界私有地址的 SSBO 表（HGL_FRAME_SLOT_TOTAL 槽 ×
-            // kWorldAddressesSlotStride），基址经 pc_root.addr_world_addresses 下发 ——
-            // 多世界渲染只需换这一个指针（表内各列都随世界）。
-            graph::StructView<graph::WorldAddresses> *world_addresses_table = nullptr;
-            graph::DeviceBuffer *world_addresses_buffer = nullptr;
-            uint64_t world_addresses_addr = 0;
-
-            // ── T3c：实体行表（`EntityGPU`）的 **GPU 侧**（世界私有 SSBO）──
-            //   CPU 权威 = `entity_gpu_table`（T3b）；这里只是它的设备镜像：
-            //   BDA 基址经 `WorldAddresses.addr_entity_gpu` 下发（T3c-2 起按**脏行**上传，
-            //   不再整表 512 KB 传）。三者与地址表同范式（`CreateSSBO` → `StructView` → 设备地址）。
-            graph::StructView<EntityGPU> *entity_gpu_view = nullptr;
-            graph::DeviceBuffer *entity_gpu_buffer = nullptr;
-            uint64_t entity_gpu_table_addr = 0;
-
-            // T3d-3a：实体 4-ID 表的设备镜像（骨架与上面三件套逐字同构）
-            graph::StructView<graph::RenderItemDescriptor> *entity_render_id_view = nullptr;
-            graph::DeviceBuffer *entity_render_id_buffer = nullptr;
-            uint64_t entity_render_id_table_addr = 0;
-
-            // T6b：光源行表的设备镜像（骨架与实体两表逐字同构：CreateSSBO → StructView → BDA）。
-            // 按帧槽切份（光参数可逐帧改 ⇒ 行内容随帧变）；脏行上传写进每一份。
-            graph::StructView<graph::LightRow> *light_row_view = nullptr;
-            graph::DeviceBuffer *light_row_buffer = nullptr;
-            uint64_t light_row_table_addr = 0;
-
-            // T6b/P4：影子数据的设备镜像（世界私有；**按帧槽各一份** —— 地址 = 基址 + 帧槽 × 832 B）。
-            graph::StructView<graph::ShadowInfo> *shadow_info_view = nullptr;
-            graph::DeviceBuffer *shadow_info_buffer = nullptr;
-            uint64_t shadow_info_addr = 0;
+            // GPU 侧资源与设备镜像表（世界地址表、实体行表、4-ID 表、光源表、影子表）
+            WorldGPUResources gpu_resources;
 
             RenderFrameCache render_frame_cache;
             uint32_t frame_index = 0;
@@ -800,6 +773,9 @@ namespace hgl
 
             WorldRenderData&       GetRenderData()       { return render_data; }
             const WorldRenderData& GetRenderData() const { return render_data; }
+
+            WorldGPUResources&       GetGPUResources()       { return gpu_resources; }
+            const WorldGPUResources& GetGPUResources() const { return gpu_resources; }
 
             /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
             MaterialVariantTable* GetMaterialVariantTable() { return render_data.GetMaterialVariantTable(); }

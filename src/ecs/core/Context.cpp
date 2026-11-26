@@ -67,6 +67,7 @@ namespace hgl
         ECSContext::ECSContext(const AnsiString& name)
             : ECSCoreContext(name)
             , render_data(this)
+            , gpu_resources(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
 
@@ -327,58 +328,17 @@ namespace hgl
             env_profile_owned = false;
 
             // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
-            if (world_addresses_table)
+            if (auto *gc = GetGraphicsContext())
             {
-                delete world_addresses_table;
-                world_addresses_table = nullptr;
-            }
-
-            if (world_addresses_buffer)
-            {
-                if (auto *gc = GetGraphicsContext())
+                if (auto *bm = gc->GetBufferManager())
                 {
-                    if (auto *bm = gc->GetBufferManager())
-                    {
-                        bm->Release(world_addresses_buffer);
-
-                        // T3c：实体行表随世界释放（`StructView` 是裸指针、生命周期随 buffer，与地址表同办）
-                        if (entity_gpu_buffer)
-                            bm->Release(entity_gpu_buffer);
-
-                        // T3d-3a：实体 4-ID 表随世界释放（同一纪律）
-                        if (entity_render_id_buffer)
-                            bm->Release(entity_render_id_buffer);
-
-                        // T6b：光源行表随世界释放（同一纪律）
-                        if (light_row_buffer)
-                            bm->Release(light_row_buffer);
-
-                        // T6b/P4：影子数据表随世界释放（同一纪律）
-                        if (shadow_info_buffer)
-                            bm->Release(shadow_info_buffer);
-                    }
+                    gpu_resources.Release(bm);
                 }
-
-                world_addresses_buffer = nullptr;
-
-                entity_gpu_buffer = nullptr;
-                entity_gpu_view = nullptr;
-                entity_gpu_table_addr = 0;
-
-                entity_render_id_buffer = nullptr;
-                entity_render_id_view = nullptr;
-                entity_render_id_table_addr = 0;
-
-                light_row_buffer = nullptr;
-                light_row_view = nullptr;
-                light_row_table_addr = 0;
-
-                shadow_info_buffer = nullptr;
-                shadow_info_view = nullptr;
-                shadow_info_addr = 0;
             }
-
-            world_addresses_addr = 0;
+            else
+            {
+                gpu_resources.Release(nullptr);
+            }
 
             shutdown_in_progress = false;
         }
