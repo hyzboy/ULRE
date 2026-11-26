@@ -554,6 +554,7 @@ namespace hgl
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
             void SetResourceNamePrefix(const AnsiString& prefix) { resource_name_prefix = prefix; }
+            void SetResourceNamePrefix(const char* prefix) { resource_name_prefix = prefix; }
             void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix.c_str(); }
             const AnsiString& GetResourceNamePrefix() const { return resource_name_prefix; }
 
