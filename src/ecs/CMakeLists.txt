@@ -113,11 +113,15 @@ source_group("ECS\\Tests" FILES ${ECS_TEST_FILES})
 set(ECS_CORE_SOURCES
     "components/Layer2DComponent.cpp"
     "components/Transform2DComponent.cpp"
+    "core/ECSCoreContext.cpp"
     "core/entity/ComponentRow.cpp"
+    "core/entity/Entity.cpp"
+    "core/entity/EntityManager.cpp"
     "core/entity/Object.cpp"
     "core/system/System.cpp"
     "core/system/SystemGroup.cpp"
     "core/system/SystemOrderPlanner.cpp"
+    "core/system/SystemRegistry.cpp"
     "support/cull/BatchLayoutStaging.cpp"
     "support/material/MaterialVariantTable.cpp"
     "support/pipeline/RenderStrategyParity.cpp"
@@ -139,6 +143,7 @@ set(ECS_CORE_HEADERS
     "components/Transform2DComponent.h"
     "core/AdaptiveRenderGraphCache.h"
     "core/DefaultSystems.h"
+    "core/ECSCoreContext.h"
     "core/MainFrameTopologyState.h"
     "core/RenderPassScopeState.h"
     "core/entity/ComponentRow.h"
@@ -234,13 +239,10 @@ set(ECS_RENDER_SOURCES
     "core/ContextSystems.cpp"
     "core/DefaultSystems.cpp"
     "core/FrameLaneWaitSet.cpp"
-    "core/entity/Entity.cpp"
-    "core/entity/EntityManager.cpp"
     "core/render/MaterialBatch.cpp"
     "core/render/PrimitiveRenderItem.cpp"
     "core/render/RenderFrameCache.cpp"
     "core/render/RenderGraph.cpp"
-    "core/system/SystemRegistry.cpp"
     "support/assembly/ModelAssemblyStage.cpp"
     "support/assembly/StaticMeshModelInstance.cpp"
     "support/cull/CPUCullReferenceSystem.cpp"
@@ -435,7 +437,7 @@ target_link_libraries(ULRE.ECS INTERFACE ULRE.ECS.Core ULRE.ECS.Render)
 find_package(Jolt CONFIG REQUIRED)
 # CMCore 是 PUBLIC：Core 的公开头直接用 AnsiString/ValueArray，且实现用 hgl::logger。
 # 独立链接 ULRE.ECS.Core 的消费方（如 TestECSCoreBoundary）不应再自己猜这些依赖。
-target_link_libraries(ULRE.ECS.Core PUBLIC Jolt::Jolt CMCore CMMath)
+target_link_libraries(ULRE.ECS.Core PUBLIC Jolt::Jolt CMCore CMMath ULRE.Debug)
 # Render 的图形集成依赖显式声明：ECS 不再是「靠根目标平铺链接才编得过」的库。
 target_link_libraries(ULRE.ECS.Render
     PUBLIC

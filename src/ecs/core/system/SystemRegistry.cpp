@@ -1,5 +1,5 @@
 #include <hgl/ecs/core/system/SystemRegistry.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/ECSCoreContext.h>
 #include <hgl/ecs/core/system/SystemOrderPlanner.h>
 #include <hgl/log/Log.h>
 #include <typeinfo>
@@ -80,7 +80,7 @@ namespace hgl::ecs
         if (!system)
             return;
 
-        system->SetContext(context);
+        system->SetContext(reinterpret_cast<ECSContext*>(context));
 
         // tick / render 分类的唯一权威 = 系统自己的 ExecutionPhase。
         // 旧版还收一个调用方声明的 `is_render`：相位不一致时只 LogWarning 一句就把系统
@@ -197,7 +197,7 @@ namespace hgl::ecs
             size_t dep_key = dep_type.hash_code();
             schedule.AddDependency(is_render, key, dep_key);
         }
-        if (context->IsActive())
+        if (context && context->IsActive())
         {
             system->Initialize();
         }

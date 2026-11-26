@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hgl/ecs/core/entity/EntityHandle.h>
 #include <hgl/ecs/support/storage/ComponentTypeTable.h>
 #include <cstdint>
 

@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/entity/ECSEntityObserver.h>
+#include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/log/Log.h>
 
 namespace hgl
@@ -23,6 +24,17 @@ namespace hgl
             {
                 observer->OnEntityDestroyed(id);
             }
+        }
+
+        void Entity::SetContext(ECSCoreContext *ctx)
+        {
+            context = ctx;
+            observer = ctx;
+        }
+
+        void Entity::SetContext(ECSContext *ctx)
+        {
+            SetContext(reinterpret_cast<ECSCoreContext*>(ctx));
         }
 
         void Entity::MarkSceneDirty() const

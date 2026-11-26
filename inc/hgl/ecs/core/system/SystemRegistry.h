@@ -9,6 +9,7 @@
 
 namespace hgl::ecs
 {
+    class ECSCoreContext;
     class ECSContext;
 
     /**
@@ -34,7 +35,7 @@ namespace hgl::ecs
         };
 
     private:
-        ECSContext *context;    ///< 非拥有回指：世界以成员持有本注册表，生命周期更长
+        ECSCoreContext *context = nullptr;    ///< 非拥有回指：世界以成员持有本注册表，生命周期更长
 
         // 分类存储：更新系统和渲染系统分开
         hgl::UnorderedMap<size_t, std::shared_ptr<System>> tick_systems;
@@ -62,10 +63,13 @@ namespace hgl::ecs
         static OrderedSystem* FindOrderedSystem(PtrArray<OrderedSystem>& list, size_t key);
 
     public:
-        explicit SystemRegistry(ECSContext *ctx)
+        explicit SystemRegistry(ECSCoreContext *ctx = nullptr)
             : context(ctx)
         {
         }
+
+        void SetContext(ECSCoreContext *ctx) { context = ctx; }
+        ECSCoreContext *GetContext() const { return context; }
 
         /// 注册或替换（key = typeid hash）。同 key 替换：先从两映射+两执行列表摘旧并 Shutdown，
         /// 再让新实例进入映射/元素索引/执行列表并重建依赖；世界 active 时立即 Initialize。

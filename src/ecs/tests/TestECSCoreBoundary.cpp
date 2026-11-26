@@ -13,9 +13,13 @@
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/ComponentRow.h>
 #include<hgl/ecs/core/entity/EntityHandle.h>
+#include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/core/entity/EntityManager.h>
+#include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/core/system/SystemGroup.h>
 #include<hgl/ecs/core/system/SystemOrderPlanner.h>
+#include<hgl/ecs/core/system/SystemRegistry.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/ecs/support/transform/TransformID.h>
 #include<hgl/ecs/support/cull/BoundingVolumeCull.h>
@@ -50,6 +54,26 @@ int main()
         GLogError(u8"[ECSCoreBoundary] SystemGroup 可构造性契约失效");
         return 2;
     }
+
+    // 验证 ECSCoreContext 纯核心上下文运作（零图形依赖）
+    hgl::ecs::ECSCoreContext core_ctx("BoundaryCoreWorld");
+    core_ctx.SetActive(true);
+
+    auto *entity = core_ctx.CreateEntity();
+    if (!entity)
+    {
+        GLogError(u8"[ECSCoreBoundary] ECSCoreContext::CreateEntity 失败");
+        return 3;
+    }
+
+    if (core_ctx.GetEntity(entity->GetEntityID()) != entity)
+    {
+        GLogError(u8"[ECSCoreBoundary] ECSCoreContext::GetEntity 寻址不匹配");
+        return 4;
+    }
+
+    core_ctx.DestroyEntity(entity);
+    core_ctx.Shutdown();
 
     GLogInfo(u8"[ECSCoreBoundary] Core 层自足性通过（无图形后端依赖）");
     return 0;

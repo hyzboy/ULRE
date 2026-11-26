@@ -11,6 +11,7 @@ namespace hgl
 {
     namespace ecs
     {
+        class ECSCoreContext;
         class ECSContext;
 
         /**
@@ -39,7 +40,7 @@ namespace hgl
             /// `BuildComponentMask()` **现场拼**（O(COMPONENT_TYPE_COUNT)）。
             uint32_t component_rows[COMPONENT_TYPE_COUNT] = {};
 
-            ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
+            ECSCoreContext *context = nullptr;   ///< 所属的 ECSCoreContext，不拥有
             IECSEntityObserver *observer = nullptr; ///< 实体生命周期观察者
 
         public:
@@ -73,9 +74,11 @@ namespace hgl
             /// Set entity ID (called by EntityManager)
             void SetID(EntityID entity_id) { id = entity_id; }
 
+            void SetContext(ECSCoreContext *ctx);
             void SetContext(ECSContext *ctx);
 
-            ECSContext *GetContext() const { return context; }
+            ECSCoreContext *GetCoreContext() const { return context; }
+            ECSContext *GetContext() const { return reinterpret_cast<ECSContext*>(context); }
 
             void SetEntityObserver(IECSEntityObserver *obs) { observer = obs; }
 

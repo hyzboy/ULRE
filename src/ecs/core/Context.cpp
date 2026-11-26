@@ -65,9 +65,7 @@ namespace hgl
         }
 
         ECSContext::ECSContext(const AnsiString& name)
-            : Object(name)
-            , entity_manager(std::make_unique<EntityManager>(1000))
-            , system_registry(this)
+            : ECSCoreContext(name)
             , transform_storage(std::make_unique<TransformDataStorage>())
             , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
             , visibility_storage(std::make_unique<VisibilityDataStorage>())
@@ -77,7 +75,6 @@ namespace hgl
             , material_runtime_pipeline_table(std::make_unique<MaterialRuntimePipelineTable>())
             , model_template_material_table(std::make_unique<ModelTemplateMaterialTable>(this))
             , camera_info_storage(std::make_shared<CameraInfoStorage>())
-            , active(false)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
 
@@ -772,27 +769,6 @@ namespace hgl
         void ECSContext::OnSceneStructureDirty()
         {
             MarkSceneStructureDirty();
-        }
-
-        void ECSContext::ClearComponentPools()
-        {
-            // 显式析构全部行（卸载钩子 + ~T），再把池整个丢掉（块随池析构释放）。
-            // 实体销毁路径通常已经把行销干净了，这里是世界级收尾与"从未关联实体"的兜底。
-            component_pool_registry.Clear();
-        }
-
-        void ECSContext::DestroyComponent(const ComponentType type, const uint32_t row)
-        {
-            if (row == 0 || !IsValidComponentType(type))
-                return;
-
-            ComponentPoolBase *pool = component_pool_registry.Get(type);
-
-            if (!pool)
-                return;     // 该类型从未建过池 ⇒ 不可能有活行
-
-            pool->DestroyRow(row);
-            OnComponentRowRemoved(type);
         }
 
         uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const

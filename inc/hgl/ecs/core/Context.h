@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/system/System.h>
@@ -90,7 +91,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public Object, public graph::RenderTargetObserver, public IECSEntityObserver
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver
         {
         public:
 
@@ -123,24 +124,8 @@ namespace hgl
             /// （经 `EditShadowInfo`），设备侧由 `CommitShadowInfo` 在提交点写本帧槽。
             graph::ShadowInfo shadow_info;
 
-            std::unique_ptr<EntityManager> entity_manager;
-
-            // 系统注册与执行顺序注册表（分类映射/元素索引/组快照/执行列表/调度状态）。
-            // **必须声明在 entity_manager 之后、component_pool_registry 之前**：
-            // 成员按声明逆序析构 ⇒ 池先死、系统次之、实体管理器最后（与旧成员布局一致）。
-            SystemRegistry system_registry;
-
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
             SystemGroupActivity system_group_activity;
-
-            // ── T2-c：组件存储 = 世界私有的**类型化对象池**（按 ComponentType 索引）──
-            //
-            // 池惰性创建，类型槽和池所有权都由世界私有注册表管理。
-            //
-            // 「池即活跃集」：`GetComponents<T>` 直接读池的活跃集视图（裸指针）。旧形态是
-            // 「按类型 hash 的 weak_ptr 注册表」——每挂一个组件 push 一个 weak_ptr、每类型一次向量增长，
-            // 而且它把 `shared_ptr<Component>` 钉在组件上（T2-c 拆掉的两样东西之一）。
-            ComponentPoolRegistry component_pool_registry;
 
             // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
             //
@@ -229,9 +214,6 @@ namespace hgl
             graph::DeviceBuffer *shadow_info_buffer = nullptr;
             uint64_t shadow_info_addr = 0;
 
-            bool active = false;
-            bool shutdown_in_progress = false;
-
             RenderFrameCache render_frame_cache;
             uint32_t frame_index = 0;
             uint64_t render_submission_serial = 0;
@@ -308,13 +290,16 @@ namespace hgl
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
-            void RunSystemUpdate(System *system, float deltaTime);
-            /// 释放全部组件行并丢弃池（世界 Shutdown / Clear）
-            void ClearComponentPools();
+            void RunSystemUpdate(System *system, float deltaTime) override;
 
             /// 组件行增/删 ⇒ 系统组计数（A2/P-4 的挂卸驱动路径；组归属取自类型表）
-            void OnComponentRowAdded(ComponentType type);
-            void OnComponentRowRemoved(ComponentType type);
+            void OnComponentRowAdded(ComponentType type) override;
+            void OnComponentRowRemoved(ComponentType type) override;
+            void OnEntityCreated(Entity *entity) override
+            {
+                entity_gpu_table.Activate(entity->GetEntityID());
+                MarkTopologyChanged(TopologyChange::EntityStructure);
+            }
 
             bool EnsureRenderCoreInitialized();
             void ExecuteScenePrePassWorkflow(float deltaTime);
@@ -365,10 +350,10 @@ namespace hgl
             bool Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target);
 
             /// Shut down the world
-            void Shutdown();
+            void Shutdown() override;
 
             /// Tick all non-render systems and entities
-            void Tick(float deltaTime);
+            void Tick(float deltaTime) override;
 
             /// 把本世界的一帧渲染到指定 RenderTarget（离屏/子 pass 的标准入口，
             /// RT 标准化 §3.4 的一等 pass 描述）
@@ -688,12 +673,7 @@ namespace hgl
             void OnSceneStructureDirty() override;
 
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
-            //   `GetTypedPool` / `EnsureTypedPool` / `CreateComponent` / `GetComponentByRow` /
-            //   `GetComponents` 的定义在本类内下方（`RenderFrameCache` 访问器之后的区块，
-            //   声明与定义同处）；`DestroyComponent` 实现在 Context.cpp。
-
-            /// 销组件行（运行期按类型索引；实体销毁与 `RemoveComponent<T>` 走它）
-            void DestroyComponent(ComponentType type, uint32_t row);
+            //   由基类 ECSCoreContext 统一提供。
 
             /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
             /// 登记：**返回是否成功**（段预算用尽 ⇒ false，调用方必须回收已分配的行 —— 批 1.1 B3）
@@ -841,16 +821,6 @@ namespace hgl
             //   以 (uint32)-1 索引行存储的平行数组 ⇒ 越界崩溃（2026-10-02 实测）。因此：
             //   **新增消费者一律用这两个入口**（内部自动跳洞，调用方不可能漏）。
 
-            /// 结构性遍历：世界的**存活实体**（内部跳空槽、零分配）。
-            /// 与 `ForEachMovableTransform/ForEachStaticTransform` **同族**：系统一律走世界的口子，
-            /// 不直接摸 `entity_manager`（它是私有成员，且消费者不该关心名册的内部形态）。
-            template<typename Fn>
-            void ForEachAliveEntity(Fn &&fn) const
-            {
-                if (entity_manager)
-                    entity_manager->ForEachAliveEntity(std::forward<Fn>(fn));
-            }
-
             template<typename Fn>
             void ForEachMovableTransform(Fn &&fn) const
             {
@@ -960,52 +930,10 @@ namespace hgl
 
         public:
 
-            /// Create a new entity in the world
-            /// Returns raw pointer managed by EntityManager
-            template<typename T = Entity, typename... Args>
-            T* CreateEntity(Args&&... args)
-            {
-                static_assert(std::is_base_of_v<Entity, T>, "T must derive from hgl::ecs::Entity");
-
-                if (!entity_manager)
-                    return nullptr;
-
-                // T2-a：实体由 EntityManager 在**块池**中就地构造（不再逐实体 make_unique）
-                T* entity = entity_manager->CreateEntity<T>(std::forward<Args>(args)...);
-                if (!entity)
-                    return nullptr;
-
-                entity->SetContext(this);
-
-                // T3b：实体行表置 `Active`（`type[]/row[]` 随组件挂卸由 `Refresh` 同步）
-                entity_gpu_table.Activate(entity->GetEntityID());
-
-                // P1：实体集合变化 ⇒ 主帧图元的成员集合可能变化（拓扑变更）。
-                MarkTopologyChanged(TopologyChange::EntityStructure);
-
-                return entity;
-            }
-
-            /// Get entity by ID
-            Entity* GetEntity(EntityID id)
-            {
-                if (!entity_manager)
-                    return nullptr;
-                return entity_manager->GetEntity(id);
-            }
-
-            /// Get entity by ID (const version)
-            const Entity* GetEntity(EntityID id) const
-            {
-                if (!entity_manager)
-                    return nullptr;
-                return entity_manager->GetEntity(id);
-            }
-
             /// Destroy entity by ID
             /// —— 同时释放它的变换行：行属于世界（不挂在实体上），实体没了没人回收的话
             ///    残行会留在静态/可动列表里，把渲染侧的实例→行索引映射整体串位。
-            void DestroyEntity(EntityID id)
+            void DestroyEntity(EntityID id) override
             {
                 const TransformID transform = GetTransformID(id);
 
@@ -1041,6 +969,12 @@ namespace hgl
                 MarkTopologyChanged(TopologyChange::EntityStructure);
             }
 
+            void DestroyEntity(Entity *entity) override
+            {
+                if (entity)
+                    DestroyEntity(entity->GetEntityID());
+            }
+
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
@@ -1074,7 +1008,7 @@ namespace hgl
             void GetAllRenderElementTypes(std::vector<std::string>& out_element_types) const;
 
             /// 启用/禁用某个系统组的全部系统（A2：按枚举 O(1)，不查字符串）
-            void SetSystemGroupEnabled(SystemGroupID group, bool enabled);
+            void SetSystemGroupEnabled(SystemGroupID group, bool enabled) override;
 
             /// 该组的安装器是否已在本世界跑过（A2：枚举）
             bool IsSystemGroupInstalled(SystemGroupID group) const;
@@ -1095,140 +1029,6 @@ namespace hgl
 
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
             const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }
-
-            /// Check if world is active
-            bool IsActive() const { return active; }
-
-            /// 该类型的池（**只查不建** ⇒ 读路径无副作用）；类型无载体 / 未创建 ⇒ nullptr
-            template<typename T>
-            typename ComponentStorageTraits<T>::PoolType *GetTypedPool() const
-            {
-                return component_pool_registry.Get<T>();
-            }
-
-            /// 该类型的池（不存在则按 `ComponentStorageTraits<T>` 建）；
-            /// `ComponentTypeOf<T> == None`（无类型号）⇒ **编译期拒绝**（实体槽 = 按类型行号）
-            template<typename T>
-            typename ComponentStorageTraits<T>::PoolType *EnsureTypedPool()
-            {
-                return component_pool_registry.Ensure<T>();
-            }
-
-            /// 挂载组件（返回池内行地址；已有同类型 ⇒ 先卸旧行，语义与旧 `ReplaceComponent` 一致）
-            template<typename T, typename... Args>
-            T *CreateComponent(Entity *owner, Args &&...args)
-            {
-                if (!owner)
-                    return nullptr;
-
-                constexpr ComponentType type = ComponentTypeOf<T>::value;
-
-                auto *pool = EnsureTypedPool<T>();
-
-                // 替换语义：旧行先销（卸载钩子 + 析构），再挂新行 —— 与原 `ReplaceComponent` 同序
-                const uint32_t old_row = owner->SetComponentRow(type, 0);
-
-                if (old_row)
-                {
-                    pool->DestroyRow(old_row);
-                    OnComponentRowRemoved(type);
-                }
-
-                const uint32_t row = pool->Create(owner, std::forward<Args>(args)...);
-
-                owner->SetComponentRow(type, row);
-                OnComponentRowAdded(type);
-                entity_gpu_table.Refresh(owner);        // T3b：实体行表随挂载同步
-                entity_gpu_table.VerifyAfterWrite(owner, "ECSContext::CreateComponent");   // §2.2 问题 2(a)：写入侧对拍
-                owner->MarkSceneDirty();
-
-                return pool->Row(row);
-            }
-
-            /// 取某行的组件（行号 0 / 无池 / 已释放 ⇒ nullptr）
-            template<typename T>
-            T *GetComponentByRow(const uint32_t row) const
-            {
-                auto *pool = GetTypedPool<T>();
-
-                return pool ? pool->Row(row) : nullptr;
-            }
-
-            /// 该类型的**活跃集视图**（池即活跃集；裸指针，生命期 = 池行生命期，不跨帧缓存对象）
-            template<typename T>
-            void GetComponents(ValueArray<T*> &out) const
-            {
-                out.Clear();
-
-                auto *pool = GetTypedPool<T>();
-
-                if (!pool)
-                    return;
-
-                const uint32_t count = pool->GetActiveCount();
-
-                out.Reserve(int(count));
-
-                for (uint32_t i = 0; i < count; ++i)
-                    out.Add(pool->GetActiveRow(i));
-            }
         };
-
-        // ── Entity 组件挂载/卸载（T2-c：实现在这里 —— 模板体需要完整的 ECSContext）──
-
-        inline void Entity::SetContext(ECSContext *ctx)
-        {
-            context = ctx;
-            observer = ctx;
-        }
-
-        template<typename T, typename... Args>
-        T *Entity::AddComponent(Args &&...args)
-        {
-            // §3-②（2026-10-11）：相机是**世界级资源**，实体只是宿主 ⇒ 实体级挂载**编译期禁死**。
-            // 组件级挂载曾是"第二套相机创建入口"（与世界上级访问器成双入口）。
-            static_assert(!std::is_same_v<T, CameraComponent>,
-                          "相机不能经 Entity::AddComponent 挂载：走世界级入口 ECSContext::GetOrCreateCamera");
-
-            return context ? context->CreateComponent<T>(this, std::forward<Args>(args)...) : nullptr;
-        }
-
-        template<typename T>
-        T *Entity::GetComponent() const
-        {
-            // §3-②（2026-10-11）：同上，实体级**读取**相机也编译期禁死（曾是第二个读取入口 ⇒ 双真值）。
-            static_assert(!std::is_same_v<T, CameraComponent>,
-                          "相机不能经 Entity::GetComponent 读取：走世界级入口 ECSContext::GetCameraByEntity");
-
-            return context ? context->GetComponentByRow<T>(GetComponentRow(ComponentTypeOf<T>::value)) : nullptr;
-        }
-
-        template<typename T>
-        bool Entity::HasComponent() const
-        {
-            return GetComponentRow(ComponentTypeOf<T>::value) != 0;
-        }
-
-        template<typename T>
-        void Entity::RemoveComponent()
-        {
-            constexpr ComponentType type = ComponentTypeOf<T>::value;
-
-            static_assert(type != ComponentType::None,
-                          "组件必须有类型号（T2-c：实体槽 = 按类型行号）");
-
-            const uint32_t row = SetComponentRow(type, 0);
-
-            if (!row)
-                return;
-
-            if (context)
-            {
-                context->DestroyComponent(type, row);
-                context->RefreshEntityRow(this);        // T3b：实体行表随卸载同步
-            }
-
-            MarkSceneDirty();
-        }
     }//namespace ecs
 }//namespace hgl
