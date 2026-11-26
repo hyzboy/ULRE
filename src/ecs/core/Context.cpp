@@ -66,9 +66,6 @@ namespace hgl
 
         ECSContext::ECSContext(const AnsiString& name)
             : ECSCoreContext(name)
-            , transform_storage(std::make_unique<TransformDataStorage>())
-            , bounding_box_storage(std::make_unique<BoundingBoxDataStorage>())
-            , visibility_storage(std::make_unique<VisibilityDataStorage>())
             , material_variant_table(std::make_unique<MaterialVariantTable>())
             , material_runtime_table(std::make_unique<MaterialRuntimeTable>())
             , material_authoring_side_table(std::make_unique<MaterialAuthoringSideTable>(this))
@@ -78,12 +75,8 @@ namespace hgl
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
 
-            // 可见性存储需要拿到本世界指针：祖先链上溯要回查实体与变换行
-            visibility_storage->SetContext(this);
-
-            // 变换行存储需要拿到本世界指针：行句柄（TransformAccessor）不再自带 context，
-            // 一律经 storage->GetContext() 反查世界（Mobility 换边通知 / owner 实体解析走这条）。
-            transform_storage->SetContext(this);
+            // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
+            spatial_state.Initialize(this, this, this);
 
             // 材质运行期表需要拿到本世界指针：共享行回收时退休其纹理配置池行
             // （GPU 侧绑定随行存亡）；单测里没有世界，钩子自动 no-op。
@@ -296,10 +289,7 @@ namespace hgl
                 system_registry.ClearElementIndex();
                 system_registry.ClearDependencies();
                 ResetComponentDrivenGroups();
-                transform_slots.Clear();
-
-                if (auto *transform_storage = GetTransformStorage())
-                    transform_storage->Clear();     // §2 #9：行存储随世界复位（世代不复位 ⇒ 旧句柄不复活）
+                spatial_state.Clear();
 
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
@@ -326,10 +316,7 @@ namespace hgl
 
             ClearComponentPools();
             ResetComponentDrivenGroups();
-            transform_slots.Clear();
-
-            if (auto *transform_storage = GetTransformStorage())
-                transform_storage->Clear();         // §2 #9：同上（active 路径）
+            spatial_state.Clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
@@ -771,242 +758,88 @@ namespace hgl
             MarkSceneStructureDirty();
         }
 
-        uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const
+        void ECSContext::OnTransformRegistered(TransformID id, bool isMovable)
         {
-            const auto *storage = GetTransformStorage();
+            // 有变换出现即自动装上 TransformSystem（避免样例手动注册）
+            auto transform_system = GetSystem<TransformSystem>();
+            if (!transform_system)
+                transform_system = RegisterSystem<TransformSystem>();
 
-            if (!storage)
-                return 0;
-
-            return movable ? storage->GetDynamicRowBudget() : storage->GetStaticRowBudget();
+            if (transform_system)
+            {
+                transform_system->SetWorld(this);
+                transform_system->SetEnabled(true);
+            }
         }
 
-        // ── 稳定槽位（B1b）──
-        // 槽位表的下标**就是槽位**：L2W 行号 = 静态 `1+slot` / 动态 `1+预算static + frame×预算dynamic + slot`。
-        // 注销只把该格置空洞并入空闲表 ⇒ **别的物体行号不受影响**（改前是 erase 整体平移）。
+        uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const
+        {
+            return spatial_state.GetTransformSegmentBudget(movable);
+        }
+
         uint32_t ECSContext::AcquireTransformSlot(const bool movable)
         {
-            return transform_slots.Acquire(movable, GetTransformSegmentBudget(movable));
+            return spatial_state.AcquireTransformSlot(movable);
         }
 
         void ECSContext::ReleaseTransformSlot(const bool movable,const uint32_t slot)
         {
-            transform_slots.Release(movable, slot);
+            spatial_state.ReleaseTransformSlot(movable, slot);
         }
 
         bool ECSContext::TryGetTransformSlot(TransformID id,bool movable,uint32_t &out_slot) const
         {
-            return transform_slots.Find(id, movable, out_slot);
+            return spatial_state.TryGetTransformSlot(id, movable, out_slot);
         }
 
         uint32_t ECSContext::GetLiveTransformCount(const bool movable) const
         {
-            return transform_slots.LiveCount(movable);
+            return spatial_state.GetLiveTransformCount(movable);
         }
 
         bool ECSContext::RegisterTransform(TransformID id,bool isMovable)
         {
-            if (!IsValidTransformID(id))
-                return false;
-
-            // 有变换出现即自动装上 TransformSystem（避免样例手动注册）
-            {
-                auto transform_system = GetSystem<TransformSystem>();
-                if (!transform_system)
-                    transform_system = RegisterSystem<TransformSystem>();
-
-                if (transform_system)
-                {
-                    transform_system->SetWorld(this);
-                    transform_system->SetEnabled(true);
-                }
-            }
-
-            uint32_t existing_slot = 0;
-
-            if (TryGetTransformSlot(id,isMovable,existing_slot))
-                return true;                                // 幂等：重复登记不改行号
-
-            // 换段（移动性变了）也要**先取目标槽、成功后才交还旧段槽**（与 MigrateTransform 同一原子性口径）。
-            // 原顺序先 Release 旧段再 Acquire，失败时旧段槽已进空闲表却没有任何行占它 ⇒ 账目与名单不一致。
-            uint32_t other_slot = 0;
-            const bool has_other_slot = TryGetTransformSlot(id,!isMovable,other_slot);
-
-            const uint32_t slot = AcquireTransformSlot(isMovable);
-
-            if (slot == INVALID_TRANSFORM_SLOT)
-            {
-                if (!transform_slot_overflow_warned)
-                {
-                    transform_slot_overflow_warned = true;
-                    GLogError("[ECSContext] %s变换槽预算用尽（budget=%u）—— 该变换**没有 L2W 行**"
-                              "（拒绝，不扩容；请调大预算后重载）。",
-                              isMovable ? "动态" : "静态",
-                              GetTransformSegmentBudget(isMovable));
-                }
-
-                return false;                               // 旧段槽未动（若先前在另一段），调用方负责回收行
-            }
-
-            if (!transform_slots.Assign(isMovable, slot, id))
-                return false;
-            if (has_other_slot)
-                ReleaseTransformSlot(!isMovable,other_slot);
-
-            return true;
+            return spatial_state.RegisterTransform(id, isMovable);
         }
 
         bool ECSContext::MigrateTransform(TransformID id,bool toMovable)
         {
-            if (!IsValidTransformID(id))
-                return false;
-
-            uint32_t old_slot = 0;
-
-            if (!TryGetTransformSlot(id,!toMovable,old_slot))
-                return true;                                // 已不在旧段 ⇒ 目标段就是现状（幂等成功）
-
-            // 2026-10-11（审计 · 批 1.1 B3）：**先取目标槽，成功后才交还旧槽**（原顺序相反）。
-            // 原失败分支写 `(toMovable ? movable : static)[old_slot] = id` —— 目标段 + **旧下标**：
-            // ① 挤掉目标段里已有行的槽位；② old_slot ≥ 目标段长度时越界写；③ 旧段槽已进空闲表 ⇒
-            // 「mobility 真源 / 段名单 / 空闲表」三方不一致。现在失败 = 什么都不动（原子拒绝）。
-            const uint32_t slot = AcquireTransformSlot(toMovable);
-
-            if (slot == INVALID_TRANSFORM_SLOT)
-            {
-                if (!transform_slot_overflow_warned)
-                {
-                    transform_slot_overflow_warned = true;
-                    GLogError("[ECSContext] %s变换槽预算用尽（budget=%u）—— Mobility 换边被拒绝，"
-                              "该变换留在原段（不扩容）。",
-                              toMovable ? "动态" : "静态",
-                              GetTransformSegmentBudget(toMovable));
-                }
-
-                return false;                               // 旧段槽与段名单保持原状
-            }
-
-            if (!transform_slots.Assign(toMovable, slot, id))
-                return false;
-            ReleaseTransformSlot(!toMovable,old_slot);       // 目标槽到手，才交还旧槽
-
-            ++transform_row_move_count;
-
-            // 行号随段移动 ⇒ 旧 L2W 行作废（这正是 §9.2 说的"行号已移动"情形；改前是全体静默平移，更糟）
-            if (!transform_row_move_warned)
-            {
-                transform_row_move_warned = true;
-                GLogWarning("[ECSContext] Mobility 换边 ⇒ L2W 行号移动（transform=%u 旧槽=%u → 新段槽=%u）；"
-                            "固化 ID / 预烘焙数据需重新取号。",
-                            id, old_slot, slot);
-            }
-
-            if (auto *storage = GetTransformStorage())
-                storage->SetMobility(id,toMovable ? 1 : 0);
-
-            return true;
+            return spatial_state.MigrateTransform(id, toMovable);
         }
 
         void ECSContext::UnregisterTransform(TransformID id)
         {
-            if (!IsValidTransformID(id))
-                return;
-
-            uint32_t slot = 0;
-
-            if (TryGetTransformSlot(id,false,slot))
-                ReleaseTransformSlot(false,slot);
-
-            if (TryGetTransformSlot(id,true,slot))
-                ReleaseTransformSlot(true,slot);
+            spatial_state.UnregisterTransform(id);
         }
 
         TransformID ECSContext::CreateTransform(EntityID owner,Mobility mobility)
         {
-            auto *storage = GetTransformStorage();
-
-            if (!storage)
-                return INVALID_TRANSFORM_ID;
-
-            const TransformID id = storage->Allocate();
-
-            // 预算超限：存储侧已做一次性明确告警并拒绝分配（不扩容）⇒ 这里不再造半个变换。
-            if (!IsValidTransformID(id))
-                return INVALID_TRANSFORM_ID;
-
-            storage->SetOwner(id,owner);
-            storage->SetMobility(id,(mobility == Mobility::Movable) ? 1 : 0);
-
-            // 2026-10-11（审计 · 批 1.1 B3）：登记失败必须**回收刚分配的行**并返回无效值。
-            // 失败面 = 「总行预算还有空间、但所选段满」：原实现丢弃登记结果，返回一个
-            // **有效但没有 L2W 行**的半成品（与上方「不再造半个变换」的注释自相矛盾）。
-            if (!RegisterTransform(id,mobility == Mobility::Movable))
-            {
-                storage->Deallocate(id);
-                return INVALID_TRANSFORM_ID;
-            }
-
-            return id;
+            return spatial_state.CreateTransform(owner, mobility);
         }
 
         void ECSContext::DestroyTransform(TransformID id)
         {
-            if (!IsValidTransformID(id))
-                return;
-
-            UnregisterTransform(id);
-
-            if (auto *storage = GetTransformStorage())
-            {
-                // 先从父的子表里摘掉自己（父链与子表真源都在存储），再释放本行
-                const TransformID parent = storage->GetParent(id);
-
-                if (IsValidTransformID(parent))
-                    storage->RemoveChild(parent,id);
-
-                storage->Deallocate(id);
-            }
+            spatial_state.DestroyTransform(id);
         }
 
         TransformID ECSContext::GetTransformID(EntityID owner) const
         {
-            const auto *storage = GetTransformStorage();
-
-            return storage ? storage->FindByOwner(owner) : INVALID_TRANSFORM_ID;
+            return spatial_state.GetTransformID(owner);
         }
 
         TransformAccessor ECSContext::GetTransform(TransformID id)
         {
-            return TransformAccessor(GetTransformStorage(),id);
+            return spatial_state.GetTransform(id);
         }
 
         BoundingBoxAccessor ECSContext::GetBoundingBoxByEntity(EntityID owner) const
         {
-            auto *storage = bounding_box_storage.get();
-
-            if (!storage)
-                return BoundingBoxAccessor();
-
-            // const 成员里仍要交出可变 storage 句柄（行数据由世界拥有；句柄只做定位）
-            return BoundingBoxAccessor(storage,storage->FindByOwner(owner));
+            return spatial_state.GetBoundingBoxByEntity(owner);
         }
 
         BoundingBoxAccessor ECSContext::GetOrCreateBoundingBox(EntityID owner)
         {
-            auto *storage = bounding_box_storage.get();
-
-            if (!storage)
-                return BoundingBoxAccessor();
-
-            auto id = storage->FindByOwner(owner);
-
-            if (id == BoundingBoxDataStorage::INVALID_HANDLE)
-            {
-                id = storage->Allocate();
-                storage->SetOwner(id,owner);
-            }
-
-            return BoundingBoxAccessor(storage,id);
+            return spatial_state.GetOrCreateBoundingBox(owner);
         }
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
@@ -1080,11 +913,7 @@ namespace hgl
 
         void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)
         {
-            if (id == BoundingBoxDataStorage::INVALID_HANDLE)
-                return;
-
-            if (auto *storage = bounding_box_storage.get())
-                storage->Deallocate(id);
+            spatial_state.DestroyBoundingBox(id);
         }
     }//namespace ecs
 }//namespace hgl

@@ -31,6 +31,7 @@
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include<hgl/ecs/support/cull/VisibilityDataStorage.h>
+#include<hgl/ecs/support/spatial/WorldSpatialState.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -91,7 +92,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver
         {
         public:
 
@@ -99,6 +100,8 @@ namespace hgl
             ECSContext(const AnsiString& name = "World");
             ECSContext(const std::string& name) : ECSContext(AnsiString(name.c_str())) {}
             ~ECSContext() override;
+
+            void OnTransformRegistered(TransformID id, bool isMovable) override;
 
         private:
             OBJECT_LOGGER
@@ -127,29 +130,8 @@ namespace hgl
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
             SystemGroupActivity system_group_activity;
 
-            // 变换（T8：按 TransformID 记录，不再持组件指针；组件只是过渡期外壳）
-            //
-            // Stage B / B1b：这两个数组是**槽位表** —— 下标 = 稳定槽位，L2W 行号由它算出
-            // （`静态: 1 + slot` / `动态: 1 + 预算static + frame × 预算dynamic + slot`），
-            // **不再随名单顺序漂移**；空洞记 `INVALID_TRANSFORM_ID`，注册优先复用空洞。
-            // 段容量 = 变换存储声明的预算（超限 = 一次性明确告警 + 拒绝，不扩容）。
-            TransformSlotTable transform_slots;
-            bool                     transform_slot_overflow_warned = false;    ///< 段预算用尽：一次性告警闩
-            bool                     transform_row_move_warned      = false;    ///< Mobility 换边（行号移动）：一次性告警闩
-            uint32_t                 transform_row_move_count       = 0;        ///< 换边次数（可观测）
-            /// 变换行存储（本世界独占拥有）。存储侧另持一条**指向本世界的非拥有反向指针**
-            /// （构造期 `SetContext(this)` 回填）⇒ 变换行句柄（TransformAccessor）无需自带 context。
-            std::unique_ptr<TransformDataStorage> transform_storage;
-
-            // 世界私有包围盒行存储（原组件已删除；连续 SoA + 值类型句柄，与 transform_storage 同范式）。
-            // 声明在 transform_storage 之后 ⇒ 先于它析构；两者互不引用，无"析构时用已销毁对象"问题。
-            std::unique_ptr<BoundingBoxDataStorage> bounding_box_storage;
-
-            // 世界私有可见性数据（A5a 起：可见性收敛为实体级唯一真值，组件级副本已删除）。
-            // 可见性是 **CPU 域**状态（不在 v2 §3 的 5 类 GPU 可见组件里）⇒ 无需行 arena / SSBO，
-            // 只保留"不可见实体集合"这一份真值；查询时按变换父链上溯（祖先不可见 ⇒ 后代不可见）。
-            std::unique_ptr<VisibilityDataStorage> visibility_storage;
-
+            // 空间域聚合状态（变换槽位与行存储、包围盒行存储、可见性集合）
+            WorldSpatialState spatial_state;
 
             // A3 材质变体表（v2 §9.3）：按**静态键**去重的 program/recipe 运行期记录。
             // program 归本世界 GraphicsContext 的 ShaderProgramManager 缓存所有 ⇒ 表随世界
@@ -740,13 +722,16 @@ namespace hgl
             /// 销毁一行包围盒（按句柄；行属于世界，不挂在实体上）
             void DestroyBoundingBox(BoundingBoxDataStorage::HandleID id);
 
+            WorldSpatialState&       GetSpatialState()       { return spatial_state; }
+            const WorldSpatialState& GetSpatialState() const { return spatial_state; }
+
             /// Get world-level BoundingBoxDataStorage
-            BoundingBoxDataStorage* GetBoundingBoxStorage() { return bounding_box_storage.get(); }
-            const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return bounding_box_storage.get(); }
+            BoundingBoxDataStorage* GetBoundingBoxStorage() { return spatial_state.GetBoundingBoxStorage(); }
+            const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return spatial_state.GetBoundingBoxStorage(); }
 
             /// 世界级可见性存储（渲染热路径做 O(1) 查询；不可见集合 + 祖先链语义）
-            VisibilityDataStorage* GetVisibilityStorage() { return visibility_storage.get(); }
-            const VisibilityDataStorage* GetVisibilityStorage() const { return visibility_storage.get(); }
+            VisibilityDataStorage* GetVisibilityStorage() { return spatial_state.GetVisibilityStorage(); }
+            const VisibilityDataStorage* GetVisibilityStorage() const { return spatial_state.GetVisibilityStorage(); }
 
             // ── T3b：实体行表（`EntityGPU`）访问器与两条写入钩子 ──
             EntityGPUTable&       GetEntityGPUTable()       { return entity_gpu_table; }
@@ -795,13 +780,7 @@ namespace hgl
             ///（只写自己 ⇒ 行位与含继承的权威失步）。权威链见 doc/visibility-authority-chain.md。
             void SetEntityVisible(EntityID id, bool visible)
             {
-                if (!visibility_storage)
-                    return;
-
-                if (visible)
-                    visibility_storage->SetVisible(id);
-                else
-                    visibility_storage->SetInvisible(id);
+                spatial_state.SetEntityVisible(id, visible);
 
                 // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
                 entity_gpu_table.SetVisible(id, visible);
@@ -811,7 +790,7 @@ namespace hgl
             /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
             bool IsEntityVisible(EntityID id) const
             {
-                return visibility_storage ? !visibility_storage->IsInvisible(id) : true;
+                return spatial_state.IsEntityVisible(id);
             }
 
             // ── 变换名单的**结构性遍历**（唯一正确方式）─────────────────────────
@@ -824,17 +803,13 @@ namespace hgl
             template<typename Fn>
             void ForEachMovableTransform(Fn &&fn) const
             {
-                for (const TransformID id : transform_slots.Slots(true))
-                    if (IsValidTransformID(id))
-                        fn(id);
+                spatial_state.ForEachMovableTransform(std::forward<Fn>(fn));
             }
 
             template<typename Fn>
             void ForEachStaticTransform(Fn &&fn) const
             {
-                for (const TransformID id : transform_slots.Slots(false))
-                    if (IsValidTransformID(id))
-                        fn(id);
+                spatial_state.ForEachStaticTransform(std::forward<Fn>(fn));
             }
 
             /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
@@ -843,8 +818,8 @@ namespace hgl
             /// 变换访问器（薄句柄；读写直落本世界的存储）
             TransformAccessor GetTransform(TransformID id);
 
-            const ValueArray<TransformID>& GetStaticTransforms() const { return transform_slots.Slots(false); }
-            const ValueArray<TransformID>& GetMovableTransforms() const { return transform_slots.Slots(true); }
+            const ValueArray<TransformID>& GetStaticTransforms() const { return spatial_state.GetStaticTransforms(); }
+            const ValueArray<TransformID>& GetMovableTransforms() const { return spatial_state.GetMovableTransforms(); }
 
             /// 变换的**稳定槽位**（B1b）：命中返回 true 并写 `out_slot`。
             /// 槽位是 L2W 行号的唯一来源（静态 `1+slot`、动态 `1+预算static + frame×预算dynamic + slot`），
@@ -855,17 +830,17 @@ namespace hgl
             uint32_t GetLiveTransformCount(bool movable) const;
 
             /// Mobility 换边计数（每次换段 = 旧行号作废 ⇒ 计数增；可观测/契约用）
-            uint32_t GetTransformRowMoveCount() const { return transform_row_move_count; }
+            uint32_t GetTransformRowMoveCount() const { return spatial_state.GetTransformRowMoveCount(); }
 
             /// 实体 → 变换访问器（无变换时返回无效 accessor）
-        TransformAccessor GetTransformByEntity(EntityID owner)
-        {
-            return GetTransform(GetTransformID(owner));
-        }
+            TransformAccessor GetTransformByEntity(EntityID owner)
+            {
+                return GetTransform(GetTransformID(owner));
+            }
 
-        /// Get world-level TransformDataStorage
-            TransformDataStorage* GetTransformStorage() { return transform_storage.get(); }
-            const TransformDataStorage* GetTransformStorage() const { return transform_storage.get(); }
+            /// Get world-level TransformDataStorage
+            TransformDataStorage* GetTransformStorage() { return spatial_state.GetTransformStorage(); }
+            const TransformDataStorage* GetTransformStorage() const { return spatial_state.GetTransformStorage(); }
 
             /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
             MaterialVariantTable* GetMaterialVariantTable() { return material_variant_table.get(); }
@@ -935,25 +910,7 @@ namespace hgl
             ///    残行会留在静态/可动列表里，把渲染侧的实例→行索引映射整体串位。
             void DestroyEntity(EntityID id) override
             {
-                const TransformID transform = GetTransformID(id);
-
-                if (IsValidTransformID(transform))
-                    DestroyTransform(transform);
-
-                // 与变换行同理回收包围盒行：行属于世界（不挂在实体上），实体没了没人回收的话，
-                // 残行会留在 entity_rows 反查表里，让同索引的新实体"继承"旧的包围盒。
-                if (bounding_box_storage)
-                {
-                    const BoundingBoxDataStorage::HandleID bbox = bounding_box_storage->FindByOwner(id);
-
-                    if (bbox != BoundingBoxDataStorage::INVALID_HANDLE)
-                        DestroyBoundingBox(bbox);
-                }
-
-                // 可见性同理：不可见集合按实体 ID 记录，实体没了必须摘掉，
-                // 否则同索引的新实体会"继承"旧的不可见状态（T8 同类副作用）。
-                if (visibility_storage)
-                    visibility_storage->SetVisible(id);
+                spatial_state.OnEntityDestroy(id);
 
                 // 材质运行期 slot 同理：slot 持共享行的引用计数，实体没了必须释放
                 // （否则共享行永远不归零 ⇒ 纹理配置池行泄漏、行表只增不减）。
