@@ -83,6 +83,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     uint32_t baseline_templates = 0, baseline_parts = 0, baseline_refs[3]{};
     uint32_t lifecycle_cycles = 0, lifecycle_frames = 0;
     TextureAsset *mipmap_variants[2]{};
+    Texture2D *mipmap_raced_sync = nullptr;
     bool mipmap_checked = false;
 
     MaterialRuntimeRowID EntityRow(const Entity *entity) const
@@ -584,7 +585,14 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             if (core_only) { BeginLifecycle(); return; }
             for (auto &recipe : lit_recipes)
                 recipe.textures[0].asset->ClearAsyncRequest();
-            world->GetSystem<TextureStreamingSystem>()->SetEnabled(true);
+            auto streaming = world->GetSystem<TextureStreamingSystem>();
+            streaming->SetEnabled(true);
+            streaming->Update(0.0f);
+            if (!mipmap_variants[0]->IsAsyncRequested())
+                Fail("mipmap race request was not submitted");
+            mipmap_raced_sync = GetManager<TextureManager>()->LoadTexture2D(
+                mipmap_variants[0]->GetFilename(), false);
+            if (!mipmap_raced_sync) Fail("mipmap race sync load failed");
         }
         if (phase == 9) { ReplaceWithLit(0u); world->SetEntityVisible(ground->GetEntityID(), true); }
         if (phase == 10 && !world->GetSystem<EnvironmentSystem>()->SetAmbientProvider("ambient_light_none"))
@@ -823,7 +831,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 auto *plain = mipmap_variants[0]->GetTexture();
                 auto *generated = mipmap_variants[1]->GetTexture();
                 const OSString &path = mipmap_variants[0]->GetFilename();
-                if (!textures || plain == generated || plain->GetMipLevel() != 1
+                if (!textures || !mipmap_raced_sync || plain != mipmap_raced_sync
+                    || plain == generated || plain->GetMipLevel() != 1
                     || generated->GetMipLevel() != 9
                     || textures->FindTextureByFilename(path, false) != plain
                     || textures->FindTextureByFilename(path, true) != generated

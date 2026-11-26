@@ -53,14 +53,32 @@ namespace hgl::ecs
                 return;
             }
 
+            graph::TextureManager *tm = asset->GetTextureManager();
+            if (!tm)
+            {
+                asset->FailAsyncLoad("纹理管理器不可用");
+                return;
+            }
+
+            graph::Texture *resolved = tm->FindTextureByFilename(asset->GetFilename(),
+                                                                 asset->GetAutoMipmaps());
+            if (resolved && resolved != task->target_texture)
+            {
+                // This upload completed but was never published; a synchronous load won the race.
+                tm->Destory(task->target_texture);
+                task->target_texture = resolved;
+            }
+            else if (!resolved && !tm->RegisterTextureFilename(asset->GetFilename(), task->target_texture,
+                                                                asset->GetAutoMipmaps()))
+            {
+                tm->Destory(task->target_texture);
+                task->target_texture = nullptr;
+                asset->FailAsyncLoad("纹理缓存登记失败");
+                return;
+            }
+
             if (!asset->CommitAsyncTexture(task->target_texture))
                 return;
-
-            // 回填「文件名 → 纹理」：此后同步的 LoadTexture2D(同一文件) 直接复用这张，
-            // 同一个文件不会因为走了哪条路径而出现两张纹理。
-            if (graph::TextureManager *tm = asset->GetTextureManager())
-                tm->RegisterTextureFilename(asset->GetFilename(), task->target_texture,
-                                            asset->GetAutoMipmaps());
 
             const U8String u8_filename = ToU8String(asset->GetFilename());
 
