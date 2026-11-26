@@ -186,6 +186,7 @@ namespace hgl
                 entity_gpu_table.Activate(entity->GetEntityID());
                 MarkTopologyChanged(TopologyChange::EntityStructure);
             }
+            void OnEntityDestroying(EntityID id) override;
 
             bool EnsureRenderCoreInitialized();
             void ExecuteScenePrePassWorkflow(float deltaTime);
@@ -819,29 +820,6 @@ namespace hgl
             hgl::graph::EnvironmentManager *ResolveEnvManager() const;
 
         public:
-
-            /// Destroy entity by ID
-            /// —— 同时释放它的变换行：行属于世界（不挂在实体上），实体没了没人回收的话
-            ///    残行会留在静态/可动列表里，把渲染侧的实例→行索引映射整体串位。
-            void DestroyEntity(EntityID id) override
-            {
-                spatial_state.OnEntityDestroy(id);
-                render_data.OnEntityDestroy(id);
-
-                if (entity_manager)
-                    entity_manager->DestroyEntity(id);
-
-                // P1：实体销毁会连带摘掉变换行/包围盒行/可见性/材质 slot，成员集合同样改变。
-                // 必须放在所有回收动作**之后**：MarkTopologyChanged 内部的
-                // MarkSceneStructureDirty 是纯标记，但语义上「变完了再记」才不失真。
-                MarkTopologyChanged(TopologyChange::EntityStructure);
-            }
-
-            void DestroyEntity(Entity *entity) override
-            {
-                if (entity)
-                    DestroyEntity(entity->GetEntityID());
-            }
 
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.

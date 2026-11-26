@@ -273,11 +273,7 @@ namespace hgl
             {
                 // Even when inactive, clear entities/components now so component OnDetach
                 // does not run later during member destruction after maps are already destroyed.
-                if (entity_manager)
-                {
-                    LogDebug("[ECSContext] Shutdown(inactive) - clearing entities before member teardown");
-                    entity_manager->Clear();
-                }
+                ClearEntities();
 
                 system_registry.ClearRegistrations();
                 ClearComponentPools();
@@ -303,10 +299,7 @@ namespace hgl
             system_registry.ShutdownSystems();
 
             // Destroy all entities
-            if (entity_manager)
-            {
-                entity_manager->Clear();
-            }
+            ClearEntities();
 
             ClearComponentPools();
             ResetComponentDrivenGroups();
@@ -595,10 +588,17 @@ namespace hgl
                 SetSystemGroupEnabled(group, false);
         }
 
+        void ECSContext::OnEntityDestroying(const EntityID id)
+        {
+            spatial_state.OnEntityDestroy(id);
+            render_data.OnEntityDestroy(id);
+        }
+
         void ECSContext::OnEntityDestroyed(const EntityID id)
         {
             DeactivateEntityRow(id);
             render_data.OnEntityDestroyed(id);
+            MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
         void ECSContext::OnEntityDeactivated(const EntityID id)

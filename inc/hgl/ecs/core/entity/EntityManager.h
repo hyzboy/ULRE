@@ -17,6 +17,7 @@ namespace hgl::ecs
     /// Maintains a pool of entities with generation-based handle validation
     class EntityManager
     {
+        friend class ECSCoreContext;
     private:
         OBJECT_LOGGER
 
@@ -46,6 +47,7 @@ namespace hgl::ecs
         EntityManager(uint32_t capacity = 1000);
         ~EntityManager();
 
+    private:
         /// 在块池中**就地构造**实体。签名与原 `CreateEntity<T>` 一致 ⇒ 调用点零改动。
         /// 只支持 `T = Entity`：块池按 Entity 定尺寸（实测全仓 ~140 个调用点均为 Entity，无子类）。
         template<typename T = Entity, typename... Args>
@@ -99,6 +101,7 @@ namespace hgl::ecs
         /// Destroy entity by ID
         void DestroyEntity(EntityID id);
 
+    public:
         /// Get entity pointer by ID, returns nullptr if invalid
         Entity* GetEntity(EntityID id);
         const Entity* GetEntity(EntityID id) const;
@@ -118,10 +121,9 @@ namespace hgl::ecs
                     fn(slot.entity);
         }
 
+    private:
         /// Clear all entities（块池一并释放）
         void Clear();
-
-    private:
         /// 确保第 block_index 块存在，返回槽 index 在块内的对象地址（就地构造/析构用）
         Entity *BlockEntityAt(uint32_t index);
 

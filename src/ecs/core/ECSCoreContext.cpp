@@ -29,9 +29,8 @@ namespace hgl::ecs
         shutdown_in_progress = true;
         active = false;
 
+        ClearEntities();
         ClearComponentPools();
-        if (entity_manager)
-            entity_manager->Clear();
 
         shutdown_in_progress = false;
     }
@@ -54,8 +53,27 @@ namespace hgl::ecs
 
     void ECSCoreContext::DestroyEntity(EntityID id)
     {
-        if (entity_manager)
-            entity_manager->DestroyEntity(id);
+        Entity *entity = GetEntity(id);
+        if (!entity || entity->destroying)
+            return;
+
+        entity->destroying = true;
+        OnEntityDestroying(id);
+        entity->DetachAllComponents();
+        entity_manager->DestroyEntity(id);
+        OnEntityDestroyed(id);
+    }
+
+    void ECSCoreContext::ClearEntities()
+    {
+        ValueArray<EntityID> ids;
+        ForEachAliveEntity([&ids](const Entity *entity)
+        {
+            ids.Add(entity->GetEntityID());
+        });
+
+        for (int i = 0; i < ids.GetCount(); ++i)
+            DestroyEntity(ids[i]);
     }
 
     void ECSCoreContext::DestroyEntity(Entity *entity)

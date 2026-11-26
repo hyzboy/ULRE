@@ -40,9 +40,11 @@ namespace
         int value = 42;
         int *detach_count = nullptr;
         bool *owner_alive = nullptr;
+        bool reenter = false;
 
         BoundaryTestComponent() = default;
-        BoundaryTestComponent(int *count, bool *alive) : detach_count(count), owner_alive(alive) {}
+        BoundaryTestComponent(int *count, bool *alive, bool recursive = false)
+            : detach_count(count), owner_alive(alive), reenter(recursive) {}
 
         void OnDetach()
         {
@@ -51,6 +53,8 @@ namespace
             if (owner_alive)
                 *owner_alive = owner && owner->GetCoreContext()
                              && owner->GetCoreContext()->GetEntity(owner->GetEntityID()) == owner;
+            if (reenter && owner && owner->GetCoreContext())
+                owner->GetCoreContext()->DestroyEntity(owner->GetEntityID());
         }
     };
 
@@ -174,7 +178,8 @@ int main()
         return 11;
     }
 
-    if (!second->AddComponent<BoundaryTestComponent>(&detach_count, &owner_alive))
+    const hgl::ecs::EntityID second_id = second->GetEntityID();
+    if (!second->AddComponent<BoundaryTestComponent>(&detach_count, &owner_alive, true))
         return 12;
 
     lifecycle.Shutdown();
@@ -183,6 +188,20 @@ int main()
     {
         GLogError(u8"[ECSCoreBoundary] 重复关闭导致组件重复卸载或宿主提前销毁");
         return 13;
+    }
+
+    auto *third = lifecycle.CreateEntity();
+    if (!third || lifecycle.GetEntity(second_id) || third->GetEntityID() == second_id)
+    {
+        GLogError(u8"[ECSCoreBoundary] 关闭后复用槽位使旧句柄重新生效");
+        return 14;
+    }
+
+    lifecycle.DestroyEntity(second_id);
+    if (lifecycle.GetEntity(third->GetEntityID()) != third)
+    {
+        GLogError(u8"[ECSCoreBoundary] 旧句柄影响了新实体");
+        return 15;
     }
 
     GLogInfo(u8"[ECSCoreBoundary] Core 层自足性与解耦闸门全部通过（零图形依赖）");

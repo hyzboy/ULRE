@@ -28,9 +28,12 @@ namespace hgl
          */
         class Entity : public Object
         {
+            friend class ECSCoreContext;
+            friend class EntityManager;
         private:
 
             EntityID id;
+            bool destroying = false;
 
             /// **按类型的组件行号表**（T2-c）：下标 = `ComponentType` 值，值 = 该类型在世界类型化池里的
             /// 行号（**1 基**；0 = 无）。这是"本实体有哪些组件、各自在哪一行"的**唯一真源**。
@@ -71,16 +74,8 @@ namespace hgl
             /// 「有没有挂某槽位」问 `HasComponent<T>()`（`Context.h`，只看行号表）或
             /// `GetComponentRow(type) != 0`；无类型号（`None`）恒假 —— 两条都不经掩码。
 
-            /// Set entity ID (called by EntityManager)
-            void SetID(EntityID entity_id) { id = entity_id; }
-
-            void SetContext(ECSCoreContext *ctx);
-            void SetContext(ECSContext *ctx);
-
             ECSCoreContext *GetCoreContext() const { return context; }
             ECSContext *GetContext() const { return reinterpret_cast<ECSContext*>(context); }
-
-            void SetEntityObserver(IECSEntityObserver *obs) { observer = obs; }
 
             IECSEntityObserver *GetEntityObserver() const { return observer; }
 
@@ -97,7 +92,10 @@ namespace hgl
                 return index < COMPONENT_TYPE_COUNT ? component_rows[index] : 0u;
             }
 
-            /// 写行号（**唯一写者 = 世界的挂载/卸载路径**；本表是唯一真源），返回旧行号
+        private:
+            void SetID(EntityID entity_id) { id = entity_id; }
+            void SetContext(ECSCoreContext *ctx);
+            /// 写行号（唯一写者为世界的挂载/卸载路径），返回旧行号。
             uint32_t SetComponentRow(ComponentType type, uint32_t row);
 
         public: // ── 组件挂载/卸载（实现在 Context.h —— 需要完整的 ECSContext）──

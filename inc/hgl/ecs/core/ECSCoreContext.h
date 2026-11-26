@@ -32,6 +32,7 @@ namespace hgl::ecs
      */
     class ECSCoreContext : public Object, public IECSEntityObserver
     {
+        friend class Entity;
     protected:
         OBJECT_LOGGER
 
@@ -51,12 +52,8 @@ namespace hgl::ecs
         void SetActive(bool a) { active = a; }
 
         virtual void Shutdown();
-        virtual void ClearComponentPools();
 
         // ── 实体管理 ──
-        EntityManager *GetEntityManager() { return entity_manager; }
-        const EntityManager *GetEntityManager() const { return entity_manager; }
-
         Entity *GetEntity(EntityID id);
         const Entity *GetEntity(EntityID id) const;
         virtual void DestroyEntity(EntityID id);
@@ -75,7 +72,7 @@ namespace hgl::ecs
         {
             static_assert(std::is_base_of_v<Entity, T>, "T must derive from hgl::ecs::Entity");
 
-            if (!entity_manager)
+            if (!entity_manager || shutdown_in_progress)
                 return nullptr;
 
             T *entity = entity_manager->CreateEntity<T>(std::forward<Args>(args)...);
@@ -87,6 +84,7 @@ namespace hgl::ecs
             return entity;
         }
 
+    private:
         // ── 组件存储接口（T2-c）──
         template<typename T>
         typename ComponentStorageTraits<T>::PoolType *GetTypedPool() const
@@ -100,10 +98,12 @@ namespace hgl::ecs
             return component_pool_registry.Ensure<T>();
         }
 
+    public:
         template<typename T, typename... Args>
         T *CreateComponent(Entity *owner, Args &&...args)
         {
-            if (!owner)
+            if (!owner || owner->destroying || owner->GetCoreContext() != this
+                || GetEntity(owner->GetEntityID()) != owner)
                 return nullptr;
 
             constexpr ComponentType type = ComponentTypeOf<T>::value;
@@ -146,10 +146,14 @@ namespace hgl::ecs
                 out.Add(pool->GetActiveRow(i));
         }
 
+    protected:
+        virtual void ClearComponentPools();
         virtual void DestroyComponent(ComponentType type, uint32_t row);
 
+    public:
         // ── 虚生命周期与变更钩子（派生类扩展渲染副作用）──
         virtual void OnEntityCreated(Entity *entity) {}
+        virtual void OnEntityDestroying(EntityID id) {}
         virtual void OnComponentRowAdded(ComponentType type) {}
         virtual void OnComponentRowRemoved(ComponentType type) {}
 
@@ -195,6 +199,7 @@ namespace hgl::ecs
         virtual void Tick(float deltaTime);
 
     protected:
+        void ClearEntities();
         virtual void RunSystemUpdate(System *system, float deltaTime);
     };
 

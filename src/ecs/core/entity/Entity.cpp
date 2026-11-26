@@ -14,16 +14,6 @@ namespace hgl
 
         Entity::~Entity()
         {
-            DetachAllComponents();
-
-            // T3b：实体行表清 `Active`（实体已死；其余字段保留供诊断）——
-            // 实体生死是**单一入口**：所有销毁路径（DestroyEntity / Clear / 世界 Shutdown）
-            // 都会走到显式 `~Entity()`（T2-a 块池的约定）。
-            // 材质授权记录也随实体死亡在此摘除。
-            if (observer)
-            {
-                observer->OnEntityDestroyed(id);
-            }
         }
 
         void Entity::SetContext(ECSCoreContext *ctx)
@@ -32,15 +22,10 @@ namespace hgl
             observer = ctx;
         }
 
-        void Entity::SetContext(ECSContext *ctx)
-        {
-            SetContext(reinterpret_cast<ECSCoreContext*>(ctx));
-        }
-
         void Entity::MarkSceneDirty() const
         {
-            if (observer)
-                observer->OnSceneStructureDirty();
+            if (context)
+                context->OnSceneStructureDirty();
         }
 
         uint32_t Entity::SetComponentRow(ComponentType type, uint32_t row)
@@ -68,12 +53,12 @@ namespace hgl
 
                 component_rows[i] = 0;
 
-                if (observer)
-                    observer->OnComponentRowDestroyed(static_cast<ComponentType>(i), row);
+                if (context)
+                    context->DestroyComponent(static_cast<ComponentType>(i), row);
             }
 
-            if (observer)
-                observer->OnEntityRowRefreshed(this);        // T3b：实体行表随全卸同步
+            if (context)
+                context->OnEntityRowRefreshed(this);
 
             MarkSceneDirty();
         }
