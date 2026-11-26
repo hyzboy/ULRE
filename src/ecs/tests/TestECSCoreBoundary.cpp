@@ -38,6 +38,20 @@ namespace
     struct BoundaryTestComponent : public hgl::ecs::ComponentRow
     {
         int value = 42;
+        int *detach_count = nullptr;
+        bool *owner_alive = nullptr;
+
+        BoundaryTestComponent() = default;
+        BoundaryTestComponent(int *count, bool *alive) : detach_count(count), owner_alive(alive) {}
+
+        void OnDetach()
+        {
+            if (detach_count)
+                ++*detach_count;
+            if (owner_alive)
+                *owner_alive = owner && owner->GetCoreContext()
+                             && owner->GetCoreContext()->GetEntity(owner->GetEntityID()) == owner;
+        }
     };
 
     class BoundaryTestSystem : public hgl::ecs::System
@@ -138,6 +152,38 @@ int main()
 
     core_ctx.DestroyEntity(entity);
     core_ctx.Shutdown();
+
+    int detach_count = 0;
+    bool owner_alive = false;
+    hgl::ecs::ECSCoreContext lifecycle("LifecycleBoundary");
+    auto *first = lifecycle.CreateEntity();
+    if (!first || !first->AddComponent<BoundaryTestComponent>(&detach_count, &owner_alive)
+        || !first->AddComponent<BoundaryTestComponent>(&detach_count, &owner_alive)
+        || detach_count != 1 || !owner_alive)
+    {
+        GLogError(u8"[ECSCoreBoundary] 组件替换时卸载次数或宿主生命周期不正确");
+        return 10;
+    }
+
+    const hgl::ecs::EntityID old_id = first->GetEntityID();
+    lifecycle.DestroyEntity(old_id);
+    auto *second = lifecycle.CreateEntity();
+    if (detach_count != 2 || !owner_alive || !second || lifecycle.GetEntity(old_id))
+    {
+        GLogError(u8"[ECSCoreBoundary] 实体销毁或旧句柄失效契约不正确");
+        return 11;
+    }
+
+    if (!second->AddComponent<BoundaryTestComponent>(&detach_count, &owner_alive))
+        return 12;
+
+    lifecycle.Shutdown();
+    lifecycle.Shutdown();
+    if (detach_count != 3 || !owner_alive)
+    {
+        GLogError(u8"[ECSCoreBoundary] 重复关闭导致组件重复卸载或宿主提前销毁");
+        return 13;
+    }
 
     GLogInfo(u8"[ECSCoreBoundary] Core 层自足性与解耦闸门全部通过（零图形依赖）");
     return 0;
