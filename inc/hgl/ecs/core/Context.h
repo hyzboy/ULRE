@@ -19,8 +19,7 @@
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/ecs/support/storage/ComponentPool.h>
 #include<hgl/ecs/support/storage/ComponentPoolRegistry.h>
-#include<hgl/ecs/support/storage/EntityGPUTable.h>
-#include<hgl/ecs/support/storage/EntityRenderIDTable.h>
+#include<hgl/ecs/support/render/WorldEntityRenderState.h>
 #include<hgl/ecs/support/storage/PrimitiveTopologyLedger.h>
 #include<hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
 #include<hgl/ecs/support/storage/LightRowTable.h>
@@ -134,13 +133,9 @@ namespace hgl
             uint64_t GPUResourcesAmbientAddress(uint32_t profile) const override;
             uint64_t GPUResourcesModelExpansionAddress() override;
 
-            // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
-            // Shutdown 在派生成员析构前清理实体并注销观察者。
-            EntityGPUTable entity_gpu_table;
+            // 实体索引的 CPU 渲染派生表；Shutdown 先清理实体，再销毁此状态域。
+            WorldEntityRenderState entity_render_state;
             uint64_t render_diagnostic_world_id = 0;
-
-            /// T3d-3a：实体 4-ID 表（世界私有；销毁通知同时清理两表）
-            EntityRenderIDTable entity_render_id_table;
 
             // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
             SystemGroupActivity system_group_activity;
@@ -207,7 +202,7 @@ namespace hgl
             void OnComponentRowRemoved(ComponentType type) override;
             void OnEntityCreated(EntityID id) override
             {
-                entity_gpu_table.Activate(id);
+                entity_render_state.ActivateEntityRow(id);
                 MarkTopologyChanged(TopologyChange::EntityStructure);
             }
             void OnEntityDestroying(EntityID id) override;
@@ -667,21 +662,20 @@ namespace hgl
             const VisibilityDataStorage* GetVisibilityStorage() const { return spatial_state.GetVisibilityStorage(); }
 
             // ── T3b：实体行表（`EntityGPU`）访问器与两条写入钩子 ──
-            EntityGPUTable&       GetEntityGPUTable()       { return entity_gpu_table; }
-            const EntityGPUTable& GetEntityGPUTable() const { return entity_gpu_table; }
+            EntityGPUTable&       GetEntityGPUTable()       { return entity_render_state.GetEntityGPUTable(); }
+            const EntityGPUTable& GetEntityGPUTable() const { return entity_render_state.GetEntityGPUTable(); }
 
             /// 实体销毁通知：清 `Active`。
             /// T3d-3a：同入口清实体 4-ID 表行（两表的生死口径必须一致：消费者先判
             /// `EntityGPU.Active`、4-ID 行同时归零 ⇒ 不会出现"行表已死、id 还在"的残值）
             void DeactivateEntityRow(EntityID id)
             {
-                entity_gpu_table.Deactivate(id);
-                entity_render_id_table.Clear(id);
+                entity_render_state.DeactivateEntityRow(id);
             }
 
             /// T3d-3a：实体 4-ID 表访问器（写者 = collect；消费者 = GPU 剔除 / CPU 参考对拍 / 形态 B）
-            EntityRenderIDTable&       GetEntityRenderIDTable()       { return entity_render_id_table; }
-            const EntityRenderIDTable& GetEntityRenderIDTable() const { return entity_render_id_table; }
+            EntityRenderIDTable&       GetEntityRenderIDTable()       { return entity_render_state.GetEntityRenderIDTable(); }
+            const EntityRenderIDTable& GetEntityRenderIDTable() const { return entity_render_state.GetEntityRenderIDTable(); }
 
             // ── T6b：光源行表（`LightRow`，世界私有；行 0 = 主方向光）──
             //   写者 = LightSystem 的编辑入口；本表只被世界的「脏行 → 设备镜像」上传播径读。
@@ -703,8 +697,8 @@ namespace hgl
             /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
             void RefreshEntityRow(const Entity *entity)
             {
-                entity_gpu_table.Refresh(entity);
-                entity_gpu_table.VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）
+                entity_render_state.GetEntityGPUTable().Refresh(entity);
+                entity_render_state.GetEntityGPUTable().VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）
             }
 
             /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）。
@@ -720,8 +714,8 @@ namespace hgl
                 spatial_state.SetEntityVisible(id, visible);
 
                 // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
-                entity_gpu_table.SetVisible(id, visible);
-                entity_gpu_table.VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");   // §2.2 问题 2(a)
+                entity_render_state.GetEntityGPUTable().SetVisible(id, visible);
+                entity_render_state.GetEntityGPUTable().VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");   // §2.2 问题 2(a)
             }
 
             /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）

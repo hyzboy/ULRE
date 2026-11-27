@@ -5,11 +5,28 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
+#include <hgl/ecs/support/render/WorldEntityRenderState.h>
 #include <hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include <hgl/vk/buffer/RingLayout.h>
 #include <hgl/log/Log.h>
 #include <hgl/log/Logger.h>
 #include <hgl/type/ValueArray.h>
+
+namespace hgl::ecs
+{
+    struct RenderPassSetupTestAccess
+    {
+        static EntityGPUTable &GPUResourcesEntityTable(ECSContext &context)
+        {
+            return context.GPUResourcesEntityTable();
+        }
+
+        static EntityRenderIDTable &GPUResourcesRenderIDTable(ECSContext &context)
+        {
+            return context.GPUResourcesRenderIDTable();
+        }
+    };
+}
 
 /**
  * 判据（落地计划 T2.1/T2.2/T2.3）：GPU 模型引用组件与动静 TRS 接入约定。
@@ -374,6 +391,52 @@ namespace
         EXPECT(row->type[uint32_t(ComponentType::Geometry)] == 0u);
     }
 
+    void TestWorldEntityRenderStateLifecycle()
+    {
+        WorldEntityRenderState state;
+        const EntityID id{17u, 3u};
+
+        state.ActivateEntityRow(id);
+        const EntityGPU *row = state.GetEntityGPUTable().Row(id);
+        EXPECT(row != nullptr);
+        EXPECT(row && EntityGPUTable::IsActive(*row));
+
+        const graph::RenderItemDescriptor ids{1u, 2u, 3u, 4u};
+        state.GetEntityRenderIDTable().SetRenderIDs(0, id, ids);
+        const graph::RenderItemDescriptor *published = state.GetEntityRenderIDTable().Row(0, id.index);
+        EXPECT(published != nullptr);
+        EXPECT(published && *published == ids);
+
+        state.DeactivateEntityRow(id);
+        EXPECT(row && !EntityGPUTable::IsActive(*row));
+        const graph::RenderItemDescriptor *cleared = state.GetEntityRenderIDTable().Row(0, id.index);
+        EXPECT(cleared != nullptr);
+        EXPECT(cleared && *cleared == graph::RenderItemDescriptor{});
+    }
+
+    void TestContextEntityRenderStateFacade()
+    {
+        ECSContext ctx;
+        Entity *entity = ctx.CreateEntity<Entity>("EntityRenderStateFacade");
+        EXPECT(entity != nullptr);
+        if (!entity)
+            return;
+
+        const EntityID id = entity->GetEntityID();
+        const EntityGPU *row = ctx.GetEntityGPUTable().Row(id);
+        EXPECT(row && EntityGPUTable::IsActive(*row));
+        EXPECT(&ctx.GetEntityGPUTable() == &RenderPassSetupTestAccess::GPUResourcesEntityTable(ctx));
+        EXPECT(&ctx.GetEntityRenderIDTable() == &RenderPassSetupTestAccess::GPUResourcesRenderIDTable(ctx));
+
+        const graph::RenderItemDescriptor ids{5u, 6u, 7u, 8u};
+        ctx.GetEntityRenderIDTable().SetRenderIDs(0, id, ids);
+        ctx.DestroyEntity(id);
+
+        EXPECT(row && !EntityGPUTable::IsActive(*row));
+        const graph::RenderItemDescriptor *cleared = ctx.GetEntityRenderIDTable().Row(0, id.index);
+        EXPECT(cleared && *cleared == graph::RenderItemDescriptor{});
+    }
+
     void TestEntityRenderDataCleanup()
     {
         ECSContext ctx;
@@ -424,6 +487,8 @@ int main(int argc, char **argv)
     TestRingLayoutPrevBase();
     TestEntityGPUTablePrevTransform();
     TestComponentRefreshPreservesTransformRow();
+    TestWorldEntityRenderStateLifecycle();
+    TestContextEntityRenderStateFacade();
     TestEntityRenderDataCleanup();
     TestGPUResourcesSourceBoundary();
     TestRenderDataSourceBoundary();

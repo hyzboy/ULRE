@@ -36,12 +36,12 @@ namespace hgl::ecs
 
         EntityGPUTable &ECSContext::GPUResourcesEntityTable()
         {
-            return GetEntityGPUTable();
+            return entity_render_state.GetEntityGPUTable();
         }
 
         EntityRenderIDTable &ECSContext::GPUResourcesRenderIDTable()
         {
-            return GetEntityRenderIDTable();
+            return entity_render_state.GetEntityRenderIDTable();
         }
 
         LightRowTable &ECSContext::GPUResourcesLightTable()

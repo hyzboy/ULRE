@@ -665,7 +665,7 @@ namespace hgl
 
         void ECSContext::OnEntityVisibilityChanged(EntityID id, bool visible)
         {
-            entity_gpu_table.SetVisible(id, visible);
+            entity_render_state.GetEntityGPUTable().SetVisible(id, visible);
             MarkDynamicFactChanged(DynamicFactChange::Visibility);
             BumpStaticSceneRevision();
         }
