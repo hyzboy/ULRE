@@ -14,6 +14,7 @@
 #include <hgl/mtl/MaterialRecipe.h>
 #include <hgl/color/Color.h>
 #include <hgl/log/Log.h>
+#include <hgl/type/Smart.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/pipeline/RenderableBuilder.h>
@@ -57,7 +58,7 @@ class GPUInstancedMultiMeshApp final : public ulre_example::ExampleAppBase
 {
     ECSContext *world = nullptr;
     Entity *camera_entity = nullptr;
-    VertexDataManager *mesh_vdm = nullptr;
+    hgl::AutoDelete<VertexDataManager> mesh_vdm;
     Geometry *mesh_variants[MESH_VARIANT_COUNT]{};
     PrimitiveAsset mesh_primitives[MESH_VARIANT_COUNT]{};
     graph::mtl::MaterialRecipe recipe{};
@@ -81,7 +82,6 @@ public:
         if (auto *registry = GetGeometryAssetRegistry())
             registry->Clear();
 
-        SAFE_CLEAR(mesh_vdm);
     }
 
 private:

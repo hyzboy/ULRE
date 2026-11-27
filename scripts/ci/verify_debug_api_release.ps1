@@ -18,7 +18,7 @@ param(
 #   1) 编得过（这本身就在证明整个调试面在 Release 下可编译）；
 #   2) `ShaderResourceSchemaRegressionGate` 退出 0 且 0 FAIL；
 #   3) `TestCSMIncrementalPass` 退出 0（源码契约针：存在性/计数/禁复活）；
-#   4) `PBRSpheres`（`PBR_SELFCHECK=1`）退出 0；
+#   4) `PBRMeshTextureArrayGrid`（`PBR_SELFCHECK=1`）退出 0；
 #   5) `GPUDrivenCull`（只给 `GC_SELFCHECK=1`，不给 `GC_STATIC=1`）退出 0 且打印"已自动冻结相机"加固行。
 # 退出码 127 = 无窗口会话下示例早退（环境问题，已知）⇒ 记 SKIP，不算 FAIL。
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ if (Test-Path $refCache) {
     if ($m) { $generator = $m.Matches[0].Groups[1].Value.Trim() }
 }
 
-$targets = @("ULRE.ECS", "ShaderResourceSchemaRegressionGate", "TestCSMIncrementalPass", "PBRSpheres", "GPUDrivenCull")
+$targets = @("ULRE.ECS", "ShaderResourceSchemaRegressionGate", "TestCSMIncrementalPass", "PBRMeshTextureArrayGrid", "GPUDrivenCull")
 
 # 依赖解析机制沿用主构建树：本仓靠 vcpkg 工具链（`CMAKE_TOOLCHAIN_FILE`）找 absl 等；
 # 独立树若不带它 ⇒ configure 直接失败（Could not find a package configuration file provided by "absl"）。
@@ -149,7 +149,7 @@ Write-Host "[3/3] 跑判据"
 
 $r1 = Invoke-Checked -ExeName "ShaderResourceSchemaRegressionGate.exe"
 $r2 = Invoke-Checked -ExeName "TestCSMIncrementalPass.exe"
-$r3 = Invoke-Checked -ExeName "PBRSpheres.exe" -EnvVars @{ PBR_SELFCHECK = "1" } `
+$r3 = Invoke-Checked -ExeName "PBRMeshTextureArrayGrid.exe" -EnvVars @{ PBR_SELFCHECK = "1" } `
         -RequireLines @("配置口径：Release 不钉像素摘要")
 $r4 = Invoke-Checked -ExeName "GPUDrivenCull.exe" -EnvVars @{ GC_SELFCHECK = "1" } `
         -RequireLines @("已**自动冻结相机**")
