@@ -58,6 +58,37 @@ namespace hgl::ecs
             uint32_t capacity = 0;
         };
 
+        class PassTemplateGroupRouteCache
+        {
+            hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
+
+        public:
+            bool Resolve(GPUCullSystem *gpu_cull,
+                         uint32_t pass_index,
+                         uint32_t template_id,
+                         bool uses_instance_material,
+                         uint32_t batch_index,
+                         uint32_t group_count,
+                         uint32_t &out_offset)
+            {
+                const uint64_t route_key = (uint64_t(template_id) << 32)
+                    | (uses_instance_material ? batch_index : 0u);
+
+                if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
+                {
+                    out_offset = *offset_ptr;
+                    return true;
+                }
+
+                if (!gpu_cull
+                 || !gpu_cull->AllocateModelGroupBucketSlots(pass_index, group_count, &out_offset))
+                    return false;
+
+                pass_template_group_offsets.Add(route_key, out_offset);
+                return true;
+            }
+        };
+
         // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
         // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
@@ -595,7 +626,7 @@ namespace hgl::ecs
 
         // A shared template can have different effective bindings in this pass.
         // Packing two uint32 IDs is lossless; equality is not based on a hash.
-        hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
+        PassTemplateGroupRouteCache route_cache;
 
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
         template_facts.Refresh(world->GetPrimitiveTopologyLedger());
@@ -685,21 +716,16 @@ namespace hgl::ecs
                         // Instance-material templates can occur in incompatible batches.
                         // Each such batch needs its own route for the shared template.
                         uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        const uint64_t route_key = (uint64_t(ref->GetTemplateID()) << 32)
-                            | (binding && binding->uses_instance_material ? geometry_batches : 0u);
-                        if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
+                        if (!route_cache.Resolve(gpu_cull.get(),
+                                                 pass_index,
+                                                 ref->GetTemplateID(),
+                                                 binding && binding->uses_instance_material,
+                                                 geometry_batches,
+                                                 facts->shading_group_count,
+                                                 group_table_offset))
                         {
-                            group_table_offset = *offset_ptr;
-                        }
-                        else
-                        {
-                            if (!gpu_cull->AllocateModelGroupBucketSlots(pass_index, facts->shading_group_count,
-                                                                        &group_table_offset))
-                            {
-                                why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
-                                break;
-                            }
-                            pass_template_group_offsets.Add(route_key, group_table_offset);
+                            why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
+                            break;
                         }
 
                         // 获取该组的几何与容量规格（优先从 ModelTemplateMaterialTable 取，单组可回退 facts）
