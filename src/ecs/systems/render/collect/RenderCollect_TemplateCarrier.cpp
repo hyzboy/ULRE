@@ -25,11 +25,11 @@ namespace hgl::ecs
         if (!model_ref || model_ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID)
             return false;
 
-        auto &cache = world->GetRenderFrameCache();
+        auto &cache = world->Runner().FrameCache();
         const EntityID entity_id = entity->GetEntityID();
         const char *entity_name = GetOwnerName(entity);
         auto *trace = cache.GetOrCreateTrace(entity_name, entity_id.index, entity_id.generation);
-        const auto *template_table = world->GetModelTemplateMaterialTable();
+        const auto *template_table = world->RenderData().TemplateMaterials();
         const auto *binding = template_table ? template_table->FindBinding(model_ref->GetTemplateID()) : nullptr;
         if (!binding || binding->groups.IsEmpty())
         {
@@ -43,7 +43,7 @@ namespace hgl::ecs
         auto *render_target = world->GetRenderTarget();
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
-        MaterialVariantTable *variant_table = world->GetMaterialVariantTable();
+        MaterialVariantTable *variant_table = world->RenderData().Variants();
         const uint32_t pass_index = shadow_pass ? 1u : 0u;
 
         const MaterialRuntimeSlot *instance_slot = model_ref->IsAutomaticallyNormalized()

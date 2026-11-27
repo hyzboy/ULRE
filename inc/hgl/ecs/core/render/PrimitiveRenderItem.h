@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/core/render/RenderItem.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
@@ -43,7 +43,7 @@ namespace hgl::ecs
         glm::mat4 worldMatrix;
 
         // 2026-10-10（审计 §1.1）：零调用者的 `GetRuntimeSlot()` 已删除
-        //（需要时经 `context->GetMaterialRuntimeTable()->GetSlot(id)`）。
+        //（需要时经 `context->RenderData().RuntimeMaterials()->GetSlot(id)`）。
 
     public:
         PrimitiveRenderItem(

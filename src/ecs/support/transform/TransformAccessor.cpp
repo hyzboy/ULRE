@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/support/spatial/WorldSpatialState.h>
@@ -25,7 +25,7 @@ namespace hgl
 
         Entity *TransformAccessor::GetOwner() const
         {
-            WorldSpatialState *spatial = GetSpatialState();
+            WorldSpatialState *spatial = Spatial();
 
             if (!spatial || !spatial->GetCoreContext())
                 return nullptr;
@@ -38,9 +38,9 @@ namespace hgl
             return spatial->GetCoreContext()->GetEntity(owner);
         }
 
-        WorldSpatialState *TransformAccessor::GetSpatialState() const
+        WorldSpatialState *TransformAccessor::Spatial() const
         {
-            return storage ? storage->GetSpatialState() : nullptr;
+            return storage ? storage->Spatial() : nullptr;
         }
 
         EntityID TransformAccessor::GetOwnerID() const
@@ -118,7 +118,7 @@ namespace hgl
                 stack.insert(stack.end(),grand.begin(),grand.end());
             }
 
-            if (WorldSpatialState *spatial = GetSpatialState())
+            if (WorldSpatialState *spatial = Spatial())
                 spatial->NotifyTransformChanged(id, change_mask);
         }
 
@@ -563,7 +563,7 @@ namespace hgl
             //
             // 渲染侧的索引映射与上传通道都按段名单分流——只改存储里的 mobility 字节、不换段的话，
             // 该行会停在旧通道：索引取不到 ⇒ 实例拿到默认行（单位矩阵）⇒ 全画在原点。
-            WorldSpatialState *spatial = GetSpatialState();
+            WorldSpatialState *spatial = Spatial();
 
             if (spatial)
             {

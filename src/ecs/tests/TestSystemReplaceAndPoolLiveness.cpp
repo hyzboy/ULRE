@@ -230,28 +230,26 @@ int main()
             return 1;
         }
 
-        std::vector<std::shared_ptr<System>> systems;
+        const PtrArray<std::shared_ptr<System>> *systems =
+            ctx.GetSystemRegistry().FindByElementType(element_type);
 
-        ctx.GetSystemsByElementType(element_type.c_str(), systems);
-
-        if (systems.size() != 1 || systems[0].get() != old_system.get())
+        if (!systems || systems->GetCount() != 1 || (*systems)[0].get() != old_system.get())
         {
-            GLogError(u8"S1 Failed: 首注册后列表异常（size=%zu）", systems.size());
+            GLogError(u8"S1 Failed: 首注册后列表异常");
             return 1;
         }
 
         auto new_system = ctx.RegisterSystem<LineCollectSystem>();      // 替换同类型系统
 
-        ctx.GetSystemsByElementType(element_type.c_str(), systems);
+        systems = ctx.GetSystemRegistry().FindByElementType(element_type);
 
-        if (systems.size() != 1)
+        if (!systems || systems->GetCount() != 1)
         {
-            GLogError(u8"S1 Failed: 替换后 element-type 列表仍有 %zu 个实例（应为 1 —— 旧实例没被摘掉，"
-                      u8"组开关/相位区间会把僵尸算进去）", systems.size());
+            GLogError(u8"S1 Failed: 替换后 element-type 列表不再只包含 1 个实例");
             return 1;
         }
 
-        if (systems[0].get() != new_system.get())
+        if ((*systems)[0].get() != new_system.get())
         {
             GLogError(u8"S1 Failed: 列表里剩的不是新注册的实例");
             return 1;

@@ -18,7 +18,7 @@ namespace hgl::ecs
         if (!context)
             return nullptr;
 
-        return context->GetLightRowTable().Row(graph::kMainLightRowIndex);
+        return context->RenderData().Lights().Row(graph::kMainLightRowIndex);
     }
 
     const graph::LightRow *LightSystem::GetMainLight() const
@@ -26,7 +26,7 @@ namespace hgl::ecs
         if (!context)
             return nullptr;
 
-        return context->GetLightRowTable().Row(graph::kMainLightRowIndex);
+        return context->RenderData().Lights().Row(graph::kMainLightRowIndex);
     }
 
     void LightSystem::SetMainLight(const graph::LightRow &row)
@@ -34,7 +34,7 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, row);
+        context->RenderData().Lights().SetRow(graph::kMainLightRowIndex, row);
     }
 
     void LightSystem::SetMainLightDirection(const math::Vector3f &to_light)

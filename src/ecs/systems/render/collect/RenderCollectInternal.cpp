@@ -35,7 +35,7 @@ namespace hgl::ecs
 
             MaterialRuntimeTable *GetRuntimeTable(ECSContext *world)
             {
-                return world ? world->GetMaterialRuntimeTable() : nullptr;
+                return world ? world->RenderData().RuntimeMaterials() : nullptr;
             }
 
             void CollectPrimitiveEntities(ECSContext *world, ValueArray<Entity *> &entities)

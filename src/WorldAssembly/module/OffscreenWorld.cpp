@@ -188,7 +188,7 @@ namespace hgl::graph
         // 「只有清屏色」当内容采样，而离屏侧随后停止驱动 ⇒ 内容永远补不上（离屏示例实测：
         // 主场景看到的是纯清屏色）。所以判据必须再看本帧**真建出了批**。
         // 没有图元进收集（空场景 / 全被剔除）不算残缺 —— 那种情况下清屏色就是内容。
-        const auto &frame_cache = world_->GetRenderFrameCache();
+        const auto &frame_cache = world_->Runner().FrameCache();
         const bool drew_content = frame_cache.renderItems.empty()
                                 ? true
                                 : frame_cache.materialBatches.GetCount() > 0;

@@ -102,7 +102,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
 
     MaterialRuntimeRowID EntityRow(const Entity *entity) const
     {
-        const auto *slot = world->GetMaterialRuntimeTable()->GetSlot(entity->GetEntityID());
+        const auto *slot = world->RenderData().RuntimeMaterials()->GetSlot(entity->GetEntityID());
         return slot && slot->valid ? slot->row : INVALID_MATERIAL_RUNTIME_ROW_ID;
     }
 
@@ -141,7 +141,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (!built)
             return false;
         template_id = built;
-        const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(template_id);
+        const auto *binding = world->RenderData().TemplateMaterials()->FindBinding(template_id);
         if (!binding || binding->groups.GetCount() != 2)
             Fail("expected two real shading groups");
         for (uint32_t n = 0; n < 3; ++n)
@@ -162,7 +162,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         {
             ReplaceWithLit(0u);
             models[2]->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(template_id);
-            const auto *row = world->GetMaterialRuntimeTable()->Get(EntityRow(lit_seeds[0]));
+            const auto *row = world->RenderData().RuntimeMaterials()->Get(EntityRow(lit_seeds[0]));
             placeholder_hash = row->material_texture_configuration_hash;
             const auto *model = registry->GetTypedRow<ssbo::ModelTemplateRow>(
                 GlobalSSBOType::ModelTemplatePool, lit_templates[0]);
@@ -229,11 +229,11 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         auto *part_pool = registry->GetPool(GlobalSSBOType::ModelPartPool);
         const auto template_count = templates->GetActiveCount();
         const auto part_count = part_pool->GetActiveCount();
-        const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(template_id);
-        const auto refs = world->GetMaterialRuntimeTable()->GetRefCount(SeedRow(0));
+        const auto *binding = world->RenderData().TemplateMaterials()->FindBinding(template_id);
+        const auto refs = world->RenderData().RuntimeMaterials()->GetRefCount(SeedRow(0));
         if (DestroyMultiMaterialModelTemplate(registry, world, template_id)
          || templates->IsPendingRelease(template_id)
-         || world->GetModelTemplateMaterialTable()->FindBinding(template_id) != binding)
+         || world->RenderData().TemplateMaterials()->FindBinding(template_id) != binding)
             Fail("destroying a live shared template must be rejected");
 
         ValueArray<uint32_t> held;
@@ -252,8 +252,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 Fail("could not release allocation rollback fixture");
         if (failed || status != ModelTemplateBuildStatus::Failed
          || templates->GetActiveCount() != template_count || part_pool->GetActiveCount() != part_count
-         || world->GetMaterialRuntimeTable()->GetRefCount(SeedRow(0)) != refs
-         || world->GetModelTemplateMaterialTable()->FindBinding(template_id) != binding
+         || world->RenderData().RuntimeMaterials()->GetRefCount(SeedRow(0)) != refs
+         || world->RenderData().TemplateMaterials()->FindBinding(template_id) != binding
          || models[2]->GetComponent<GPUModelRefComponent>()->GetTemplateID() != template_id)
             Fail("allocation failure changed live template, references or pool counts");
         GLogInfo(u8"[GMM] ROLLBACK live destroy rejected; exhausted part pool preserved published template");
@@ -265,7 +265,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             GlobalSSBOType::ModelTemplatePool, template_id);
         const auto *source_part = source ? registry->GetTypedRow<ssbo::ModelPartRow>(
             GlobalSSBOType::ModelPartPool, source->part_offset) : nullptr;
-        const auto *lit_row = world->GetMaterialRuntimeTable()->Get(EntityRow(lit_seeds[0]));
+        const auto *lit_row = world->RenderData().RuntimeMaterials()->Get(EntityRow(lit_seeds[0]));
         if (!source || !source_part || !lit_row || !lit_row->material_texture_configuration.IsValid())
             Fail("legacy material fixture source unavailable");
 
@@ -296,7 +296,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         probe->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(0u);
         if (!GetDevice()->WaitIdle()
-         || !world->GetModelTemplateMaterialTable()->UnregisterBinding(legacy_template_id)
+         || !world->RenderData().TemplateMaterials()->UnregisterBinding(legacy_template_id)
          || !registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, legacy_template_id)
          || !registry->ReleaseID(GlobalSSBOType::ModelPartPool, legacy_part_id))
             Fail("legacy material fixture cleanup failed");
@@ -315,7 +315,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             model = nullptr;
         }
         if (!DestroyMultiMaterialModelTemplate(registry, world, template_id)
-         || world->GetModelTemplateMaterialTable()->FindBinding(template_id)
+         || world->RenderData().TemplateMaterials()->FindBinding(template_id)
          || !registry->GetPool(GlobalSSBOType::ModelTemplatePool)->IsPendingRelease(template_id))
             Fail("template retirement did not detach and defer GPU rows");
         template_id = 0u;
@@ -324,7 +324,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
 
     void BeginLifecycle()
     {
-        world->GetModelTemplateMaterialTable()->CollectRetiredTemplates();
+        world->RenderData().TemplateMaterials()->CollectRetiredTemplates();
         auto *pool = registry->GetPool(GlobalSSBOType::ModelTemplatePool);
         const auto a = pool->Acquire();
         const auto b = pool->Acquire();
@@ -341,14 +341,14 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         baseline_templates = registry->GetPool(GlobalSSBOType::ModelTemplatePool)->GetActiveCount() - 1u;
         baseline_parts = registry->GetPool(GlobalSSBOType::ModelPartPool)->GetActiveCount() - 3u;
         for (uint32_t i = 0; i < 3; ++i)
-            baseline_refs[i] = world->GetMaterialRuntimeTable()->GetRefCount(SeedRow(i)) - (i < 2u ? 1u : 0u);
+            baseline_refs[i] = world->RenderData().RuntimeMaterials()->GetRefCount(SeedRow(i)) - (i < 2u ? 1u : 0u);
         phase = 17u;
         RetireInstances();
     }
 
     void RunLifecycle()
     {
-        auto *table = world->GetModelTemplateMaterialTable();
+        auto *table = world->RenderData().TemplateMaterials();
         table->CollectRetiredTemplates();
         if (template_id)
         {
@@ -363,7 +363,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (templates->GetActiveCount() != baseline_templates || part_pool->GetActiveCount() != baseline_parts)
             Fail("template/part active counts did not return to their baseline");
         for (uint32_t i = 0; i < 3; ++i)
-            if (world->GetMaterialRuntimeTable()->GetRefCount(SeedRow(i)) != baseline_refs[i])
+            if (world->RenderData().RuntimeMaterials()->GetRefCount(SeedRow(i)) != baseline_refs[i])
                 Fail("shared runtime material references leaked");
         GLogInfo(u8"[GMM] LIFETIME cycle=%u templates=%u parts=%u refs=%u,%u,%u",
                  lifecycle_cycles, baseline_templates, baseline_parts,
@@ -450,7 +450,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         uint32_t line_bucket_count = 0;
         uint32_t topology_bucket_counts[4]{};
         const auto lit_row_id = phase == 12u ? EntityRow(lit_seeds[1]) : EntityRow(lit_seeds[0]);
-        const auto *lit_row = world->GetMaterialRuntimeTable()->Get(lit_row_id);
+        const auto *lit_row = world->RenderData().RuntimeMaterials()->Get(lit_row_id);
         for (uint32_t b = 0; b < batches; ++b)
         {
             uint32_t base = 0, capacity = 0;
@@ -538,12 +538,12 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                     ok &= commands[i].groupCountX > 0u
                        && commands[i].groupCountY == topology_bucket_counts[i]
                        && commands[i].groupCountZ == 1u;
-            const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(legacy_template_id);
-            const auto *row = world->GetMaterialRuntimeTable()->Get(EntityRow(probe));
+            const auto *binding = world->RenderData().TemplateMaterials()->FindBinding(legacy_template_id);
+            const auto *row = world->RenderData().RuntimeMaterials()->Get(EntityRow(probe));
             const auto *line_ref = line_probe ? line_probe->GetComponent<GPUModelRefComponent>() : nullptr;
             const auto *seed_ref = seeds[0]->GetComponent<GPUModelRefComponent>();
             const auto *line_binding = line_ref
-                ? world->GetModelTemplateMaterialTable()->FindBinding(line_ref->GetTemplateID()) : nullptr;
+                ? world->RenderData().TemplateMaterials()->FindBinding(line_ref->GetTemplateID()) : nullptr;
             ok &= binding && !binding->owns_gpu_rows && !binding->uses_instance_material
                && row && row->data_index_row == data[0].data_index
                && legacy_texture_id != 0u && legacy_pair_count == 1u
@@ -562,8 +562,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         const EntityID id = models[2]->GetEntityID();
         const auto *model_ref = models[2]->GetComponent<GPUModelRefComponent>();
-        const auto *gpu = world->GetEntityGPUTable().Row(id);
-        const auto *main_ids = world->GetEntityRenderIDTable().Row(0u, id.index);
+        const auto *gpu = world->EntityRenderState().EntityGPU().Row(id);
+        const auto *main_ids = world->EntityRenderState().EntityRenderIDs().Row(0u, id.index);
         if (!model_ref || !gpu || !main_ids)
             return false;
         bool ok = EntityGPUTable::IsVisible(*gpu)
@@ -575,7 +575,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             ok &= main_ids->material_id == data[0].data_index;
         if (phase == 14u || phase == 16u)
         {
-            const auto *shadow_ids = world->GetEntityRenderIDTable().Row(1u, id.index);
+            const auto *shadow_ids = world->EntityRenderState().EntityRenderIDs().Row(1u, id.index);
             ok &= shadow_ids && *shadow_ids == *main_ids;
         }
         if (!ok)
@@ -661,7 +661,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             if (phase >= 9u && phase <= 11u)
             {
                 ShaderProgram *program = nullptr;
-                for (const auto &item : world->GetRenderFrameCache().renderItems)
+                for (const auto &item : world->Runner().FrameCache().renderItems)
                     if (item->GetEntity() == models[2])
                         program = item->GetShaderProgram();
                 if (phase == 9u) lit_program = program;
@@ -674,7 +674,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 const auto &snapshot = world->GetMainFrameTopologySnapshot();
                 const auto &ledger = world->GetPrimitiveTopologyLedger();
                 GLogInfo(u8"[GMM] CACHE_STATE steady=%d gpu=%d ready=%d items=%d/%u revision=%llu/%llu hits=%llu fallbacks=%llu",
-                         world->GetRenderFrameCache().is_collect_steady, ledger.GetLastGPUCullEngaged(),
+                         world->Runner().FrameCache().is_collect_steady, ledger.GetLastGPUCullEngaged(),
                          snapshot.IsReady(), snapshot.GetItemCount(), snapshot.GetCollectedItemCount(),
                          static_cast<unsigned long long>(snapshot.GetTopologyRevision()),
                          static_cast<unsigned long long>(ledger.GetTopologyRevision()),

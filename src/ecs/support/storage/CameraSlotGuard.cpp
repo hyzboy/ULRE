@@ -24,7 +24,7 @@ namespace hgl::ecs
         }
 
         // 只持**弱引用**：世界先销毁（或从未 Initialize）⇒ lock 失败 ⇒ 析构/Reset 自动 no-op
-        storage        = world->GetCameraInfoStorageWeak();
+        storage        = world->RenderData().GetCameraInfoStorageWeak();
         world_identity = world;
         owner_name     = owner;
 

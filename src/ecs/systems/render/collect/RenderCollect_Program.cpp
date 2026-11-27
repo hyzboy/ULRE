@@ -68,7 +68,7 @@ namespace hgl::ecs
         // program 指针/绑定状态"的形态（原材质运行期组件已删）。
         MaterialVariantTable *GetVariantTable(ECSContext *world)
         {
-            return world ? world->GetMaterialVariantTable() : nullptr;
+            return world ? world->RenderData().Variants() : nullptr;
         }
 
         MaterialVariantRecord *GetVariantRecordMutable(MaterialVariantTable *table,

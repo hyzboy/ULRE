@@ -1,4 +1,4 @@
-﻿// TestFramePrepareOncePerFrame.cpp —— §2 #11 判据：`PrepareFrame` 必须是**每帧一次**的真守卫
+// TestFramePrepareOncePerFrame.cpp —— §2 #11 判据：`PrepareFrame` 必须是**每帧一次**的真守卫
 //
 // 背景：`PrimitiveRenderPipeline::RunCull / RunSort / RunBuild` 各自调用 `impl_->PrepareFrame(ctx)`，
 //       原实现每帧最多做三遍同样的帧前准备（其中 Sort 那遍没有任何下游动作）。
@@ -82,11 +82,11 @@ int main()
     }
 
     // 帧号推进 ⇒ 必须重新准备一次
-    ctx.GetRenderFrameCache().renderableCount = 7;
+    ctx.Runner().FrameCache().renderableCount = 7;
     RenderPassSetupTestAccess::Run(ctx, 1);
 
-    if (ctx.GetRenderFrameCache().frame_serial != 1
-     || ctx.GetRenderFrameCache().renderableCount != 0)
+    if (ctx.Runner().FrameCache().frame_serial != 1
+     || ctx.Runner().FrameCache().renderableCount != 0)
     {
         GLogError(u8"Test Failed: render pass must reset the cache and advance its serial without a Primitive collector");
         return 1;
@@ -104,7 +104,7 @@ int main()
     // The same render-target slot can be reused by an offscreen pass.
     RenderPassSetupTestAccess::Run(ctx, 1);
     pipeline.PrepareFrame(&ctx);
-    if (ctx.GetRenderFrameCache().frame_serial != 2 || pipeline.GetPrepareFrameCount() != 3)
+    if (ctx.Runner().FrameCache().frame_serial != 2 || pipeline.GetPrepareFrameCount() != 3)
     {
         GLogError(u8"Test Failed: a second pass in the same slot must start a new frame");
         return 1;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/support/transform/TransformID.h>
 #include<hgl/ecs/core/entity/EntityHandle.h>
@@ -67,7 +67,7 @@ namespace hgl
             TransformID           GetID() const         { return id; }
             TransformDataStorage *GetStorage() const    { return storage; }
             /// 所属空间域（由存储反查；独立存储/未回填时为 nullptr）
-            WorldSpatialState    *GetSpatialState() const;
+            WorldSpatialState    *Spatial() const;
 
             /// 所属实体（真源在存储的 owners 行；不再由组件持有）
             EntityID GetOwnerID() const;

@@ -4,7 +4,7 @@
 #include<hgl/ecs/support/storage/ComponentPool.h>
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/math/Vector.h>
-#include<string>
+#include<hgl/type/String.h>
 #include<hgl/graph/camera/Camera.h>
 
 namespace hgl::graph
@@ -104,9 +104,9 @@ namespace hgl::ecs
         // === 名字（T2-c）===
         /// 原 `Component` 基类的名字字符串已删（它给每个组件 +32 B，只喂调试日志）；
         /// 相机**不是**逐实体对象（世界级、≤16/世界）⇒ 保留一个名字供日志/测试辨识。
-        std::string camera_name;
+        AnsiString camera_name;
 
-        const std::string& GetName() const { return camera_name; }
+        const AnsiString& GetName() const { return camera_name; }
 
         // === 标记 / Flags ===
         bool is_main_camera;            ///< 是否为主摄像机 / Is main camera
@@ -119,7 +119,7 @@ namespace hgl::ecs
 
     public:
 
-        CameraComponent(const std::string& name = "Camera");
+        CameraComponent(const AnsiString& name = "Camera");
 
         // 不需要析构：相机不持有任何需要归还的世界资源
         // （槽是世界的、按宿主弱引用计占用期；相机销毁 ⇒ 槽自动空出）。

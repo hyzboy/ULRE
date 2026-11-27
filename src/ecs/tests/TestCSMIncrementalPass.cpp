@@ -3915,7 +3915,7 @@ int main(int argc, char** argv)
               "世界表不再按帧槽轮转（在途帧之间会互踩）" },
             // ③ 相机行写入路径 = 本世界存储；pass 相机必须属本世界
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
-              "context->GetCameraInfoStorage()",
+              "context->RenderData().CameraRows()",
               "相机行写入不再走本世界存储" },
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
               "WriteCameraRow",
@@ -4481,7 +4481,8 @@ int main(int argc, char** argv)
               true },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "GetCameraInfoStorageWeak",
-              "世界不再提供相机行池的弱引用（槽拥有者只能存裸指针）" },
+              "世界不再提供相机行池的弱引用（槽拥有者只能存裸指针）",
+              true },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
               "DetachCameraSlotReleasers",
               "又出现了「世界销毁时摘挂钩」的注册表方案（世界从未 Initialize 时走不到）",
@@ -5543,7 +5544,7 @@ int main(int argc, char** argv)
             //    与 Clear()（实体销毁清两半）及剔除侧 geometry_id == 0 ⇒ 跳过本帧 同一约定。
             { "RenderCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
-              "world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});",
+              "world->EntityRenderState().EntityRenderIDs().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});",
               "时点 2（几何行不成立）必须显式清零本 pass 那一半（删掉 = 退回留旧值 ⇒ 剔除按旧几何记账）" },
             { "RenderCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
@@ -5894,7 +5895,7 @@ int main(int argc, char** argv)
               "AutoDelete<MaterialAuthoringSideTable> material_authoring_side_table;",
               "旁表不再由世界持有" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "MaterialAuthoringSideTable* GetMaterialAuthoringTable()",
+              "WorldRenderData& RenderData()",
               "世界缺旁表取用口" },
             // ③ 记录不再披回组件外衣，旁表持有唯一的授权数据定义。
             { "MaterialAuthoringSideTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialAuthoringSideTable.h"),
@@ -6774,7 +6775,7 @@ int main(int argc, char** argv)
               "T6b：Mie 光晕色读主光色；2026-10-07：强度乘子改为 shader 内常量（天空块整删）" },
 
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp"),
-              "const auto *light_row = context->GetLightRowTable().Row(graph::kMainLightRowIndex);",
+              "const auto *light_row = context->RenderData().Lights().Row(graph::kMainLightRowIndex);",
               "T6b：阴影解算改成读**世界光源行 0**（T6a 的临时依赖删除）" },
 
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp"),
@@ -6783,7 +6784,7 @@ int main(int argc, char** argv)
               true },
 
             { "LightSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/LightSystem.cpp"),
-              "context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, row);",
+              "context->RenderData().Lights().SetRow(graph::kMainLightRowIndex, row);",
               "T6b：光源域的唯一写入口（值变才标脏由行表判定）" },
 
             { "CMakeLists.txt", OS_TEXT("src/SceneGraph/CMakeLists.txt"),
@@ -6847,7 +6848,7 @@ int main(int argc, char** argv)
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
 
             { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "return render_data.GetShadowInfo();",
+              "return render_data.Shadow();",
               "T6b/P4：影子提交源不是本世界的 CPU 权威" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
@@ -6860,11 +6861,11 @@ int main(int argc, char** argv)
               "T6b/P4：影子数据提交点丢失（或不再按交换链帧的当前槽提交）" },
 
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp"),
-              "return context ? context->EditShadowInfo() : nullptr;",
+              "return context ? context->RenderData().EditShadow() : nullptr;",
               "T6b/P4：阴影域不再写世界影子数据（写者单源丢失）" },
 
             { "MainLightShadowSystem.h", OS_TEXT("inc/hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h"),
-              "void SetShadowInfo(const graph::ShadowInfo &info);",
+              "void SetShadow(const graph::ShadowInfo &info);",
               "T6b/P4：影子数据写入口签名丢失（旧 immediate 参数属 profile 脏标记时代）" },
 
             // ③ 旧形态禁复活
@@ -7262,8 +7263,8 @@ int main(int argc, char** argv)
               "VerifyAfterWrite(GetEntity(id)",
               "问题 2(a)：可见性写入点必须对拍（SetVisible 是三个刷新点之一）" },
 
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "VerifyAfterWrite(entity, \"ECSContext::RefreshEntityRow\")",
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "VerifyAfterWrite(entity, \"ECSContext::OnEntityRowsChanged\")",
               "问题 2(a)：组件挂卸写入点必须对拍（问题 2 的『漏刷新』正发生在这里）" },
 
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),

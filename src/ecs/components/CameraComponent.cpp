@@ -2,7 +2,7 @@
 
 namespace hgl::ecs
 {
-    CameraComponent::CameraComponent(const std::string& name)
+    CameraComponent::CameraComponent(const AnsiString& name)
         : camera_name(name)
         , position(0.0f, 0.0f, 5.0f)
         , target(0.0f, 0.0f, 0.0f)

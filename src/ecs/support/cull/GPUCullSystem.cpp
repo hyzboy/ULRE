@@ -797,7 +797,7 @@ namespace hgl::ecs
         if (!context_ || !device_ || !compute_pipeline_) return;
 
         // 获取实体表（返回引用）
-        const auto& entity_table = context_->GetEntityGPUTable();
+        const auto& entity_table = context_->EntityRenderState().EntityGPU();
         uint32_t entity_count = entity_table.kCapacity;
         if (entity_count == 0) return;
 
@@ -1000,7 +1000,7 @@ namespace hgl::ecs
                                                      ++draw_count_capture_serial_,
                                                      static_cast<VkQueue>(*cull_queue_),true,
                                                      context_->GetRenderDiagnosticWorldID(),
-                                                     context_->GetRenderFrameCache().frame_serial);
+                                                     context_->Runner().FrameCache().frame_serial);
 
         if (s_dispatch_perf.on)
             s_dispatch_perf.Add(GetUptimeUs() - t_dispatch0, "tracked_objects",
@@ -1243,7 +1243,7 @@ namespace hgl::ecs
         }
 
         // 6. 相机行与视锥平面
-        auto *storage = context_->GetCameraInfoStorage();
+        auto *storage = context_->RenderData().CameraRows();
         if (storage && storage->IsReady())
         {
             const uint32_t active_cam_row = context_->GetActiveCameraRow();
@@ -1267,8 +1267,8 @@ namespace hgl::ecs
         }
 
         // 7. 实体行与 4-ID
-        const auto& entity_table = context_->GetEntityGPUTable();
-        const auto& rid_table = context_->GetEntityRenderIDTable();
+        const auto& entity_table = context_->EntityRenderState().EntityGPU();
+        const auto& rid_table = context_->EntityRenderState().EntityRenderIDs();
         for (uint32_t e = 0; e < 3; ++e)
         {
             const auto *row = entity_table.Row(e);

@@ -17,7 +17,7 @@ namespace hgl::ecs
         if (!render_data)
             return;
 
-        MaterialRuntimeTable *runtime_table = render_data->GetMaterialRuntimeTable();
+        MaterialRuntimeTable *runtime_table = render_data->RuntimeMaterials();
         if (!runtime_table)
             return;
 
@@ -39,7 +39,7 @@ namespace hgl::ecs
             return false;
         }
 
-        MaterialRuntimeTable *runtime_table = render_data ? render_data->GetMaterialRuntimeTable() : nullptr;
+        MaterialRuntimeTable *runtime_table = render_data ? render_data->RuntimeMaterials() : nullptr;
         if (!runtime_table || binding.groups.IsEmpty())
         {
             GLogError(u8"[ModelTemplateMaterialTable] RegisterBinding rejected: missing runtime table or groups");

@@ -66,11 +66,11 @@ namespace hgl::ecs
         graph::RenderCmdBuffer *GetCurrentRenderCmd() const { return current_render_cmd; }
         void SetCurrentRenderCmd(graph::RenderCmdBuffer *cmd) { current_render_cmd = cmd; }
 
-        RenderPassScopeState &GetPassScopeState() { return pass_scope; }
-        const RenderPassScopeState &GetPassScopeState() const { return pass_scope; }
+        RenderPassScopeState &PassScope() { return pass_scope; }
+        const RenderPassScopeState &PassScope() const { return pass_scope; }
 
-        RenderFrameCache &GetRenderFrameCache() { return render_frame_cache; }
-        const RenderFrameCache &GetRenderFrameCache() const { return render_frame_cache; }
+        RenderFrameCache &FrameCache() { return render_frame_cache; }
+        const RenderFrameCache &FrameCache() const { return render_frame_cache; }
 
         MainFrameTopologyState &GetMainFrameTopology() { return main_frame_topology; }
         const MainFrameTopologyState &GetMainFrameTopology() const { return main_frame_topology; }

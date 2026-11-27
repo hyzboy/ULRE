@@ -501,9 +501,9 @@ namespace hgl::ecs
                     if (use_override && cs)
                         cs->RestoreMainCamera();
 
-                    runner->GetPassScopeState().SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
-                    runner->GetPassScopeState().SetMobilityFilter(-1);
-                    runner->GetPassScopeState().ClearShadow();
+                    runner->PassScope().SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
+                    runner->PassScope().SetMobilityFilter(-1);
+                    runner->PassScope().ClearShadow();
                 }
             }
         } state_guard{

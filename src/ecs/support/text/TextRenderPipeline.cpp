@@ -183,7 +183,7 @@ namespace hgl::ecs
         // 键用世界内帧序列号（`RenderFrameCache::frame_serial`，每次 BeginFrame 自增），
         // **不能**用 `ECSContext::GetFrameIndex()` —— 那是驱动相机的帧槽号，
         // 离屏 pass 恒为固定槽（永不推进）⇒ 同槽的后续帧会被误判为"本帧已准备"。
-        const uint32_t frame_index = world->GetRenderFrameCache().frame_serial;
+        const uint32_t frame_index = world->Runner().FrameCache().frame_serial;
         if (prepared_frame_index == frame_index)
             return true;
 

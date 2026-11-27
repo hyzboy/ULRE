@@ -78,7 +78,7 @@ namespace hgl::ecs
      * 1. 遍历 content.nodes 与 primitiveIndices，打包所有部件为连续的 ModelPartRow；
      * 2. 根据 material_inputs 为每个部件映射 material_id, texture_id, shading_group, bucket_slot；
      * 3. 统计各 shading group 与素材桶总数，在 GlobalSSBOBufferRegistry 分配并写入 GPU 模板行与部件区间；
-     * 4. 组装 TemplateRenderBinding 并在 ECSContext::GetModelTemplateMaterialTable() 中注册并增加材质行引用。
+     * 4. 组装 TemplateRenderBinding 并在 ECSContext::RenderData().TemplateMaterials() 中注册并增加材质行引用。
      *
      * @note material_inputs 必须提供已物化的 MaterialRuntimeRowID；资产实例化阶段的
      * 原始材质 SSBO 行不能代替运行期行。该接口保留用于显式多组模板构建。

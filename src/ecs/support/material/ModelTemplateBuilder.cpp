@@ -104,8 +104,8 @@ namespace hgl::ecs
             return kInvalidModelTemplateID;
         }
 
-        MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
-        ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
+        MaterialRuntimeTable *runtime_table = context->RenderData().RuntimeMaterials();
+        ModelTemplateMaterialTable *mat_table = context->RenderData().TemplateMaterials();
         if (!runtime_table || !mat_table)
         {
             GLogError(u8"[BuildMultiMaterialModelTemplate] Material tables unavailable");
@@ -405,7 +405,7 @@ namespace hgl::ecs
             return kInvalidModelTemplateID;
         }
 
-        ModelTemplateMaterialTable *mat_table = context->GetModelTemplateMaterialTable();
+        ModelTemplateMaterialTable *mat_table = context->RenderData().TemplateMaterials();
         if (!mat_table)
         {
             GLogError(u8"[BuildSinglePrimitiveModelTemplate] context 未初始化 ModelTemplateMaterialTable");
@@ -573,7 +573,7 @@ namespace hgl::ecs
                 registry, template_id, context->GetRenderSubmissionSerial()
                                        + graph::MaterialTextureConfigurationRetireEpochDelay, context))
             return false;
-        auto *table = context->GetModelTemplateMaterialTable();
+        auto *table = context->RenderData().TemplateMaterials();
         if (table && table->HasBinding(template_id))
             return table->UnregisterBinding(template_id);
         return true;

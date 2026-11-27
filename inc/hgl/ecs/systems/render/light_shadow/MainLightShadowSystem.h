@@ -71,9 +71,9 @@ namespace hgl
 
             // 编辑影子数据（T6b/P4：CPU 权威在**世界** `ECSContext::shadow_info`，
             // 本系统只是写者；设备侧提交点 = `ECSContext::CommitShadowInfo`）
-            graph::ShadowInfo *EditShadowInfo();
+            graph::ShadowInfo *EditShadow();
 
-            void SetShadowInfo(const graph::ShadowInfo &info);
+            void SetShadow(const graph::ShadowInfo &info);
 
             // ── 主光源级联阴影自动化托管 ──
             bool EnableMainLightShadow(const graph::CascadedShadowConfig &config, uint32_t shadow_map_size = 1024);

@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/render/MaterialBatch.h>
@@ -43,7 +43,7 @@ namespace hgl::ecs
         if (!context || !cmdBuffer)
             return;
 
-        auto& cache = context->GetRenderFrameCache();
+        auto& cache = context->Runner().FrameCache();
         if (cache.renderableCount == 0)
             return;
 

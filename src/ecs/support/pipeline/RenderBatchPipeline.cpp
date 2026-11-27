@@ -222,7 +222,7 @@ namespace hgl::ecs
                     return false;
                 }
 
-                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                const ModelTemplateMaterialTable *template_mat_table = world->RenderData().TemplateMaterials();
                 const TemplateRenderBinding *binding = template_mat_table
                     ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
 
@@ -351,7 +351,7 @@ namespace hgl::ecs
                 const auto *item = dynamic_cast<const PrimitiveRenderItem *>(batch->items[i]);
                 const auto *row = item ? item->GetMaterialRuntimeRow() : nullptr;
                 const auto *binding =
-                    world->GetModelTemplateMaterialTable()->FindBinding(group.template_id);
+                    world->RenderData().TemplateMaterials()->FindBinding(group.template_id);
 
                 gpu_cull->SetModelGroupBucketBase(pass_index, group.group_table_offset,
                                                   group.shading_group,
@@ -407,7 +407,7 @@ namespace hgl::ecs
         // 固定槽 ⇒ 离屏世界永不推进 ⇒ 首帧准备失败（首帧 renderItems 必为空）被永久缓存，
         // `RunBatching()` 再也不被调用、`materialBatches` 恒空 ⇒ 离屏世界永不绘制
         // （RenderToTexture / RenderToTextureColorDepth 两例的最终根因）。
-        auto& cache = ctx->GetRenderFrameCache();
+        auto& cache = ctx->Runner().FrameCache();
         const uint32_t frame_serial = cache.frame_serial;
 
         if (prepared_frame_ == frame_serial)
@@ -426,7 +426,7 @@ namespace hgl::ecs
             return false;
 
         world = ctx;
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
         if (cache.renderItems.empty())
             return false;
 
@@ -487,7 +487,7 @@ namespace hgl::ecs
         if (!world || !camera_info)
             return;
 
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
 
         frustum.SetMatrix(camera_info->vp);
 
@@ -623,7 +623,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
 
         TransformAssignmentBuffer* shared_transform_buffer = nullptr;
         if (auto transform_system = world->GetSystem<TransformSystem>())
@@ -766,7 +766,7 @@ namespace hgl::ecs
         const PerfSpan guard_span(s_guard_timer);   // RAII：多点 return 出口统一累计
         FrameProfileSpan guard_prof_span(FrameProfileSlot::BatchGPUCullGuard);
 
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
 
         // 每帧先复位（评估失败/从未评估 ⇒ 恒不接管；collect 读本记账）
         ++gpu_cull_override_eval_frame_;
@@ -1057,7 +1057,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
 
         // T3f-2（形态 B）：接管判定先于任何 FinalizeBatch —— hook 成功 ⇒ 批带上
         // `gpu_driven_override`，后续 sort/ensure/build/write 走既有 GPU-Driven 跳过契约；

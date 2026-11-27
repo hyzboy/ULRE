@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/support/cull/VisibilityDataStorage.h>
+#include <hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 
         const EntityID id = entity->GetEntityID();
 
-        if (!world.GetVisibilityStorage())
+        if (!world.Spatial().Visibility())
         {
             GLogError(u8"Test 1 Failed: 世界没有可见性存储");
             return 10;
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        if (world.GetVisibilityStorage()->IsDirectlyInvisible(id))
+        if (world.Spatial().Visibility()->IsDirectlyInvisible(id))
         {
             GLogError(u8"Test 1 Failed: 新实体不应在不可见集合里");
             return 10;
@@ -66,8 +66,8 @@ int main(int argc, char** argv)
 
         const auto initial_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         const auto initial_shadow_revision = world.GetStaticSceneRevision();
-        world.GetSpatialState().SetEntityVisible(id,false);
-        if (world.IsEntityVisible(id) || !world.GetVisibilityStorage()->IsDirectlyInvisible(id))
+        world.Spatial().SetEntityVisible(id,false);
+        if (world.IsEntityVisible(id) || !world.Spatial().Visibility()->IsDirectlyInvisible(id))
         {
             GLogError(u8"Test 1 Failed: 置隐后查询结果不对");
             return 10;
@@ -80,14 +80,14 @@ int main(int argc, char** argv)
             || world.GetStaticSceneRevision() != initial_shadow_revision + 1)
             return 10;
 
-        if (world.GetVisibilityStorage()->GetInvisibleCount() != 1)
+        if (world.Spatial().Visibility()->GetInvisibleCount() != 1)
         {
             GLogError(u8"Test 1 Failed: 不可见集合计数应为 1");
             return 10;
         }
 
         world.SetEntityVisible(id,true);
-        if (!world.IsEntityVisible(id) || world.GetVisibilityStorage()->GetInvisibleCount() != 0)
+        if (!world.IsEntityVisible(id) || world.Spatial().Visibility()->GetInvisibleCount() != 0)
         {
             GLogError(u8"Test 1 Failed: 恢复可见后状态不对");
             return 10;
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
             return 11;
         }
 
-        if (world.GetVisibilityStorage()->IsDirectlyInvisible(child_id))
+        if (world.Spatial().Visibility()->IsDirectlyInvisible(child_id))
         {
             GLogError(u8"Test 2 Failed: 后代被判为“直接”不可见（应为继承而来的不可见）");
             return 11;
@@ -193,7 +193,7 @@ int main(int argc, char** argv)
 
         world.SetEntityVisible(id,false);
 
-        if (world.GetVisibilityStorage()->GetInvisibleCount() != 1)
+        if (world.Spatial().Visibility()->GetInvisibleCount() != 1)
         {
             GLogError(u8"Test 3 Failed: 置隐后计数应为 1");
             return 12;
@@ -201,7 +201,7 @@ int main(int argc, char** argv)
 
         world.DestroyEntity(id);
 
-        if (world.GetVisibilityStorage()->GetInvisibleCount() != 0)
+        if (world.Spatial().Visibility()->GetInvisibleCount() != 0)
         {
             GLogError(u8"Test 3 Failed: 实体销毁后不可见标记未回收（同索引新实体会继承旧状态）");
             return 12;
@@ -212,11 +212,11 @@ int main(int argc, char** argv)
             return 12;
         const EntityID replacement_id = replacement->GetEntityID();
         world.SetEntityVisible(id, false);
-        world.GetSpatialState().SetEntityVisible(id, false);
+        world.Spatial().SetEntityVisible(id, false);
         if (!world.IsEntityVisible(replacement_id)
-            || !EntityGPUTable::IsActive(*world.GetEntityGPUTable().Row(replacement_id))
-            || !(world.GetEntityGPUTable().Row(replacement_id)->flags & uint32_t(EntityGPUFlags::Visible))
-            || world.GetVisibilityStorage()->GetInvisibleCount() != 0)
+            || !EntityGPUTable::IsActive(*world.EntityRenderState().EntityGPU().Row(replacement_id))
+            || !(world.EntityRenderState().EntityGPU().Row(replacement_id)->flags & uint32_t(EntityGPUFlags::Visible))
+            || world.Spatial().Visibility()->GetInvisibleCount() != 0)
             return 12;
 
         GLogInfo(u8"Test 3 Passed: 实体销毁回收不可见标记。");
@@ -235,7 +235,7 @@ int main(int argc, char** argv)
             return 13;
         }
 
-        EntityGPUTable &table = world.GetEntityGPUTable();
+        EntityGPUTable &table = world.EntityRenderState().EntityGPU();
         const EntityID  id    = entity->GetEntityID();
 
         // 判据必须"隔离本次写入"：`GetDirtyCount()` 数的是**当前标脏行数** ⇒ 重标同一位不会增加

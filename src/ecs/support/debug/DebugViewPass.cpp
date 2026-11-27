@@ -341,12 +341,12 @@ namespace hgl::ecs
         ValueArray<PreparedBatch> prepared;
         const char *error=nullptr;
         if(!graphics || !pass) error="render_context_unavailable";
-        const CameraInfo *camera=world->GetRenderFrameCache().cameraInfo;
+        const CameraInfo *camera=world->Runner().FrameCache().cameraInfo;
         if(!error && (!camera || camera->use_reversed_z>1
                       || camera!=world->GetActiveCameraInfo()))
             error="unsupported_camera";
         if(!error)
-            for(auto &pair:world->GetRenderFrameCache().materialBatches)
+            for(auto &pair:world->Runner().FrameCache().materialBatches)
             {
                 MaterialBatch *batch=pair.second.get();
                 if(!batch || batch->items.empty()

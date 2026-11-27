@@ -33,7 +33,6 @@
 #include<hgl/ecs/core/render/RenderPassRequest.h>
 
 #include<memory>
-#include<string>
 #include<hgl/type/String.h>
 
 namespace hgl::graph
@@ -47,10 +46,10 @@ namespace hgl::graph
         uint32_t height = 512;
 
         /// 子世界名（ECSContext 名）
-        std::string name = "OffscreenWorld";
+        AnsiString name = "OffscreenWorld";
 
         /// GPU 资源命名前缀，用于分层追踪（同时作为 RT 名）
-        std::string resource_prefix = "OffscreenRT";
+        AnsiString resource_prefix = "OffscreenRT";
 
         /// 清屏色：写入 RenderTargetDesc，成为 RT 上的权威值
         /// @note depth_only 为真时本值无意义（没有颜色附件）

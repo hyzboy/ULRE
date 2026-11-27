@@ -94,8 +94,8 @@ namespace
     bool TestMaterialTableLifecycle()
     {
         ECSContext context("TestContext");
-        MaterialRuntimeTable *runtime_table = context.GetMaterialRuntimeTable();
-        ModelTemplateMaterialTable *mat_table = context.GetModelTemplateMaterialTable();
+        MaterialRuntimeTable *runtime_table = context.RenderData().RuntimeMaterials();
+        ModelTemplateMaterialTable *mat_table = context.RenderData().TemplateMaterials();
 
         if (!runtime_table || !mat_table)
             return false;
@@ -186,12 +186,12 @@ namespace
     bool TestSinglePrimitiveModelTemplateCache()
     {
         ECSContext context("TestSingleTmplContext");
-        ModelTemplateMaterialTable *mat_table = context.GetModelTemplateMaterialTable();
+        ModelTemplateMaterialTable *mat_table = context.RenderData().TemplateMaterials();
         if (!mat_table)
             return false;
 
         const uint32_t kGeoID = 42u;
-        const MaterialRuntimeRowID kRow = context.GetMaterialRuntimeTable()->Intern(MaterialRuntimeKey{1u, 7u, 0u});
+        const MaterialRuntimeRowID kRow = context.RenderData().RuntimeMaterials()->Intern(MaterialRuntimeKey{1u, 7u, 0u});
         const uint32_t kTemplateID = 101u;
 
         SinglePrimitiveTemplateKey key;
@@ -254,8 +254,8 @@ namespace
     bool TestBindingReplacement()
     {
         ECSContext context("BindingReplacement");
-        auto *runtime = context.GetMaterialRuntimeTable();
-        auto *table = context.GetModelTemplateMaterialTable();
+        auto *runtime = context.RenderData().RuntimeMaterials();
+        auto *table = context.RenderData().TemplateMaterials();
         const auto row = runtime->Intern(MaterialRuntimeKey{1u, 91u, 0u});
         TemplateRenderBinding binding;
         binding.template_id = 901u;
@@ -317,8 +317,8 @@ namespace
     bool TestInstanceMaterialBinding()
     {
         ECSContext context("InstanceMaterialBinding");
-        auto *runtime = context.GetMaterialRuntimeTable();
-        auto *table = context.GetModelTemplateMaterialTable();
+        auto *runtime = context.RenderData().RuntimeMaterials();
+        auto *table = context.RenderData().TemplateMaterials();
         const auto row = runtime->Intern(MaterialRuntimeKey{1u, 90u, 0u});
         TemplateRenderBinding binding;
         binding.template_id = 900u;
@@ -472,7 +472,7 @@ namespace
             return false;
 
         // GPU 派生行事实写入测试（纯净化，无 material_override 标志位）
-        auto &gpu = context.GetEntityGPUTable();
+        auto &gpu = context.EntityRenderState().EntityGPU();
         gpu.SetModelFacts(entity->GetEntityID(), kTemplateID, ref->part_visibility_mask, 12u, 34u);
         const auto *gpu_row = gpu.Row(entity->GetEntityID());
         if (!gpu_row)
@@ -545,9 +545,9 @@ namespace
         ids.material_id = material_id;
         ids.texture_id = 5u;
 
-        context.GetEntityRenderIDTable().SetRenderIDs(pass_index, entity->GetEntityID(), ids);
+        context.EntityRenderState().EntityRenderIDs().SetRenderIDs(pass_index, entity->GetEntityID(), ids);
 
-        const auto *read_ids = context.GetEntityRenderIDTable().Row(pass_index, entity->GetEntityID().index);
+        const auto *read_ids = context.EntityRenderState().EntityRenderIDs().Row(pass_index, entity->GetEntityID().index);
         if (!read_ids || read_ids->material_id != 42u || read_ids->texture_id != 5u)
             return false;
 
@@ -587,7 +587,7 @@ namespace
               "EnsureTemplateGroupProgram",
               "收集系统必须提供 EnsureTemplateGroupProgram 确保组着色器程序就绪" },
             { collect_src,
-              "GetModelTemplateMaterialTable",
+              "TemplateMaterials",
               "收集系统必须查询 ModelTemplateMaterialTable 获取各 Shading Group 描述" },
             { collect_src,
               "ModelTemplateRenderItem",

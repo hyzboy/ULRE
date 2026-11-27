@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/MainLightShadowSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/support/storage/CameraInfoStorage.h>
@@ -32,15 +32,15 @@ namespace hgl::ecs
     // T6b/P4：影子数据的 CPU 权威在**世界**（`ECSContext::shadow_info`），不再挂 env profile。
     // 本系统只是它的写者（prepass 里逐帧解算级联），GPU 侧由提交点的
     // `ECSContext::CommitShadowInfo` 写本帧槽。
-    graph::ShadowInfo *MainLightShadowSystem::EditShadowInfo()
+    graph::ShadowInfo *MainLightShadowSystem::EditShadow()
     {
-        return context ? context->EditShadowInfo() : nullptr;
+        return context ? context->RenderData().EditShadow() : nullptr;
     }
 
-    void MainLightShadowSystem::SetShadowInfo(const graph::ShadowInfo &info)
+    void MainLightShadowSystem::SetShadow(const graph::ShadowInfo &info)
     {
         if (context)
-            context->SetShadowInfo(info);
+            context->RenderData().SetShadow(info);
     }
 
     bool MainLightShadowSystem::EnableMainLightShadow(const graph::CascadedShadowConfig &config, uint32_t shadow_map_size)
@@ -128,7 +128,7 @@ namespace hgl::ecs
         // 光行是影子的**归属方**（阴影从属于光源），本系统只是机制的执行者。
         if (context)
         {
-            if (auto *row = context->GetLightRowTable().Row(graph::kMainLightRowIndex))
+            if (auto *row = context->RenderData().Lights().Row(graph::kMainLightRowIndex))
             {
                 graph::LightRow light = *row;
 
@@ -136,7 +136,7 @@ namespace hgl::ecs
                 light.shadow_kind  = uint32_t(graph::LightShadowKind::CSM);
                 light.shadow_index = 0;
 
-                context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+                context->RenderData().Lights().SetRow(graph::kMainLightRowIndex, light);
             }
         }
 
@@ -166,7 +166,7 @@ namespace hgl::ecs
         // 影随光（T6b）：光行上的阴影开关随机制一起清（不投阴影 / 机制 None / 索引归零）
         if (context)
         {
-            if (auto *row = context->GetLightRowTable().Row(graph::kMainLightRowIndex))
+            if (auto *row = context->RenderData().Lights().Row(graph::kMainLightRowIndex))
             {
                 graph::LightRow light = *row;
 
@@ -174,7 +174,7 @@ namespace hgl::ecs
                 light.shadow_kind  = uint32_t(graph::LightShadowKind::None);
                 light.shadow_index = 0;
 
-                context->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+                context->RenderData().Lights().SetRow(graph::kMainLightRowIndex, light);
             }
         }
 
@@ -213,13 +213,13 @@ namespace hgl::ecs
         if (!shadow_enabled || !shadow_controller || !context || !main_camera || !light_camera)
             return;
 
-        auto *shadow_info = EditShadowInfo();
+        auto *shadow_info = context->RenderData().EditShadow();
         if (!shadow_info)
             return;
 
         // 光源定义 = **本世界的光源行 0**（T6b；写者是 `LightSystem`，本系统只读 —— 阴影从属于
         // 光源、单向依赖）。不经 `GetSystem<LightSystem>()` 取，避免反向依赖：行表归世界所有。
-        const auto *light_row = context->GetLightRowTable().Row(graph::kMainLightRowIndex);
+        const auto *light_row = context->RenderData().Lights().Row(graph::kMainLightRowIndex);
         if (!light_row || (light_row->flags & graph::kLightFlagEnabled) == 0)
         {
             if (!disabled_light_reported)

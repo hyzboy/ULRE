@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/support/debug/DebugViewController.h>
 
 #include<utility>
@@ -246,11 +246,6 @@ namespace hgl
             return GetRenderPipeline(AnsiString(name));
         }
 
-        RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
-        {
-            return GetRenderPipeline(AnsiString(name.c_str()));
-        }
-
         RenderPipelineBase* ECSContext::GetRenderPipeline(const AnsiString& name)
         {
             auto* ptr = render_pipelines.GetValuePointer(name);
@@ -261,11 +256,6 @@ namespace hgl
         {
             if (!name || !pipeline) return;
             RegisterRenderPipeline(AnsiString(name), std::move(pipeline));
-        }
-
-        void ECSContext::RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline)
-        {
-            RegisterRenderPipeline(AnsiString(name.c_str()), std::move(pipeline));
         }
 
         void ECSContext::RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline)
@@ -439,8 +429,8 @@ namespace hgl
         {
             // 槽号非法（本帧尚未解析出相机认领的槽 / 槽耗尽）⇒ 退回 **0 号槽**（默认相机 / 常驻 fallback）：
             // 着色器拿到的永远是一个合法行，而不是按 INVALID_SLOT 算出的越界行（会读到别的世界的存储）。
-            const uint32_t slot = CameraInfoStorage::IsValidSlot(render_runner.GetPassScopeState().GetCameraSlot())
-                                    ? render_runner.GetPassScopeState().GetCameraSlot()
+            const uint32_t slot = CameraInfoStorage::IsValidSlot(render_runner.PassScope().GetCameraSlot())
+                                    ? render_runner.PassScope().GetCameraSlot()
                                     : CameraInfoStorage::kDefaultCameraSlot;
 
             // 行号 = 相机槽 × 帧槽总数 + 帧槽（世界内算术，见 CameraInfoStorage::CameraRow）
@@ -556,12 +546,12 @@ namespace hgl
                          : nullptr;
         }
 
-        CameraComponent* ECSContext::GetOrCreateCamera(const EntityID owner, const std::string& name)
+        CameraComponent* ECSContext::GetOrCreateCamera(const EntityID owner, const AnsiString& name)
         {
             return GetOrCreateCamera(GetEntity(owner), name);
         }
 
-        CameraComponent* ECSContext::GetOrCreateCamera(Entity *owner, const std::string& name)
+        CameraComponent* ECSContext::GetOrCreateCamera(Entity *owner, const AnsiString& name)
         {
             // §3-②（2026-10-11）：相机**唯一创建入口** —— 不再经 `Entity::AddComponent<CameraComponent>`
             // （已编译期禁死），改走世界侧的 `CreateComponent<CameraComponent>`（同一挂载路径）。
@@ -634,13 +624,14 @@ namespace hgl
 
         void ECSContext::OnEntityDestroyed(const EntityID id)
         {
-            DeactivateEntityRow(id);
+            entity_render_state.DeactivateEntityRow(id);
             MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
         void ECSContext::OnEntityRowsChanged(const Entity *entity, ComponentType)
         {
-            RefreshEntityRow(entity);
+            entity_render_state.EntityGPU().Refresh(entity);
+            entity_render_state.EntityGPU().VerifyAfterWrite(entity, "ECSContext::OnEntityRowsChanged");
         }
 
         void ECSContext::OnSceneStructureDirty()
@@ -665,7 +656,7 @@ namespace hgl
 
         void ECSContext::OnEntityVisibilityChanged(EntityID id, bool visible)
         {
-            entity_render_state.GetEntityGPUTable().SetVisible(id, visible);
+            entity_render_state.EntityGPU().SetVisible(id, visible);
             MarkDynamicFactChanged(DynamicFactChange::Visibility);
             BumpStaticSceneRevision();
         }

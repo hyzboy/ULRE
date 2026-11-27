@@ -35,7 +35,7 @@ namespace hgl::ecs
             return false;
 
         auto *ref = entity->GetComponent<GPUModelRefComponent>();
-        auto *mat_table = world->GetModelTemplateMaterialTable();
+        auto *mat_table = world->RenderData().TemplateMaterials();
         auto *gc = world->GetGraphicsContext();
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 

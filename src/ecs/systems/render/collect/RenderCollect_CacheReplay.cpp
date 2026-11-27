@@ -75,7 +75,7 @@ namespace hgl::ecs
         if (!runtime_table)
             return false;
 
-        RenderFrameCache &cache = world->GetRenderFrameCache();
+        RenderFrameCache &cache = world->Runner().FrameCache();
 
         const size_t base_items = cache.renderItems.size();
         const uint32_t base_renderable = cache.renderableCount;
@@ -154,7 +154,7 @@ namespace hgl::ecs
                 const uint32_t geometry_id  = record.draw_geometry_id;
                 const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
                 const uint32_t group_idx = record.member_kind - 1u;
-                const ModelTemplateMaterialTable *template_table = world->GetModelTemplateMaterialTable();
+                const ModelTemplateMaterialTable *template_table = world->RenderData().TemplateMaterials();
                 const TemplateRenderBinding *binding = model_ref && template_table
                     ? template_table->FindBinding(model_ref->GetTemplateID()) : nullptr;
                 if (!model_ref || model_ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID

@@ -95,7 +95,7 @@ namespace
             if (!context || !count_buffer)
                 return;
 
-            auto &cache = context->GetRenderFrameCache();
+            auto &cache = context->Runner().FrameCache();
             for (auto &pair : cache.materialBatches)
             {
                 MaterialBatch *batch = pair.second.get();

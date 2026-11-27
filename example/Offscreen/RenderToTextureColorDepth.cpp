@@ -255,7 +255,7 @@ public:
                 // ⇒ 直接写它的**光源行**（行表归世界所有，不需要系统在场）。
                 if (auto *world = offscreen->GetWorld())
                 {
-                    if (auto *row = world->GetLightRowTable().Row(graph::kMainLightRowIndex))
+                    if (auto *row = world->RenderData().Lights().Row(graph::kMainLightRowIndex))
                     {
                         graph::LightRow light = *row;
 
@@ -264,7 +264,7 @@ public:
                         light.color_angle.y = sun.color.g;
                         light.color_angle.z = sun.color.b;
 
-                        world->GetLightRowTable().SetRow(graph::kMainLightRowIndex, light);
+                        world->RenderData().Lights().SetRow(graph::kMainLightRowIndex, light);
                     }
                 }
             }

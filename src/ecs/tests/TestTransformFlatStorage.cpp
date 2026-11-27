@@ -153,7 +153,7 @@ int main(int argc, char** argv)
 
     // Test 7: ECSContext integration
     ECSContext context;
-    auto* ecs_storage = context.GetTransformStorage();
+    auto* ecs_storage = context.Spatial().Transforms();
     if (!ecs_storage)
     {
         GLogError(u8"Test 7 Failed: ecs_storage is null");
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
     //   c) 实体销毁必须释放其变换行（否则残行留在列表里，索引映射整体串位）
     // ─────────────────────────────────────────────────────────────
     {
-        auto *storage = context.GetTransformStorage();
+        auto *storage = context.Spatial().Transforms();
         if (!storage)
         {
             GLogError(u8"Test 8 Failed: 无变换存储");
@@ -295,7 +295,7 @@ int main(int argc, char** argv)
     //     Allocate/Deallocate 里同步（如 T8 加 fixed_pixel/children 时）会在这里现形
     // ─────────────────────────────────────────────────────────────
     {
-        auto *storage = context.GetTransformStorage();
+        auto *storage = context.Spatial().Transforms();
         if (!storage)
         {
             GLogError(u8"Test 9 Failed: 无变换存储");
@@ -330,7 +330,7 @@ int main(int argc, char** argv)
     //   · 空句柄的写入被忽略，且不得影响存储
     // ─────────────────────────────────────────────────────────────
     {
-        auto *storage = context.GetTransformStorage();
+        auto *storage = context.Spatial().Transforms();
         if (!storage)
         {
             GLogError(u8"Test 10 Failed: 无变换存储");
@@ -553,7 +553,7 @@ int main(int argc, char** argv)
     //   · 段预算用尽 ⇒ 拒绝：`CreateTransform` 返 INVALID_TRANSFORM_ID、活槽数不变
     // ─────────────────────────────────────────────────────────────
     {
-        auto *storage = context.GetTransformStorage();
+        auto *storage = context.Spatial().Transforms();
 
         if (!storage)
         {
@@ -659,7 +659,7 @@ int main(int argc, char** argv)
     //   · 子表 CSR：`GetChildCount/GetChild/HasChild/CopyChildren` 与 Add/Remove 一致
     // ─────────────────────────────────────────────────────────────
     {
-        auto *storage = context.GetTransformStorage();
+        auto *storage = context.Spatial().Transforms();
 
         if (!storage)
         {
@@ -756,7 +756,7 @@ int main(int argc, char** argv)
     //                ② `ECSContext::ForEach*Transform` 结构性遍历自动跳洞、计数 = 活槽数。
     // ─────────────────────────────────────────────────────────────
     {
-        auto *hole_storage = context.GetTransformStorage();
+        auto *hole_storage = context.Spatial().Transforms();
 
         if (!hole_storage)
         {
@@ -972,7 +972,7 @@ int main(int argc, char** argv)
             // ① 换段被拒：静态段 1 槽 / 动态段 1 槽 ⇒ 两边都只剩 0 个空位
             ECSContext ctx_full;
 
-            auto *st_full = ctx_full.GetTransformStorage();
+            auto *st_full = ctx_full.Spatial().Transforms();
 
             if (!st_full)
             {
@@ -1048,7 +1048,7 @@ int main(int argc, char** argv)
             // ② 段满创建：总行预算仍有空间（静态 1 + 动态 3 = 4），只有静态段满
             ECSContext ctx_segfull;
 
-            auto *st_seg = ctx_segfull.GetTransformStorage();
+            auto *st_seg = ctx_segfull.Spatial().Transforms();
 
             if (!st_seg)
             {
@@ -1117,7 +1117,7 @@ int main(int argc, char** argv)
 
         const TransformID id1 = ctx_reset.CreateTransform(e1->GetEntityID(), Mobility::Static);
 
-        auto *st_reset = ctx_reset.GetTransformStorage();
+        auto *st_reset = ctx_reset.Spatial().Transforms();
 
         if (!IsValidTransformID(id1) || !st_reset)
         {
@@ -1179,7 +1179,7 @@ int main(int argc, char** argv)
         ctx_shutdown.DestroyTransform(shutdown_static);
         ctx_shutdown.Shutdown();
 
-        if (auto *st_after = ctx_shutdown.GetTransformStorage())
+        if (auto *st_after = ctx_shutdown.Spatial().Transforms())
         {
             if (st_after->GetCount() != 0)
             {

@@ -95,7 +95,7 @@ namespace hgl::ecs
             render_ids.material_id  = material_id;
             render_ids.texture_id   = texture_id;
 
-            world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, render_ids);
+            world->EntityRenderState().EntityRenderIDs().SetRenderIDs(pass_index, entity_id, render_ids);
             ids_published = true;
 
             // T3h：阴影**事实**随同一判据点上 EntityGPU 行（ShadowProxy 是
@@ -127,7 +127,7 @@ namespace hgl::ecs
                     "RenderCollectSystem#shadow-facts");
 #endif
 
-                world->GetEntityGPUTable().SetShadowFacts(
+                world->EntityRenderState().EntityGPU().SetShadowFacts(
                     entity_id,
                     NormalizeShadowBiasToRow(GetShadowBiasMultiplier(shadow_owner)),
                     HasRenderNeed(shadow_needs,RenderNeed::ShadowReceiver) ? 1u : 0u);
@@ -139,7 +139,7 @@ namespace hgl::ecs
                 // 闸门**先于**任何昂贵计算（契约档 §5「问题 3 的 ②」裁定）。
                 // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
                 // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
-                world->GetEntityGPUTable().SetVisible(entity_id, world->IsEntityVisible(entity_id));
+                world->EntityRenderState().EntityGPU().SetVisible(entity_id, world->IsEntityVisible(entity_id));
 
                 // ── T3.1 / T3.2：模型模板事实上行（GPU 展开分支的**唯一入口**）──
                 // 同一判据点、同一纪律：本实体已进批 ⇒ 行值当帧有效。`template_id != 0`
@@ -154,7 +154,7 @@ namespace hgl::ecs
                     const GPUModelRefComponent *model_ref =
                         shadow_owner ? shadow_owner->GetComponent<GPUModelRefComponent>() : nullptr;
 
-                    world->GetEntityGPUTable().SetModelFacts(
+                    world->EntityRenderState().EntityGPU().SetModelFacts(
                         entity_id,
                         model_ref ? model_ref->GetTemplateID() : 0u,
                         model_ref ? model_ref->part_visibility_mask : 0ull,
@@ -165,7 +165,7 @@ namespace hgl::ecs
 #if ULRE_ECS_DEBUG_API
                 // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即
                 // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
-                world->GetEntityGPUTable().VerifyVisibleMirror(
+                world->EntityRenderState().EntityGPU().VerifyVisibleMirror(
                     shadow_owner, world->IsEntityVisible(entity_id),
                     "RenderCollectSystem#publish");
 #endif//ULRE_ECS_DEBUG_API
@@ -179,11 +179,11 @@ namespace hgl::ecs
             // 被 tags 跳过 —— 但剔除账与计数会偏）；零 = 未上行，与 `EntityRenderIDTable::Clear()`
             //（实体销毁清两半）以及剔除侧 `geometry_id == 0 ⇒ 跳过本帧` 是同一约定。
             // 成本：表的 setter 值变才标脏 ⇒ 稳态只在"有 → 无"那一帧脏一次。
-            world->GetEntityRenderIDTable().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});
+            world->EntityRenderState().EntityRenderIDs().SetRenderIDs(pass_index, entity_id, graph::RenderItemDescriptor{});
 
 #if ULRE_ECS_DEBUG_API
             const graph::RenderItemDescriptor *verif_row =
-                world->GetEntityRenderIDTable().Row(pass_index, entity_id.index);
+                world->EntityRenderState().EntityRenderIDs().Row(pass_index, entity_id.index);
             if (verif_row && !(*verif_row == graph::RenderItemDescriptor{}))
             {
                 GLogError("[EntityRenderIDTable] 几何行不成立但本 pass 行未清零：entity_index=%u pass=%u geometry_id=%u",

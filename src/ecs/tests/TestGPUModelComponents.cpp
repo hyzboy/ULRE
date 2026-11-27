@@ -371,7 +371,7 @@ namespace
         if (!entity)
             return;
 
-        EntityGPUTable &table = ctx.GetEntityGPUTable();
+        EntityGPUTable &table = ctx.EntityRenderState().EntityGPU();
         const EntityID id = entity->GetEntityID();
         table.SetTransformRow(id, 512u, 256u);
 
@@ -397,19 +397,19 @@ namespace
         const EntityID id{17u, 3u};
 
         state.ActivateEntityRow(id);
-        const EntityGPU *row = state.GetEntityGPUTable().Row(id);
+        const EntityGPU *row = state.EntityGPU().Row(id);
         EXPECT(row != nullptr);
         EXPECT(row && EntityGPUTable::IsActive(*row));
 
         const graph::RenderItemDescriptor ids{1u, 2u, 3u, 4u};
-        state.GetEntityRenderIDTable().SetRenderIDs(0, id, ids);
-        const graph::RenderItemDescriptor *published = state.GetEntityRenderIDTable().Row(0, id.index);
+        state.EntityRenderIDs().SetRenderIDs(0, id, ids);
+        const graph::RenderItemDescriptor *published = state.EntityRenderIDs().Row(0, id.index);
         EXPECT(published != nullptr);
         EXPECT(published && *published == ids);
 
         state.DeactivateEntityRow(id);
         EXPECT(row && !EntityGPUTable::IsActive(*row));
-        const graph::RenderItemDescriptor *cleared = state.GetEntityRenderIDTable().Row(0, id.index);
+        const graph::RenderItemDescriptor *cleared = state.EntityRenderIDs().Row(0, id.index);
         EXPECT(cleared != nullptr);
         EXPECT(cleared && *cleared == graph::RenderItemDescriptor{});
     }
@@ -423,17 +423,17 @@ namespace
             return;
 
         const EntityID id = entity->GetEntityID();
-        const EntityGPU *row = ctx.GetEntityGPUTable().Row(id);
+        const EntityGPU *row = ctx.EntityRenderState().EntityGPU().Row(id);
         EXPECT(row && EntityGPUTable::IsActive(*row));
-        EXPECT(&ctx.GetEntityGPUTable() == &RenderPassSetupTestAccess::GPUResourcesEntityTable(ctx));
-        EXPECT(&ctx.GetEntityRenderIDTable() == &RenderPassSetupTestAccess::GPUResourcesRenderIDTable(ctx));
+        EXPECT(&ctx.EntityRenderState().EntityGPU() == &RenderPassSetupTestAccess::GPUResourcesEntityTable(ctx));
+        EXPECT(&ctx.EntityRenderState().EntityRenderIDs() == &RenderPassSetupTestAccess::GPUResourcesRenderIDTable(ctx));
 
         const graph::RenderItemDescriptor ids{5u, 6u, 7u, 8u};
-        ctx.GetEntityRenderIDTable().SetRenderIDs(0, id, ids);
+        ctx.EntityRenderState().EntityRenderIDs().SetRenderIDs(0, id, ids);
         ctx.DestroyEntity(id);
 
         EXPECT(row && !EntityGPUTable::IsActive(*row));
-        const graph::RenderItemDescriptor *cleared = ctx.GetEntityRenderIDTable().Row(0, id.index);
+        const graph::RenderItemDescriptor *cleared = ctx.EntityRenderState().EntityRenderIDs().Row(0, id.index);
         EXPECT(cleared && *cleared == graph::RenderItemDescriptor{});
     }
 
@@ -450,7 +450,7 @@ namespace
         const EntityID second_id = second->GetEntityID();
         auto *first_material = ctx.GetOrCreateMaterialData(first);
         EXPECT(first_material != nullptr);
-        EXPECT(first_material && first_material->GetWorldRenderData() == &ctx.GetRenderData());
+        EXPECT(first_material && first_material->GetWorldRenderData() == &ctx.RenderData());
         EXPECT(ctx.GetOrCreateMaterialData(second) != nullptr);
         ctx.GetOrCreateMaterialRuntimeSlot(first_id);
 

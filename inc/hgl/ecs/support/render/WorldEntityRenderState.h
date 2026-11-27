@@ -22,11 +22,11 @@ namespace hgl::ecs
         WorldEntityRenderState(const WorldEntityRenderState &) = delete;
         WorldEntityRenderState &operator=(const WorldEntityRenderState &) = delete;
 
-        EntityGPUTable &GetEntityGPUTable() { return entity_gpu_table; }
-        const EntityGPUTable &GetEntityGPUTable() const { return entity_gpu_table; }
+        EntityGPUTable &EntityGPU() { return entity_gpu_table; }
+        const EntityGPUTable &EntityGPU() const { return entity_gpu_table; }
 
-        EntityRenderIDTable &GetEntityRenderIDTable() { return entity_render_id_table; }
-        const EntityRenderIDTable &GetEntityRenderIDTable() const { return entity_render_id_table; }
+        EntityRenderIDTable &EntityRenderIDs() { return entity_render_id_table; }
+        const EntityRenderIDTable &EntityRenderIDs() const { return entity_render_id_table; }
 
         void ActivateEntityRow(EntityID id);
         void DeactivateEntityRow(EntityID id);

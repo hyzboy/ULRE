@@ -8,8 +8,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
 #include<hgl/common/DebugChannel.h>
-#include<algorithm>
-
+#include<hgl/type/StringList.h>
 
 DEFINE_LOGGER_MODULE(RenderGraph)
 
@@ -34,26 +33,32 @@ namespace hgl
             // group metadata (name -> phase range) once, so per-frame graph
             // rebuilds don't Clear + rescan. New element types appearing at
             // runtime (component-driven installer) still get picked up.
-            std::vector<std::string> element_types;
-            context->GetAllRenderElementTypes(element_types);
+            AnsiStringList element_types;
+            context->GetSystemRegistry().ForEachElementType([&element_types](const AnsiString& name)
+            {
+                element_types.Add(name);
+            });
 
             size_t added = 0;
-            for (const auto& element_type : element_types)
+            for (AnsiString *element_type : element_types)
             {
-                if (registry.GetGroup(element_type))
+                if (!element_type)
                     continue;
 
-                std::vector<std::shared_ptr<System>> systems;
-                context->GetSystemsByElementType(element_type, systems);
+                if (registry.GetGroup(element_type->c_str()))
+                    continue;
 
-                if (systems.empty())
+                const PtrArray<std::shared_ptr<System>> *systems =
+                    context->GetSystemRegistry().FindByElementType(*element_type);
+
+                if (!systems || systems->GetCount() == 0)
                     continue;
 
                 bool has_phase = false;
                 ExecutionPhase start_phase = static_cast<ExecutionPhase>(0);
                 ExecutionPhase end_phase = static_cast<ExecutionPhase>(0);
 
-                for (const auto& system : systems)
+                for (const auto& system : *systems)
                 {
                     if (!system)
                         continue;
@@ -75,7 +80,7 @@ namespace hgl
                 if (!has_phase)
                     continue;
 
-                registry.RegisterGroup(SystemGroup(element_type, start_phase, end_phase));
+                registry.RegisterGroup(SystemGroup(std::string(element_type->c_str()), start_phase, end_phase));
                 ++added;
             }
 

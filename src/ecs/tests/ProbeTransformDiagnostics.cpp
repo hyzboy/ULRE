@@ -240,7 +240,7 @@ static void SectionAllocation()
             entities.push_back(e);
         }
 
-        const EntityGPUTable &table=context.GetEntityGPUTable();
+        const EntityGPUTable &table=context.EntityRenderState().EntityGPU();
 
         uint32_t active=0;
         uint32_t first_bad=UINT32_MAX;
@@ -288,7 +288,7 @@ static void SectionAllocation()
 
         // T3c-2a：脏行上传计划（CPU 侧语义：无脏 ⇒ 0 行；改一行 ⇒ 恰好 1 行）
         std::vector<uint32_t> plan;
-        EntityGPUTable &mut_table=context.GetEntityGPUTable();
+        EntityGPUTable &mut_table=context.EntityRenderState().EntityGPU();
 
         mut_table.GetDirtySet().ClearDirty();
         mut_table.GetDirtySet().CollectDirtyRows(plan);

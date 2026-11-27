@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2 校验面）
 #include<hgl/common/DebugChannel.h>
 #include<hgl/ecs/support/transform/TransformAssignmentBuffer.h>
@@ -52,8 +52,8 @@ namespace hgl::ecs
 
             if (!IsValidTransformID(transform_id))
             {
-                world->GetEntityGPUTable().SetTransformRow(owner, 0, 0);
-                world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
+                world->EntityRenderState().EntityGPU().SetTransformRow(owner, 0, 0);
+                world->EntityRenderState().EntityGPU().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
 
@@ -63,8 +63,8 @@ namespace hgl::ecs
 
             if (!world->TryGetTransformSlot(transform_id, movable, slot))
             {
-                world->GetEntityGPUTable().SetTransformRow(owner, 0, 0);
-                world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
+                world->EntityRenderState().EntityGPU().SetTransformRow(owner, 0, 0);
+                world->EntityRenderState().EntityGPU().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
                 return;
             }
 
@@ -74,8 +74,8 @@ namespace hgl::ecs
             const uint32_t row = movable ? (dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
             const uint32_t prev_row = movable ? (prev_dynamic_base + slot) : (kFirstObjectL2WSlot + slot);
 
-            world->GetEntityGPUTable().SetTransformRow(owner, row, prev_row);
-            world->GetEntityGPUTable().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
+            world->EntityRenderState().EntityGPU().SetTransformRow(owner, row, prev_row);
+            world->EntityRenderState().EntityGPU().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
         });
     }
 
@@ -86,7 +86,7 @@ namespace hgl::ecs
         if (!world || !updateMovable)
             return;
 
-        auto* storage = world->GetTransformStorage();
+        auto* storage = world->Spatial().Transforms();
         if (storage)
         {
             storage->UpdateDirtyWorldMatricesFlat();
@@ -159,7 +159,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto* storage = world->GetTransformStorage();
+        auto* storage = world->Spatial().Transforms();
         if (storage)
         {
             storage->UpdateDirtyWorldMatricesFlat();
@@ -218,7 +218,7 @@ namespace hgl::ecs
                                          ToChangeMask(TransformChange::WorldMatrix) |
                                          ToChangeMask(TransformChange::Mobility);
 
-            auto *static_storage = world ? world->GetTransformStorage() : nullptr;
+            auto *static_storage = world ? world->Spatial().Transforms() : nullptr;
 
             // 批 1.1 B4：静态变更的**独立信号**。为什么不能只看 has_dirty_static —— `Update()` 开头的
             // `UpdateDirtyWorldMatricesFlat()` 会先把 `matrixDirty` 清掉，于是正常帧序（Update → Submit）下
@@ -278,7 +278,7 @@ namespace hgl::ecs
         if (full_fill)
             RefreshHandleOrder();
 
-        auto* storage = world ? world->GetTransformStorage() : nullptr;
+        auto* storage = world ? world->Spatial().Transforms() : nullptr;
         if (!storage)
             return;
 
@@ -475,7 +475,7 @@ namespace hgl::ecs
             ring_frames = render_target->GetFrameCount();
 
         // 行预算的唯一真源是世界的变换存储（T10/B1a：声明式预算 + 预分配）。
-        const TransformDataStorage *storage = world->GetTransformStorage();
+        const TransformDataStorage *storage = world->Spatial().Transforms();
 
         const uint32_t max_static_rows  = storage ? storage->GetStaticRowBudget()  : TransformDataStorage::kDefaultMaxStaticRows;
         const uint32_t max_dynamic_rows = storage ? storage->GetDynamicRowBudget() : TransformDataStorage::kDefaultMaxDynamicRows;
@@ -568,7 +568,7 @@ namespace hgl::ecs
 
     void TransformSystem::UpdateTransformRow(const TransformID id)
     {
-        auto *storage = world ? world->GetTransformStorage() : nullptr;
+        auto *storage = world ? world->Spatial().Transforms() : nullptr;
 
         if (!storage || !IsValidTransformID(id))
             return;
@@ -582,7 +582,7 @@ namespace hgl::ecs
 
     bool TransformSystem::ShouldUpdateTransform(const TransformID id,uint32_t update_mask)
     {
-        auto *storage = world ? world->GetTransformStorage() : nullptr;
+        auto *storage = world ? world->Spatial().Transforms() : nullptr;
 
         if (!storage || !IsValidTransformID(id))
             return false;
@@ -603,7 +603,7 @@ namespace hgl::ecs
 
     void TransformSystem::MarkTransformSeen(const TransformID id)
     {
-        auto *storage = world ? world->GetTransformStorage() : nullptr;
+        auto *storage = world ? world->Spatial().Transforms() : nullptr;
 
         if (!storage || !IsValidTransformID(id))
             return;

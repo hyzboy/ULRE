@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -661,7 +661,7 @@ namespace hgl::ecs
             return;
         }
 
-        auto *storage = context ? context->GetCameraInfoStorage() : nullptr;
+        auto *storage = context ? context->RenderData().CameraRows() : nullptr;
         if (!storage || !storage->IsReady())
             return;
 

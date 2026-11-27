@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/support/cull/BoundingBoxDataStorage.h>
+#include <hgl/ecs/support/cull/BoundingBoxDataStorage.h>
 #include <hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/entity/Entity.h>
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
     {
         ECSContext context;
 
-        if (!context.GetBoundingBoxStorage())
+        if (!context.Spatial().BoundingBoxes())
         {
             GLogError(u8"Test 3 Failed: 世界未持有包围盒存储");
             return 3;
@@ -320,7 +320,7 @@ int main(int argc, char** argv)
             return 3;
         }
 
-        if (context.GetBoundingBoxStorage()->FindByOwner(eid) != BoundingBoxDataStorage::INVALID_HANDLE)
+        if (context.Spatial().BoundingBoxes()->FindByOwner(eid) != BoundingBoxDataStorage::INVALID_HANDLE)
         {
             GLogError(u8"Test 3 Failed: 实体销毁后反查表仍留残行");
             return 3;

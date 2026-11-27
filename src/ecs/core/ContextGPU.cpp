@@ -1,4 +1,4 @@
-﻿#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/storage/CameraInfoStorage.h>
 #include <hgl/ecs/support/transform/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
@@ -36,27 +36,27 @@ namespace hgl::ecs
 
         EntityGPUTable &ECSContext::GPUResourcesEntityTable()
         {
-            return entity_render_state.GetEntityGPUTable();
+            return entity_render_state.EntityGPU();
         }
 
         EntityRenderIDTable &ECSContext::GPUResourcesRenderIDTable()
         {
-            return entity_render_state.GetEntityRenderIDTable();
+            return entity_render_state.EntityRenderIDs();
         }
 
         LightRowTable &ECSContext::GPUResourcesLightTable()
         {
-            return GetLightRowTable();
+            return RenderData().Lights();
         }
 
         const graph::ShadowInfo &ECSContext::GPUResourcesShadowInfo() const
         {
-            return render_data.GetShadowInfo();
+            return render_data.Shadow();
         }
 
         CameraInfoStorage *ECSContext::GPUResourcesCameraStorage()
         {
-            return render_data.GetCameraInfoStorage();
+            return render_data.CameraRows();
         }
 
         uint64_t ECSContext::GPUResourcesTransformAddress()

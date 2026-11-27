@@ -178,8 +178,8 @@ namespace hgl::ecs
         const ValueArray<Entity *> &primitives, int active_mobility_filter,
         bool ambient_provider_changed, PreparationState &state)
     {
-        auto &cache = world->GetRenderFrameCache();
-        MaterialRuntimeTable *runtime_table = world->GetMaterialRuntimeTable();
+        auto &cache = world->Runner().FrameCache();
+        MaterialRuntimeTable *runtime_table = world->RenderData().RuntimeMaterials();
         FrameProfileSpan prescan_span(FrameProfileSlot::CollectPreScan);
 
         for (Entity *entity : primitives)
@@ -274,7 +274,7 @@ namespace hgl::ecs
             const GPUModelRefComponent *scan_model_ref = entity->GetComponent<GPUModelRefComponent>();
             if (scan_model_ref && scan_model_ref->GetTemplateID() != graph::ssbo::kInvalidModelTemplateID)
             {
-                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                const ModelTemplateMaterialTable *template_mat_table = world->RenderData().TemplateMaterials();
                 const bool has_template_binding = template_mat_table && template_mat_table->FindBinding(scan_model_ref->GetTemplateID()) != nullptr;
                 if (has_template_binding || !entity->GetComponent<GeometryData>())
                     continue;
@@ -348,7 +348,7 @@ namespace hgl::ecs
             return;
 
         materialization.BeginFrame();
-        if (auto *templates = world->GetModelTemplateMaterialTable())
+        if (auto *templates = world->RenderData().TemplateMaterials())
             templates->CollectRetiredTemplates();
 
         // 本 pass 生效相机的 CameraInfo（离屏 pass = pass 相机，主帧 = 主相机）：
@@ -358,7 +358,7 @@ namespace hgl::ecs
         if (!cameraInfo)
             return;
 
-        auto& cache = world->GetRenderFrameCache();
+        auto& cache = world->Runner().FrameCache();
         cache.cameraInfo = cameraInfo;
         hgl::graph::FrameDebugger::SetCameraSnapshot(cameraInfo);
         if(!world->IsCurrentPassShadow())

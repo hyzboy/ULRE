@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MaterialVariantTable.h —— **材质变体表**（v2 §9.3 A3）
  *
  * 用途：把材质运行期层里**前向/阴影两个硬编码 program 槽**收敛成
@@ -51,7 +51,7 @@
  *   才有的 `ShaderProgramKey`。
  *
  * 归属：表由 `ECSContext` 持有（与 `VisibilityDataStorage` 等世界私有存储同一访问范式，
- *       见 `Context.h::GetMaterialVariantTable()`）。
+ *       见 `Context.h::RenderData().Variants()`）。
  *       理由：记录里的 `program` 指针归该世界的 `GraphicsContext` 的
  *       `ShaderProgramManager` 缓存所有——表与程序缓存同生共死，不会出现
  *       "进程级全局表持有已销毁 GraphicsContext 的 program"的悬垂指针，也不会让

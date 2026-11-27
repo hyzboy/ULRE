@@ -95,29 +95,30 @@ namespace hgl::ecs
         void DestroyEntityData(EntityID id);
 
         // ── 光源行表 ──
-        LightRowTable &GetLightRowTable() { return light_row_table; }
-        const LightRowTable &GetLightRowTable() const { return light_row_table; }
+        LightRowTable &Lights() { return light_row_table; }
+        const LightRowTable &Lights() const { return light_row_table; }
 
         // ── 阴影信息 ──
-        graph::ShadowInfo *EditShadowInfo() { return &shadow_info; }
-        const graph::ShadowInfo &GetShadowInfo() const { return shadow_info; }
-        void SetShadowInfo(const graph::ShadowInfo &info) { shadow_info = info; }
+        graph::ShadowInfo *EditShadow() { return &shadow_info; }
+        graph::ShadowInfo &Shadow() { return shadow_info; }
+        const graph::ShadowInfo &Shadow() const { return shadow_info; }
+        void SetShadow(const graph::ShadowInfo &info) { shadow_info = info; }
 
         // ── 材质表访问器 ──
-        MaterialVariantTable *GetMaterialVariantTable() { return material_variant_table; }
-        const MaterialVariantTable *GetMaterialVariantTable() const { return material_variant_table; }
+        MaterialVariantTable *Variants() { return material_variant_table; }
+        const MaterialVariantTable *Variants() const { return material_variant_table; }
 
         MaterialRuntimePipelineTable &GetMaterialRuntimePipelineTable() { return *material_runtime_pipeline_table; }
         const MaterialRuntimePipelineTable &GetMaterialRuntimePipelineTable() const { return *material_runtime_pipeline_table; }
 
-        MaterialAuthoringSideTable *GetMaterialAuthoringTable() { return material_authoring_side_table; }
-        const MaterialAuthoringSideTable *GetMaterialAuthoringTable() const { return material_authoring_side_table; }
+        MaterialAuthoringSideTable *AuthoringMaterials() { return material_authoring_side_table; }
+        const MaterialAuthoringSideTable *AuthoringMaterials() const { return material_authoring_side_table; }
 
-        MaterialRuntimeTable *GetMaterialRuntimeTable() { return material_runtime_table; }
-        const MaterialRuntimeTable *GetMaterialRuntimeTable() const { return material_runtime_table; }
+        MaterialRuntimeTable *RuntimeMaterials() { return material_runtime_table; }
+        const MaterialRuntimeTable *RuntimeMaterials() const { return material_runtime_table; }
 
-        ModelTemplateMaterialTable *GetModelTemplateMaterialTable() { return model_template_material_table; }
-        const ModelTemplateMaterialTable *GetModelTemplateMaterialTable() const { return model_template_material_table; }
+        ModelTemplateMaterialTable *TemplateMaterials() { return model_template_material_table; }
+        const ModelTemplateMaterialTable *TemplateMaterials() const { return model_template_material_table; }
 
         // ── 材质数据及运行期槽 ──
         MaterialRuntimeSlot &GetOrCreateMaterialRuntimeSlot(EntityID owner);
@@ -142,8 +143,8 @@ namespace hgl::ecs
         const void *GetWorldIdentity() const { return world_identity; }
 
         // ── 相机管理 ──
-        CameraInfoStorage *GetCameraInfoStorage() { return camera_info_storage.get(); }
-        const CameraInfoStorage *GetCameraInfoStorage() const { return camera_info_storage.get(); }
+        CameraInfoStorage *CameraRows() { return camera_info_storage.get(); }
+        const CameraInfoStorage *CameraRows() const { return camera_info_storage.get(); }
         std::weak_ptr<CameraInfoStorage> GetCameraInfoStorageWeak() const { return camera_info_storage; }
 
         CameraComponent *GetCamera(uint32_t slot) const;

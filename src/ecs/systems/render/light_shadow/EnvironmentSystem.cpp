@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/light_shadow/EnvironmentSystem.h>
 #include<hgl/ecs/systems/render/light_shadow/LightSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/entity/Entity.h>
@@ -282,7 +282,7 @@ namespace hgl::ecs
         if (context)
         {
             const graph::LightRow *row =
-                context->GetLightRowTable().Row(graph::kMainLightRowIndex);
+                context->RenderData().Lights().Row(graph::kMainLightRowIndex);
 
             if (row)
             {

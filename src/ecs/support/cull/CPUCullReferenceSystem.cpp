@@ -130,7 +130,7 @@ namespace hgl::ecs
         //
         // ⚠ 反查表在**成员数组**里（不是栈），且填表/查表都先判界：`row[1]` 对未挂载
         // Transform 的实体是哨兵值 ⇒ 直接当索引写就是越界崩溃。
-        const auto& entity_table = context_->GetEntityGPUTable();
+        const auto& entity_table = context_->EntityRenderState().EntityGPU();
 
         for (uint32_t i = 0; i < kMaxVisible; ++i)
             alive_owner_[i] = nullptr;
@@ -299,7 +299,7 @@ namespace hgl::ecs
         cpu_count_ = 0;
 
         // 获取实体表
-        const auto& entity_table = context_->GetEntityGPUTable();
+        const auto& entity_table = context_->EntityRenderState().EntityGPU();
         const uint32_t entity_count = entity_table.kCapacity;
 
         // 获取 TransformSystem 和 TransformAssignmentBuffer
@@ -322,7 +322,7 @@ namespace hgl::ecs
         const uint32_t l2w_matrix_count = l2w_buffer_size / sizeof(glm::mat4);
 
         // 获取相机信息
-        const auto& cache = context_->GetRenderFrameCache();
+        const auto& cache = context_->Runner().FrameCache();
         const graph::CameraInfo* camera_info = cache.cameraInfo;
         if (!camera_info)
         {
@@ -345,7 +345,7 @@ namespace hgl::ecs
         }
 
         // 遍历所有实体
-        const EntityRenderIDTable &render_ids = context_->GetEntityRenderIDTable();
+        const EntityRenderIDTable &render_ids = context_->EntityRenderState().EntityRenderIDs();
 
         // 阶段 1：模板实体的可见性判据 = **模板包围体**（与 `entity_gpu_cull.glsl` 逐字同式）。
         // 展开分支是否生效与 GPU 端同一判据：模板 id 非 0 且世界允许展开。

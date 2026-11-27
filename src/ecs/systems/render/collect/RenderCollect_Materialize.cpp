@@ -334,7 +334,7 @@ namespace hgl::ecs
         if (!row)
             return false;
 
-        const MaterialVariantTable *variants = world->GetMaterialVariantTable();
+        const MaterialVariantTable *variants = world->RenderData().Variants();
         const MaterialVariantRecord *variant = variants ? variants->Get(row->forward_variant) : nullptr;
         graph::ShaderProgram *material_program = variant ? variant->program : nullptr;
 

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/core/render/PrimitiveRenderItem.h>
+#include<hgl/ecs/core/render/PrimitiveRenderItem.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/GeometryData.h>
@@ -39,7 +39,7 @@ namespace hgl::ecs
         if (!context || material_runtime_row == INVALID_MATERIAL_RUNTIME_ROW_ID)
             return nullptr;
 
-        const MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+        const MaterialRuntimeTable *runtime_table = context->RenderData().RuntimeMaterials();
 
         return runtime_table ? runtime_table->Get(material_runtime_row) : nullptr;
     }
@@ -53,7 +53,7 @@ namespace hgl::ecs
 
         if (row && context)
         {
-            const MaterialVariantTable *variant_table = context->GetMaterialVariantTable();
+            const MaterialVariantTable *variant_table = context->RenderData().Variants();
             const MaterialVariantRecord *record = variant_table
                 ? variant_table->Get(row->forward_variant)
                 : nullptr;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -173,7 +173,7 @@ namespace hgl
 
             /// 所属空间域。独立存储/单测时为空，消费点必须容忍空。
             void SetSpatialState(WorldSpatialState *state) { spatial_state = state; }
-            WorldSpatialState *GetSpatialState() const { return spatial_state; }
+            WorldSpatialState *Spatial() const { return spatial_state; }
 
             /// Allocate space for a new transform
             /// 预算超限 ⇒ **拒绝分配**（返回 INVALID_HANDLE）并一次性明确告警；不扩容。

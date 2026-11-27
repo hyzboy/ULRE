@@ -43,9 +43,7 @@
 #include<hgl/graph/ubo/EnvironmentInfo.h>
 #include<hgl/graph/render/RenderTargetObserver.h>
 #include<hgl/log/Log.h>
-#include<memory>
 #include<functional>
-#include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
@@ -100,7 +98,6 @@ namespace hgl
 
             ECSContext(const char* name) : ECSContext(AnsiString(name)) {}
             ECSContext(const AnsiString& name = "World");
-            ECSContext(const std::string& name) : ECSContext(AnsiString(name.c_str())) {}
             ~ECSContext() override;
 
             void OnTransformRegistered(TransformID id, bool isMovable) override;
@@ -323,7 +320,7 @@ namespace hgl
             uint32_t GetFrameIndex() const { return render_runner.GetFrameIndex(); }
             uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
 
-            int GetActiveMobilityFilter() const { return render_runner.GetPassScopeState().GetMobilityFilter(); }
+            int GetActiveMobilityFilter() const { return render_runner.PassScope().GetMobilityFilter(); }
 
             /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
             void BumpStaticSceneRevision() { ++static_scene_revision; }
@@ -355,7 +352,7 @@ namespace hgl
             /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
             bool IsMainFrameTopologyPass() const
             {
-                return !IsCurrentPassShadow() && render_runner.GetPassScopeState().GetMobilityFilter() < 0;
+                return !IsCurrentPassShadow() && render_runner.PassScope().GetMobilityFilter() < 0;
             }
 
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
@@ -371,15 +368,9 @@ namespace hgl
                 render_runner.GetMainFrameTopology().MarkDynamicFact(kind, count);
             }
 
-            bool IsCurrentPassShadow() const { return render_runner.GetPassScopeState().IsShadowPass(); }
-            bool HasShadowOrigin() const { return render_runner.GetPassScopeState().HasShadowOrigin(); }
-            const glm::vec3 &GetShadowOrigin() const { return render_runner.GetPassScopeState().ShadowOrigin(); }
-
-            RenderPassScopeState &GetPassScopeState() { return render_runner.GetPassScopeState(); }
-            const RenderPassScopeState &GetPassScopeState() const { return render_runner.GetPassScopeState(); }
-
-            MainFrameTopologyState &GetMainFrameTopologyState() { return render_runner.GetMainFrameTopology(); }
-            const MainFrameTopologyState &GetMainFrameTopologyState() const { return render_runner.GetMainFrameTopology(); }
+            bool IsCurrentPassShadow() const { return render_runner.PassScope().IsShadowPass(); }
+            bool HasShadowOrigin() const { return render_runner.PassScope().HasShadowOrigin(); }
+            const glm::vec3 &GetShadowOrigin() const { return render_runner.PassScope().ShadowOrigin(); }
 
             void SetScenePipelineMode(ScenePipelineMode mode)
             {
@@ -396,8 +387,8 @@ namespace hgl
                 return render_runner.GetRenderSubmissionSerial();
             }
 
-            WorldRenderRunner &GetRenderRunner() { return render_runner; }
-            const WorldRenderRunner &GetRenderRunner() const { return render_runner; }
+            WorldRenderRunner &Runner() { return render_runner; }
+            const WorldRenderRunner &Runner() const { return render_runner; }
 
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
 
@@ -504,8 +495,8 @@ namespace hgl
             /// 与 `GetOrCreateMaterialData` / `GetOrCreateGeometryData` 同风格。
             /// stage B 会把相机改成世界侧行存储 + 值类型句柄，届时本入口随之变形。
             /// `Entity*` 版同上（创建必须能改实体 ⇒ 无 `const Entity*` 版）。
-            CameraComponent* GetOrCreateCamera(EntityID owner, const std::string& name = "Camera");
-            CameraComponent* GetOrCreateCamera(Entity* owner, const std::string& name = "Camera");
+            CameraComponent* GetOrCreateCamera(EntityID owner, const AnsiString& name = "Camera");
+            CameraComponent* GetOrCreateCamera(Entity* owner, const AnsiString& name = "Camera");
 
             /// **幂等**认领槽：`is_default=true` ⇒ 占 0 号槽（原持普通槽则先交回；常驻 fallback 自动让位）；
             /// 否则申请 1..15 的一个槽（槽耗尽 / 行池未就绪 ⇒ 报错并保持未认领 ⇒ 发布跳过 + 一次性告警）。
@@ -557,14 +548,12 @@ namespace hgl
             /// @param name: pipeline group name from SystemGroup
             /// @return pointer to RenderPipelineBase, or nullptr if not registered
             RenderPipelineBase* GetRenderPipeline(const char* name);
-            RenderPipelineBase* GetRenderPipeline(const std::string& name);
             RenderPipelineBase* GetRenderPipeline(const AnsiString& name);
 
             /// Register a render pipeline (typically called during system group installation)
             /// @param name: pipeline group name
             /// @param pipeline: newly created pipeline instance
             void RegisterRenderPipeline(const char* name, std::unique_ptr<RenderPipelineBase> pipeline);
-            void RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline);
             void RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline);
 
             /// Clear and release all registered render pipelines
@@ -574,7 +563,6 @@ namespace hgl
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
             void SetResourceNamePrefix(const AnsiString& prefix) { resource_name_prefix = prefix; }
             void SetResourceNamePrefix(const char* prefix) { resource_name_prefix = prefix; }
-            void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix.c_str(); }
             const AnsiString& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             // ── IECSEntityObserver 接口实现 ──
@@ -650,56 +638,14 @@ namespace hgl
             /// 销毁一行包围盒（按句柄；行属于世界，不挂在实体上）
             void DestroyBoundingBox(BoundingBoxDataStorage::HandleID id);
 
-            WorldSpatialState&       GetSpatialState()       { return spatial_state; }
-            const WorldSpatialState& GetSpatialState() const { return spatial_state; }
+            WorldSpatialState&       Spatial()       { return spatial_state; }
+            const WorldSpatialState& Spatial() const { return spatial_state; }
 
-            /// Get world-level BoundingBoxDataStorage
-            BoundingBoxDataStorage* GetBoundingBoxStorage() { return spatial_state.GetBoundingBoxStorage(); }
-            const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return spatial_state.GetBoundingBoxStorage(); }
-
-            /// 世界级可见性存储（渲染热路径做 O(1) 查询；不可见集合 + 祖先链语义）
-            VisibilityDataStorage* GetVisibilityStorage() { return spatial_state.GetVisibilityStorage(); }
-            const VisibilityDataStorage* GetVisibilityStorage() const { return spatial_state.GetVisibilityStorage(); }
-
-            // ── T3b：实体行表（`EntityGPU`）访问器与两条写入钩子 ──
-            EntityGPUTable&       GetEntityGPUTable()       { return entity_render_state.GetEntityGPUTable(); }
-            const EntityGPUTable& GetEntityGPUTable() const { return entity_render_state.GetEntityGPUTable(); }
-
-            /// 实体销毁通知：清 `Active`。
-            /// T3d-3a：同入口清实体 4-ID 表行（两表的生死口径必须一致：消费者先判
-            /// `EntityGPU.Active`、4-ID 行同时归零 ⇒ 不会出现"行表已死、id 还在"的残值）
-            void DeactivateEntityRow(EntityID id)
-            {
-                entity_render_state.DeactivateEntityRow(id);
-            }
-
-            /// T3d-3a：实体 4-ID 表访问器（写者 = collect；消费者 = GPU 剔除 / CPU 参考对拍 / 形态 B）
-            EntityRenderIDTable&       GetEntityRenderIDTable()       { return entity_render_state.GetEntityRenderIDTable(); }
-            const EntityRenderIDTable& GetEntityRenderIDTable() const { return entity_render_state.GetEntityRenderIDTable(); }
-
-            // ── T6b：光源行表（`LightRow`，世界私有；行 0 = 主方向光）──
-            //   写者 = LightSystem 的编辑入口；本表只被世界的「脏行 → 设备镜像」上传播径读。
-            LightRowTable&       GetLightRowTable()       { return render_data.GetLightRowTable(); }
-            const LightRowTable& GetLightRowTable() const { return render_data.GetLightRowTable(); }
-
-            // ── T6b/P4：影子数据（`ShadowInfo`，世界私有）──────────────────────────
-            /// 编辑本世界的影子数据（CPU 权威；GPU 侧由 `CommitShadowInfo` 在提交点写本帧槽）
-            graph::ShadowInfo       *EditShadowInfo()       { return render_data.EditShadowInfo(); }
-            // 2026-10-10（审计 §1.1）：只读 `GetShadowInfo()` 已删除 —— 它唯一的调用者是同样零外部调用者的
-            // `MainLightShadowSystem::GetShadowInfo()`（一并删除）；读影子数据请经 `EditShadowInfo()`。
-
-            const graph::ShadowInfo &GetShadowInfo() const  { return render_data.GetShadowInfo(); }
-            void SetShadowInfo(const graph::ShadowInfo &info) { render_data.SetShadowInfo(info); }
+            WorldEntityRenderState&       EntityRenderState()       { return entity_render_state; }
+            const WorldEntityRenderState& EntityRenderState() const { return entity_render_state; }
 
             /// 提交点（交换链帧 acquire 之后）把 CPU 权威的影子数据写进**本帧槽**的设备副本。
             void CommitShadowInfo(const uint32_t frame_slot);
-
-            /// 组件卸载 / 全卸后重刷 `type[]/row[]`（由 `Entity` 的卸载路径调用）
-            void RefreshEntityRow(const Entity *entity)
-            {
-                entity_render_state.GetEntityGPUTable().Refresh(entity);
-                entity_render_state.GetEntityGPUTable().VerifyAfterWrite(entity, "ECSContext::RefreshEntityRow");   // §2.2 问题 2(a)：写入侧对拍（debug 面）
-            }
 
             /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）。
             /// **边界换算的唯一位置**：① 缺席集（负向）与 ② 实体行位（正向、**扁平**）都按
@@ -714,8 +660,8 @@ namespace hgl
                 spatial_state.SetEntityVisible(id, visible);
 
                 // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
-                entity_render_state.GetEntityGPUTable().SetVisible(id, visible);
-                entity_render_state.GetEntityGPUTable().VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");   // §2.2 问题 2(a)
+                entity_render_state.EntityGPU().SetVisible(id, visible);
+                entity_render_state.EntityGPU().VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");
             }
 
             /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
@@ -769,34 +715,14 @@ namespace hgl
                 return GetTransform(GetTransformID(owner));
             }
 
-            /// Get world-level TransformDataStorage
-            TransformDataStorage* GetTransformStorage() { return spatial_state.GetTransformStorage(); }
-            const TransformDataStorage* GetTransformStorage() const { return spatial_state.GetTransformStorage(); }
+            WorldRenderData&       RenderData()       { return render_data; }
+            const WorldRenderData& RenderData() const { return render_data; }
 
-            WorldRenderData&       GetRenderData()       { return render_data; }
-            const WorldRenderData& GetRenderData() const { return render_data; }
+            WorldGPUResources&       GPUResources()       { return gpu_resources; }
+            const WorldGPUResources& GPUResources() const { return gpu_resources; }
 
-            WorldGPUResources&       GetGPUResources()       { return gpu_resources; }
-            const WorldGPUResources& GetGPUResources() const { return gpu_resources; }
-
-            /// A3 材质变体表（材质运行期 program/recipe 按静态键去重；见 support/MaterialVariantTable.h）
-            MaterialVariantTable* GetMaterialVariantTable() { return render_data.GetMaterialVariantTable(); }
-            const MaterialVariantTable* GetMaterialVariantTable() const { return render_data.GetMaterialVariantTable(); }
-
-            /// A4 材质运行期表（共享行 interned + CoW + refcount + 世代；见 support/MaterialRuntimeTable.h）
-            /// B5-b 运行期管线旁表（键 = 实体；按 pass 比对）
             MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return render_data.GetMaterialRuntimePipelineTable(); }
             const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return render_data.GetMaterialRuntimePipelineTable(); }
-
-
-            MaterialAuthoringSideTable* GetMaterialAuthoringTable() { return render_data.GetMaterialAuthoringTable(); }
-            const MaterialAuthoringSideTable* GetMaterialAuthoringTable() const { return render_data.GetMaterialAuthoringTable(); }
-
-            MaterialRuntimeTable* GetMaterialRuntimeTable() { return render_data.GetMaterialRuntimeTable(); }
-            const MaterialRuntimeTable* GetMaterialRuntimeTable() const { return render_data.GetMaterialRuntimeTable(); }
-
-            ModelTemplateMaterialTable* GetModelTemplateMaterialTable() { return render_data.GetModelTemplateMaterialTable(); }
-            const ModelTemplateMaterialTable* GetModelTemplateMaterialTable() const { return render_data.GetModelTemplateMaterialTable(); }
 
             /// 实体 → 材质运行期 slot（无则创建）。命名向 `GetOrCreateMaterialData` 看齐。
             /// ⚠ stage B 会换成**值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
@@ -823,13 +749,6 @@ namespace hgl
                 return owner ? render_data.GetMaterialRuntimeSlot(owner->GetEntityID()) : nullptr;
             }
 
-            /// Get 世界私有相机行存储（相机 = 世界级观察者数据；0 号槽 = 本世界默认相机）
-            CameraInfoStorage* GetCameraInfoStorage() { return render_data.GetCameraInfoStorage(); }
-            const CameraInfoStorage* GetCameraInfoStorage() const { return render_data.GetCameraInfoStorage(); }
-
-            /// 槽拥有者（CameraSlotGuard / 归还挂钩）用：弱引用 ⇒ 世界先销毁时 lock 失败 = 安全 no-op
-            std::weak_ptr<CameraInfoStorage> GetCameraInfoStorageWeak() const { return render_data.GetCameraInfoStorageWeak(); }
-
             /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
             uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;
 
@@ -845,12 +764,6 @@ namespace hgl
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.
             std::shared_ptr<CameraSystem> EnsureCameraSystem();
-
-            /// Get systems by render element type name (e.g., "Primitive", "Text", "SkySphere")
-            void GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const;
-
-            /// Get all registered render element type names
-            void GetAllRenderElementTypes(std::vector<std::string>& out_element_types) const;
 
             /// 启用/禁用某个系统组的全部系统（A2：按枚举 O(1)，不查字符串）
             void SetSystemGroupEnabled(SystemGroupID group, bool enabled) override;
@@ -872,8 +785,6 @@ namespace hgl
              */
             bool HasPendingRenderableResources() const;
 
-            RenderFrameCache& GetRenderFrameCache() { return render_runner.GetRenderFrameCache(); }
-            const RenderFrameCache& GetRenderFrameCache() const { return render_runner.GetRenderFrameCache(); }
             RenderSystemCore* GetRenderCore() const { return render_runner.GetRenderCore(); }
         };
     }//namespace ecs

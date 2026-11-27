@@ -93,6 +93,15 @@ namespace hgl::ecs
         const ValueArray<TransformID>& GetStaticTransforms() const { return transform_slots.Slots(false); }
         const ValueArray<TransformID>& GetMovableTransforms() const { return transform_slots.Slots(true); }
 
+        TransformDataStorage *Transforms() { return transform_storage; }
+        const TransformDataStorage *Transforms() const { return transform_storage; }
+
+        BoundingBoxDataStorage *BoundingBoxes() { return bounding_box_storage; }
+        const BoundingBoxDataStorage *BoundingBoxes() const { return bounding_box_storage; }
+
+        VisibilityDataStorage *Visibility() { return visibility_storage; }
+        const VisibilityDataStorage *Visibility() const { return visibility_storage; }
+
         template<typename Fn>
         void ForEachMovableTransform(Fn &&fn) const
         {
@@ -117,16 +126,6 @@ namespace hgl::ecs
         // ── 可见性 ──
         void SetEntityVisible(EntityID id, bool visible);
         bool IsEntityVisible(EntityID id) const;
-
-        // ── 底层存储访问 ──
-        TransformDataStorage* GetTransformStorage() { return transform_storage; }
-        const TransformDataStorage* GetTransformStorage() const { return static_cast<const TransformDataStorage*>(transform_storage); }
-
-        BoundingBoxDataStorage* GetBoundingBoxStorage() { return bounding_box_storage; }
-        const BoundingBoxDataStorage* GetBoundingBoxStorage() const { return static_cast<const BoundingBoxDataStorage*>(bounding_box_storage); }
-
-        VisibilityDataStorage* GetVisibilityStorage() { return visibility_storage; }
-        const VisibilityDataStorage* GetVisibilityStorage() const { return static_cast<const VisibilityDataStorage*>(visibility_storage); }
 
         TransformSlotTable& GetTransformSlotTable() { return transform_slots; }
         const TransformSlotTable& GetTransformSlotTable() const { return transform_slots; }
