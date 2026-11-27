@@ -5,6 +5,7 @@ CreateProject(AutoMergeMaterialInstance      AutoMergeMaterialInstance.cpp)
 CreateProject(GPUModelChessboard             GPUModelChessboard.cpp)
 CreateProject(GPUModelMultiMaterial          GPUModelMultiMaterial.cpp)
 CreateProject(GPUInstancedDataRows           GPUInstancedDataRows.cpp)
+CreateProject(GPUInstancedMultiMesh           GPUInstancedMultiMesh.cpp)
 
 option(ULRE_ENABLE_GPU_MODEL_MULTI_MATERIAL_TEST "Run multi-material regression on a real Vulkan device" OFF)
 if(BUILD_TESTING AND ULRE_ENABLE_GPU_MODEL_MULTI_MATERIAL_TEST)
