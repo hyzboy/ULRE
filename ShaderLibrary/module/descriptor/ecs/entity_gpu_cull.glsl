@@ -599,10 +599,9 @@ void expand_template_entity(const uint blk,
                 continue;
         }
 
-        // 简化契约：只有显式多 Shading Group 路由使用模板组行；
-        // 单图元模板和纯实体模板均直接转发实体 4-ID 的逐实例材质事实。
-        const uint material_id = group_route.w != 0u ? group_route.y : ids_blk.material_id;
-        const uint texture_id  = group_route.w != 0u ? group_route.z : ids_blk.texture_id;
+        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u;
+        const uint material_id = group_route.w != 0u ? group_route.y : (has_part_mtl ? part.material_id : ids_blk.material_id);
+        const uint texture_id  = group_route.w != 0u ? group_route.z : (has_part_mtl ? part.texture_id : ids_blk.texture_id);
 
         emit_bucket_instance(blk,
                              bucket,
