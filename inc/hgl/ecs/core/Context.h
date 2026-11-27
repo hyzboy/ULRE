@@ -92,7 +92,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IECSEntityObserver
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IECSEntityObserver, private IWorldGPUResourcesSource, private IWorldRenderDataSource
         {
         public:
 
@@ -109,7 +109,21 @@ namespace hgl
         private:
             OBJECT_LOGGER
             friend struct RenderPassSetupTestAccess;
-            friend class WorldRenderRunner;
+            const AnsiString &RenderDataWorldName() const override { return GetName(); }
+            void RenderDataPipelineInvalidated() override { MarkTopologyChanged(TopologyChange::MaterialBinding); }
+
+            graph::GraphicsContext *GPUResourcesGraphicsContext() override;
+            graph::VulkanDevice *GPUResourcesDevice() override;
+            const AnsiString &GPUResourcesWorldName() const override;
+            EntityGPUTable &GPUResourcesEntityTable() override;
+            EntityRenderIDTable &GPUResourcesRenderIDTable() override;
+            LightRowTable &GPUResourcesLightTable() override;
+            const graph::ShadowInfo &GPUResourcesShadowInfo() const override;
+            CameraInfoStorage *GPUResourcesCameraStorage() override;
+            uint64_t GPUResourcesTransformAddress() override;
+            uint32_t GPUResourcesEnvironmentProfile() const override;
+            uint64_t GPUResourcesAmbientAddress(uint32_t profile) const override;
+            uint64_t GPUResourcesModelExpansionAddress() override;
 
             // ── T3b：实体行表（`EntityGPU` 的 GPU 派生视图；世界私有）──
             // Shutdown 在派生成员析构前清理实体并注销观察者。

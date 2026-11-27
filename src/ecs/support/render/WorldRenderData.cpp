@@ -1,37 +1,24 @@
 #include <hgl/ecs/support/render/WorldRenderData.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
-    WorldRenderData::WorldRenderData(ECSContext *ctx)
-        : context(ctx)
+    WorldRenderData::WorldRenderData(IWorldRenderDataSource *value, const void *identity)
+        : source(value)
+        , world_identity(identity)
         , material_variant_table(new MaterialVariantTable())
         , material_runtime_table(new MaterialRuntimeTable())
-        , material_authoring_side_table(new MaterialAuthoringSideTable(ctx))
+        , material_authoring_side_table(new MaterialAuthoringSideTable())
         , material_runtime_pipeline_table(new MaterialRuntimePipelineTable())
-        , model_template_material_table(new ModelTemplateMaterialTable(ctx))
+        , model_template_material_table(new ModelTemplateMaterialTable())
         , camera_info_storage(std::make_shared<CameraInfoStorage>())
     {
-        if (ctx)
-        {
-            material_runtime_table->SetContext(ctx);
-            model_template_material_table->SetContext(ctx);
-        }
     }
 
     WorldRenderData::~WorldRenderData()
     {
         Clear();
-    }
-
-    void WorldRenderData::Initialize(ECSContext *ctx)
-    {
-        context = ctx;
-        if (material_runtime_table)
-            material_runtime_table->SetContext(ctx);
-        if (model_template_material_table)
-            model_template_material_table->SetContext(ctx);
     }
 
     bool WorldRenderData::InitializeDeviceResources(graph::VulkanDevice *device, const AnsiString &world_name)
@@ -115,8 +102,8 @@ namespace hgl::ecs
         if (material_runtime_pipeline_table)
             material_runtime_pipeline_table->Clear(owner);
 
-        if (context)
-            context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+        if (source)
+            source->RenderDataPipelineInvalidated();
     }
 
     CameraComponent *WorldRenderData::GetCamera(const uint32_t slot) const
@@ -168,7 +155,7 @@ namespace hgl::ecs
             if (!SetDefaultCamera(owner))
                 return false;
 
-            camera->world_owner = context;
+            camera->world_owner = world_identity;
             return true;
         }
 
@@ -188,7 +175,7 @@ namespace hgl::ecs
             return false;
         }
 
-        camera->world_owner = context;
+        camera->world_owner = world_identity;
         return true;
     }
 
@@ -213,13 +200,13 @@ namespace hgl::ecs
         camera->target         = math::Vector3f(0.0f, 0.0f, 1.0f);
         camera->is_main_camera = false;
         camera->matrix_dirty   = true;
-        camera->world_owner    = context;
+        camera->world_owner    = world_identity;
 
         fallback_camera = camera;
         SetDefaultCamera(camera);
 
         GLogInfo("[ECS] %s: 世界内没有相机 ⇒ 在 (0,0,0) 生成常驻 fallback 相机（占 0 号槽）",
-                 context ? context->GetName().c_str() : "World");
+                 source ? source->RenderDataWorldName().c_str() : "World");
 
         return fallback_camera.get();
     }

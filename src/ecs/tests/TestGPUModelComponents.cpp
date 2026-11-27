@@ -41,6 +41,68 @@ namespace
     using namespace hgl;
     using namespace hgl::ecs;
 
+    class GPUResourcesTestSource final : public IWorldGPUResourcesSource
+    {
+        AnsiString name = "GPUResourcesTest";
+        EntityGPUTable entities;
+        EntityRenderIDTable render_ids;
+        LightRowTable lights;
+        graph::ShadowInfo shadow{};
+
+    public:
+        int graphics_queries = 0;
+        graph::GraphicsContext *GPUResourcesGraphicsContext() override { ++graphics_queries; return nullptr; }
+        graph::VulkanDevice *GPUResourcesDevice() override { return nullptr; }
+        const AnsiString &GPUResourcesWorldName() const override { return name; }
+        EntityGPUTable &GPUResourcesEntityTable() override { return entities; }
+        EntityRenderIDTable &GPUResourcesRenderIDTable() override { return render_ids; }
+        LightRowTable &GPUResourcesLightTable() override { return lights; }
+        const graph::ShadowInfo &GPUResourcesShadowInfo() const override { return shadow; }
+        CameraInfoStorage *GPUResourcesCameraStorage() override { return nullptr; }
+        uint64_t GPUResourcesTransformAddress() override { return 0; }
+        uint32_t GPUResourcesEnvironmentProfile() const override { return 0; }
+        uint64_t GPUResourcesAmbientAddress(uint32_t) const override { return 0; }
+        uint64_t GPUResourcesModelExpansionAddress() override { return 0; }
+    };
+
+    void TestGPUResourcesSourceBoundary()
+    {
+        GPUResourcesTestSource first;
+        GPUResourcesTestSource second;
+        WorldGPUResources resources(&first);
+        EXPECT(!resources.InitializeWorldAddressesTable());
+        EXPECT(first.graphics_queries == 1 && second.graphics_queries == 0);
+
+        WorldGPUResources other_resources(&second);
+        EXPECT(!other_resources.InitializeWorldAddressesTable());
+        EXPECT(first.graphics_queries == 1 && second.graphics_queries == 1);
+    }
+
+    class RenderDataTestSource final : public IWorldRenderDataSource
+    {
+        AnsiString name = "RenderDataTest";
+
+    public:
+        int invalidations = 0;
+        const AnsiString &RenderDataWorldName() const override { return name; }
+        void RenderDataPipelineInvalidated() override { ++invalidations; }
+    };
+
+    void TestRenderDataSourceBoundary()
+    {
+        RenderDataTestSource source;
+        int world_identity = 0;
+        WorldRenderData data(&source, &world_identity);
+
+        data.InvalidateEntityRuntimePipeline(EntityID{});
+        EXPECT(source.invalidations == 1);
+        auto *camera = data.EnsureFallbackCamera();
+        EXPECT(camera != nullptr);
+        EXPECT(camera && camera->world_owner == &world_identity);
+        EXPECT(data.GetDefaultCamera() == camera);
+        EXPECT(data.EnsureFallbackCamera() == camera);
+    }
+
     // ── 判据 1：GPUModelRefComponent 默认值与掩码位语义 ────────────────────
 
     void TestModelRefDefaultsAndMask()
@@ -316,7 +378,9 @@ namespace
 
         const EntityID first_id = first->GetEntityID();
         const EntityID second_id = second->GetEntityID();
-        EXPECT(ctx.GetOrCreateMaterialData(first) != nullptr);
+        auto *first_material = ctx.GetOrCreateMaterialData(first);
+        EXPECT(first_material != nullptr);
+        EXPECT(first_material && first_material->GetContext() == &ctx);
         EXPECT(ctx.GetOrCreateMaterialData(second) != nullptr);
         ctx.GetOrCreateMaterialRuntimeSlot(first_id);
 
@@ -354,6 +418,8 @@ int main(int argc, char **argv)
     TestEntityGPUTablePrevTransform();
     TestComponentRefreshPreservesTransformRow();
     TestEntityRenderDataCleanup();
+    TestGPUResourcesSourceBoundary();
+    TestRenderDataSourceBoundary();
 
     if (g_fail > 0)
     {

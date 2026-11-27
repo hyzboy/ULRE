@@ -56,9 +56,6 @@ namespace hgl::ecs
         explicit WorldRenderRunner(ECSContext *ctx = nullptr);
         ~WorldRenderRunner();
 
-        void SetContext(ECSContext *ctx) { context = ctx; }
-        ECSContext *GetContext() const { return context; }
-
         uint32_t GetFrameIndex() const { return frame_index; }
         void SetFrameIndex(uint32_t index) { frame_index = index; }
 
@@ -111,8 +108,6 @@ namespace hgl::ecs
         // ── 离屏渲染与主渲染入口 ──
         bool RenderTo(const RenderPassRequest &req);
         bool RenderTo(graph::IRenderTarget *rt, const hgl::Color4f &clear, float deltaTime, CullMode cull_mode = CullMode::Inherit);
-
-        void Render(float deltaTime, const std::function<void(float)> &pre_render = nullptr);
 
         // ── 阶段细节执行 ──
         void RenderPreBeginFrame(float deltaTime);

@@ -1,5 +1,6 @@
 ﻿#include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/support/render/WorldRenderRunner.h>
+#include <hgl/graph/core/GraphicsContext.h>
 
 namespace hgl::ecs
 {
@@ -69,7 +70,22 @@ namespace hgl::ecs
 
     void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
     {
-        render_runner.Render(deltaTime, pre_render);
+        auto &topology = render_runner.GetMainFrameTopology();
+        auto &cache = render_runner.GetAdaptiveGraphCache();
+        topology.BeginFrame(GetGraphicsContext() ? GetGraphicsContext()->GetGlobalSSBOBufferRegistry() : nullptr);
+
+        if (cache.IsDirty())
+        {
+            SceneStats stats = GatherSceneStats(this);
+            const uint64_t current_hash = stats.GetHash();
+
+            if (cache.NeedsRebuild(current_hash))
+                cache.Store(current_hash, CreateAdaptiveRenderGraph(this, stats));
+
+            cache.MarkClean();
+        }
+
+        Render(deltaTime, cache.Graph(), pre_render);
     }
 
     void ECSContext::RenderPreBeginFrame(float deltaTime)

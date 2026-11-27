@@ -19,6 +19,74 @@
 
 namespace hgl::ecs
 {
+        graph::GraphicsContext *ECSContext::GPUResourcesGraphicsContext()
+        {
+            return GetGraphicsContext();
+        }
+
+        graph::VulkanDevice *ECSContext::GPUResourcesDevice()
+        {
+            return GetGPUDevice();
+        }
+
+        const AnsiString &ECSContext::GPUResourcesWorldName() const
+        {
+            return GetName();
+        }
+
+        EntityGPUTable &ECSContext::GPUResourcesEntityTable()
+        {
+            return GetEntityGPUTable();
+        }
+
+        EntityRenderIDTable &ECSContext::GPUResourcesRenderIDTable()
+        {
+            return GetEntityRenderIDTable();
+        }
+
+        LightRowTable &ECSContext::GPUResourcesLightTable()
+        {
+            return GetLightRowTable();
+        }
+
+        const graph::ShadowInfo &ECSContext::GPUResourcesShadowInfo() const
+        {
+            return render_data.GetShadowInfo();
+        }
+
+        CameraInfoStorage *ECSContext::GPUResourcesCameraStorage()
+        {
+            return render_data.GetCameraInfoStorage();
+        }
+
+        uint64_t ECSContext::GPUResourcesTransformAddress()
+        {
+            if (auto ts = GetSystem<TransformSystem>())
+                if (auto *tb = ts->GetTransformBuffer())
+                    if (auto *l2w_buf = tb->GetTransformDataBuffer())
+                        if (auto *l2w_gpu = l2w_buf->GetGPUBuffer())
+                            if (auto *device = GetGPUDevice())
+                                return device->GetBufferDeviceAddressAligned16(l2w_gpu->GetVkDeviceBuffer());
+            return 0;
+        }
+
+        uint32_t ECSContext::GPUResourcesEnvironmentProfile() const
+        {
+            return GetEnvProfileID();
+        }
+
+        uint64_t ECSContext::GPUResourcesAmbientAddress(const uint32_t profile) const
+        {
+            auto *manager = ResolveEnvManager();
+            return manager ? manager->GetAmbientEnvAddress(profile) : 0;
+        }
+
+        uint64_t ECSContext::GPUResourcesModelExpansionAddress()
+        {
+            if (auto cull = GetSystem<GPUCullSystem>())
+                return cull->GetModelExpansionArenaAddress();
+            return 0;
+        }
 
         bool ECSContext::InitializeWorldAddressesTable()
         {

@@ -475,7 +475,6 @@ namespace hgl::ecs
 
         struct RenderToStateGuard
         {
-            ECSContext* ctx;
             WorldRenderRunner* runner;
             graph::IRenderTarget* saved_target;
             graph::IRenderTarget* current_rt;
@@ -488,11 +487,10 @@ namespace hgl::ecs
 
             ~RenderToStateGuard()
             {
-                if (ctx)
+                if (runner)
                 {
-                    ctx->SetRenderTarget(saved_target);
-                    if (runner)
-                        runner->SetFrameIndex(saved_target ? saved_target->GetCurrentFrameIndex() : 0u);
+                    runner->OnSwapchainTargetChanged(saved_target);
+                    runner->SetFrameIndex(saved_target ? saved_target->GetCurrentFrameIndex() : 0u);
 
                     if (restore_clear && current_rt)
                         current_rt->SetClearColor(saved_clear);
@@ -503,16 +501,12 @@ namespace hgl::ecs
                     if (use_override && cs)
                         cs->RestoreMainCamera();
 
-                    if (runner)
-                    {
-                        runner->GetPassScopeState().SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
-                        runner->GetPassScopeState().SetMobilityFilter(-1);
-                        runner->GetPassScopeState().ClearShadow();
-                    }
+                    runner->GetPassScopeState().SetCameraSlot(CameraInfoStorage::kDefaultCameraSlot);
+                    runner->GetPassScopeState().SetMobilityFilter(-1);
+                    runner->GetPassScopeState().ClearShadow();
                 }
             }
         } state_guard{
-            context,
             this,
             saved_target,
             rt,
@@ -680,27 +674,6 @@ namespace hgl::ecs
             camera_system->MarkAllCameraMatricesDirty();
             camera_system->ForceRefreshSelectedCamera();
         }
-    }
-
-    void WorldRenderRunner::Render(float deltaTime, const std::function<void(float)> &pre_render)
-    {
-        if (!context)
-            return;
-
-        main_frame_topology.BeginFrame(context->GetGraphicsContext() ? context->GetGraphicsContext()->GetGlobalSSBOBufferRegistry() : nullptr);
-
-        if (adaptive_graph_cache.IsDirty())
-        {
-            SceneStats stats = GatherSceneStats(context);
-            const uint64_t current_hash = stats.GetHash();
-
-            if (adaptive_graph_cache.NeedsRebuild(current_hash))
-                adaptive_graph_cache.Store(current_hash, CreateAdaptiveRenderGraph(context, stats));
-
-            adaptive_graph_cache.MarkClean();
-        }
-
-        context->Render(deltaTime, adaptive_graph_cache.Graph(), pre_render);
     }
 
     void WorldRenderRunner::RenderPreBeginFrame(float deltaTime)

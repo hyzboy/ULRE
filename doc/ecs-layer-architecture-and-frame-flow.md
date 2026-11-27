@@ -114,6 +114,20 @@ inc/hgl/ecs/
 
 ## 2. 核心对象模型
 
+### 2.0 世界渲染域的当前依赖边界
+
+`ECSContext` 拥有渲染数据、GPU 资源和帧执行器，并先协调实体及组件卸载，
+再清理渲染数据。`WorldGPUResources` 通过非拥有的 `IWorldGPUResourcesSource`
+获取所需的表、设备和动态地址；世界按需解析变换、环境和模型扩展地址，
+写入当前帧槽时仍保留该槽上一次的有效地址。接口实现必须比资源域活得久。
+
+`WorldRenderData` 通过非拥有的 `IWorldRenderDataSource` 通知管线失效并取得世界名，
+相机用单独传入的世界身份作跨世界检查。世界在构造时将自身绑定到材质授权、
+运行期和模板表；这些表目前仍直接依赖 `ECSContext`，并未完成解耦。
+自适应渲染图的世界协调位于 `ECSContext::Render`；`WorldRenderRunner` 的离屏状态
+守卫不再持有世界指针，但执行器本身仍直接依赖 `ECSContext` 和 `RenderSystemCore`，
+这部分依赖收口尚未完成。
+
 ### 2.1 对象三段式
 
 | 类 | 基类 | 身份 | 生命周期动词 | 关键成员 |

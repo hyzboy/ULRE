@@ -349,6 +349,10 @@ namespace hgl::ecs
      */
     class MaterialAuthoringSideTable
     {
+        friend class ECSContext;
+
+        void SetOwnerContext(ECSContext *ctx) { owner_context = ctx; }
+
     public:
 
         /// 挂一个世界（建记录时写入记录的 context 字段）。默认构造仅服务于

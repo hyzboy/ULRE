@@ -21,10 +21,28 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
-    class ECSContext;
     class EntityGPUTable;
     class EntityRenderIDTable;
     class LightRowTable;
+    class CameraInfoStorage;
+
+    class IWorldGPUResourcesSource
+    {
+    public:
+        virtual ~IWorldGPUResourcesSource() = default;
+        virtual graph::GraphicsContext *GPUResourcesGraphicsContext() = 0;
+        virtual graph::VulkanDevice *GPUResourcesDevice() = 0;
+        virtual const AnsiString &GPUResourcesWorldName() const = 0;
+        virtual EntityGPUTable &GPUResourcesEntityTable() = 0;
+        virtual EntityRenderIDTable &GPUResourcesRenderIDTable() = 0;
+        virtual LightRowTable &GPUResourcesLightTable() = 0;
+        virtual const graph::ShadowInfo &GPUResourcesShadowInfo() const = 0;
+        virtual CameraInfoStorage *GPUResourcesCameraStorage() = 0;
+        virtual uint64_t GPUResourcesTransformAddress() = 0;
+        virtual uint32_t GPUResourcesEnvironmentProfile() const = 0;
+        virtual uint64_t GPUResourcesAmbientAddress(uint32_t profile) const = 0;
+        virtual uint64_t GPUResourcesModelExpansionAddress() = 0;
+    };
 
     /**
      * @brief 世界 GPU 资源底座
@@ -35,7 +53,7 @@ namespace hgl::ecs
     class WorldGPUResources
     {
     private:
-        ECSContext *context = nullptr;
+        IWorldGPUResourcesSource *source = nullptr;
 
         // 1. 世界地址表
         graph::StructView<graph::WorldAddresses> *world_addresses_table = nullptr;
@@ -63,10 +81,8 @@ namespace hgl::ecs
         uint64_t shadow_info_addr = 0;
 
     public:
-        WorldGPUResources(ECSContext *ctx = nullptr);
+        explicit WorldGPUResources(IWorldGPUResourcesSource *source = nullptr);
         ~WorldGPUResources();
-
-        void SetContext(ECSContext *ctx) { context = ctx; }
 
         bool InitializeWorldAddressesTable();
         bool InitializeEntityGPUTable();

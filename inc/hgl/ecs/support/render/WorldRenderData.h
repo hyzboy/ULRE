@@ -19,7 +19,13 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
-    class ECSContext;
+    class IWorldRenderDataSource
+    {
+    public:
+        virtual ~IWorldRenderDataSource() = default;
+        virtual const AnsiString &RenderDataWorldName() const = 0;
+        virtual void RenderDataPipelineInvalidated() = 0;
+    };
 
     /**
      * WorldRenderData
@@ -37,7 +43,8 @@ namespace hgl::ecs
     class WorldRenderData
     {
     private:
-        ECSContext *context = nullptr;
+        IWorldRenderDataSource *source = nullptr;
+        const void *world_identity = nullptr;
 
         /// 光源行表（LightRow，世界私有；行 0 = 主方向光）
         LightRowTable light_row_table;
@@ -67,13 +74,12 @@ namespace hgl::ecs
         std::shared_ptr<CameraComponent> fallback_camera;
 
     public:
-        explicit WorldRenderData(ECSContext *ctx = nullptr);
+        explicit WorldRenderData(IWorldRenderDataSource *source = nullptr, const void *world_identity = nullptr);
         ~WorldRenderData();
 
         WorldRenderData(const WorldRenderData &) = delete;
         WorldRenderData &operator=(const WorldRenderData &) = delete;
 
-        void Initialize(ECSContext *ctx);
         bool InitializeDeviceResources(graph::VulkanDevice *device, const AnsiString &world_name);
 
         void Clear();

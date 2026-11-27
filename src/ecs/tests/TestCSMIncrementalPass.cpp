@@ -6839,8 +6839,12 @@ int main(int argc, char** argv)
               "T6b/P4：影子数据建表不与其余世界表同批（失败不中止 ⇒ 静默缺地址）" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
-              "base[slot] = context->GetRenderData().GetShadowInfo();",
+              "base[slot] = source->GPUResourcesShadowInfo();",
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
+
+            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
+              "return render_data.GetShadowInfo();",
+              "T6b/P4：影子提交源不是本世界的 CPU 权威" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
               "slot_offset(shadow_info_addr, sizeof(graph::ShadowInfo)),",
