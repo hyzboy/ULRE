@@ -82,6 +82,15 @@ namespace hgl::ecs
             }
         };
 
+        struct PendingBatch
+        {
+            MaterialBatch *batch        = nullptr;
+            uint32_t       bucket_first = 0;   ///< First bucket in this pass.
+            uint32_t       bucket_count = 0;   ///< Bucket count / indirect command count.
+            uint32_t       inst_base    = 0;   ///< Absolute arena row.
+            uint32_t       inst_rows    = 0;   ///< Instance rows including alignment padding.
+        };
+
         class PassTemplateGroupRouteCache
         {
             hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
@@ -355,6 +364,27 @@ namespace hgl::ecs
                 gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
                                                     group.group_table_offset);
             }
+        }
+
+        uint32_t ApplyPendingGPUCullOverrides(GPUCullSystem *gpu_cull,
+                                              const PendingBatch *pending,
+                                              uint32_t pending_count,
+                                              uint32_t pass_index)
+        {
+            uint32_t engaged = 0;
+
+            for (uint32_t i = 0; i < pending_count; ++i)
+            {
+                if (gpu_cull->ApplyGPUCullOverrideHook(pending[i].batch,
+                                                       pending[i].bucket_first,
+                                                       pending[i].bucket_count,
+                                                       pending[i].inst_base,
+                                                       pending[i].inst_rows,
+                                                       pass_index))
+                    ++engaged;
+            }
+
+            return engaged;
         }
 
 
@@ -803,16 +833,6 @@ namespace hgl::ecs
                 b->items.Clear();
         };
 
-        /// T5：待接管的批（**一个批 = 若干连续桶 + 一段连续实例行**）
-        struct PendingBatch
-        {
-            MaterialBatch *batch        = nullptr;
-            uint32_t       bucket_first = 0;   ///<首个桶在本 pass 块内的编号
-            uint32_t       bucket_count = 0;   ///<桶数（= 本批命令条数）
-            uint32_t       inst_base    = 0;   ///<实例行起点（arena 绝对行号）
-            uint32_t       inst_rows    = 0;   ///<实例行数（= Σ 桶容量，含 4 行对齐浪费）
-        };
-
         PendingBatch pending[GPUCullSystem::kMaxBatches];
         uint32_t pending_count = 0;
 
@@ -997,18 +1017,8 @@ namespace hgl::ecs
             return;
 
         // 接管逐批（原 T4c-ini-2「槽首写不接管」已删，依据见上方护栏删除注释）。
-        uint32_t engaged = 0;
-
-        for (uint32_t i = 0; i < pending_count; ++i)
-        {
-            if (gpu_cull->ApplyGPUCullOverrideHook(pending[i].batch,
-                                                   pending[i].bucket_first,
-                                                   pending[i].bucket_count,
-                                                   pending[i].inst_base,
-                                                   pending[i].inst_rows,
-                                                   pass_index))
-                ++engaged;
-        }
+        const uint32_t engaged =
+            ApplyPendingGPUCullOverrides(gpu_cull.get(), pending, pending_count, pass_index);
 
         if (engaged == 0)
             return;
