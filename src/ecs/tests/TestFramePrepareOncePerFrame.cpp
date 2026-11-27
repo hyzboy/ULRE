@@ -38,7 +38,7 @@ namespace hgl::ecs
         {
             const bool was_active = context.active;
             context.active = true;
-            context.PrepareRenderPassSetup(slot);
+            context.Runner().PrepareRenderPassSetup(slot, 0.0f);
             context.active = was_active;
         }
     };

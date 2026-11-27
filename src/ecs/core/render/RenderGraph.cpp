@@ -148,7 +148,7 @@ namespace hgl
                         std::max(pass.startPhase, ExecutionPhase::RenderDrawSubmit);
                     if (update_min <= pass.endPhase)
                     {
-                        RunRenderPhaseUpdates(update_min, pass.endPhase, deltaTime);
+                        render_runner.RunRenderPhaseUpdates(update_min, pass.endPhase, deltaTime);
                     }
                 }
 
@@ -158,7 +158,7 @@ namespace hgl
                 // no-op（dynamic_force_full ⇒ 每次 ~2ms 全量重写本帧 ring 段），5 pass
                 // ≈ 10ms 全落在 DrawRecord 槽。即便有调用方误传 true，W5 epoch 守卫
                 // （TransformSystem）也会把同帧重复调用退化为版本增量路径。
-                RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,false,"[ECS RENDER] Render");
+                render_runner.RecordPreparedRenderPhaseRange(pass.startPhase,pass.endPhase,deltaTime,false,"[ECS RENDER] Render");
 
                 // rendergraph 通道：pass 级执行明细（原为注释掉的 LogDebug，且 ECSContext 无 OBJECT_LOGGER）
                 if (ULRE_DEBUG_ON(RenderGraph))
@@ -181,11 +181,11 @@ namespace hgl
 
             // ── 场景预处理（主光 CSM 阴影）已内聚到 BeginManagedRenderFrame（D6）──
             // 主帧入口统一执行，杜绝"新入口忘记调用 ⇒ 阴影静默失效"。见 Context.cpp。
-            if (!BeginManagedRenderFrame(deltaTime))
+            if (!render_runner.BeginManagedRenderFrame(deltaTime))
                 return;
 
             ExecuteRenderGraphPasses(graph, deltaTime, pre_render);
-            EndManagedRenderFrame(deltaTime);
+            render_runner.EndManagedRenderFrame(deltaTime);
 
             if (graph_trace)
                 MLogInfo(RenderGraph, "[ECS RENDER] ===== Frame End (RenderGraph) =====");

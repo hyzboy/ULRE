@@ -104,7 +104,7 @@ namespace hgl
 
         graph::IRenderTarget *ECSContext::RenderDataRenderTarget()
         {
-            return render_target;
+            return render_environment.GetRenderTarget();
         }
 
         graph::TextureManager *ECSContext::RenderDataTextureManager()
@@ -118,7 +118,8 @@ namespace hgl
             if (!GetGraphicsContext())
                 return true;
 
-            auto *queue = render_target ? render_target->GetQueue() : nullptr;
+            auto *target = render_environment.GetRenderTarget();
+            auto *queue = target ? target->GetQueue() : nullptr;
             return queue && queue->IsLastSubmitComplete();
         }
 
@@ -128,14 +129,13 @@ namespace hgl
             if (!device || !target)
                 return false;
 
-            gpu_device = device;
-            render_target = target;
+            render_environment.SetGPUDevice(device);
+            render_environment.SetRenderTarget(target);
 
             // Env 随世界（C2）：profile 未显式设置时**按需解析本世界 RT 的 env_profile**
             // （见 GetEnvProfileID）——作者侧可能在世界创建之后才 SetEnvironmentProfile，
             // 所以这里不缓存快照。sky / shadow 地址按它写本世界地址表。
-            env_profile_explicit = false;
-            env_profile_owned = false;
+            render_environment.ResetEnvProfile();
 
             // 世界私有相机行存储（相机 = 世界级观察者数据）：16 槽 × HGL_FRAME_SLOT_TOTAL 帧槽，
             // 0 号槽恒为本世界默认相机。定稿见 doc/world-addresses-and-camera-model-plan.md §2。
@@ -155,7 +155,7 @@ namespace hgl
 
             // Propagate device to RenderBufferUploadSystem if it was registered first
             if (auto upload_system = GetSystem<RenderBufferUploadSystem>())
-                upload_system->SetDevice(gpu_device);
+                upload_system->SetDevice(device);
 
             // A5b：渲染组件删除后，图元枚举改按 GeometryData（精确类型）——
             // 不再需要基类查询注册（原图元组件的基类查询注册已随该类删除）。
@@ -184,7 +184,7 @@ namespace hgl
                 if (upload_system)
                 {
                     upload_system->SetWorld(this);
-                    upload_system->SetDevice(gpu_device);
+                    upload_system->SetDevice(device);
                 }
             }
 
@@ -305,14 +305,12 @@ namespace hgl
 
             // Env 随世界（C2）：**本世界创建/拥有的** profile 在这里归还（内置 default 永不归还）。
             // 释放顺序在世界地址表之前——表里还留着它的地址，但表随后即销毁。
-            if (env_profile_owned)
+            if (render_environment.IsEnvProfileOwned())
             {
                 if (auto *env_manager = ResolveEnvManager())
-                    env_manager->Release(env_profile);
+                    env_manager->Release(render_environment.GetExplicitEnvProfileID());
             }
-            env_profile = graph::kEnvProfileDefault;
-            env_profile_explicit = false;
-            env_profile_owned = false;
+            render_environment.ResetEnvProfile();
 
             // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
             if (auto *gc = GetGraphicsContext())
@@ -358,15 +356,16 @@ namespace hgl
 
         hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext()
         {
-            if (!graphics_context && render_context)
-                graphics_context = render_context->GetGraphicsContext();
-            return graphics_context;
+            if (!render_environment.GetGraphicsContext() && render_environment.GetRenderContext())
+                render_environment.SetGraphicsContext(render_environment.GetRenderContext()->GetGraphicsContext());
+            return render_environment.GetGraphicsContext();
         }
 
         const hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext() const
         {
-            if (graphics_context)
-                return graphics_context;
+            if (render_environment.GetGraphicsContext())
+                return render_environment.GetGraphicsContext();
+            hgl::graph::RenderContext *render_context = render_environment.GetRenderContext();
             return render_context ? render_context->GetGraphicsContext() : nullptr;
         }
 

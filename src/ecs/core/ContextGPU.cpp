@@ -90,27 +90,18 @@ namespace hgl::ecs
 
         graph::EnvProfileID ECSContext::GetEnvProfileID() const
         {
-            if (env_profile_explicit)
-                return env_profile;
-
-            // 未显式设置 ⇒ 跟随**本世界 RT**（作者侧 SetEnvironmentProfile 可能发生在世界创建之后，
-            // 所以这里每帧解析而不是初始化时取一次）
-            if (render_target)
-                return render_target->GetEnvironmentProfile();
-
-            return graph::kEnvProfileDefault;
+            return render_environment.GetEnvProfileID();
         }
 
         void ECSContext::SetEnvProfileID(graph::EnvProfileID id, bool take_ownership)
         {
             // 换 profile 前先把**旧的、本世界拥有的**那个归还（否则换一次就漏一个 profile）
-            if (env_profile_owned && env_profile != id)
+            if (render_environment.IsEnvProfileOwned() &&
+                render_environment.GetExplicitEnvProfileID() != id)
                 if (auto *manager = ResolveEnvManager())
-                    manager->Release(env_profile);
+                    manager->Release(render_environment.GetExplicitEnvProfileID());
 
-            env_profile = id;
-            env_profile_explicit = true;
-            env_profile_owned = take_ownership;
+            render_environment.SetEnvProfile(id, take_ownership);
 
             // 立刻重算本世界表的 sky / shadow 地址（不等到下一帧）：换 profile 的那一帧就生效
             gpu_resources.SyncWorldAddresses(GetFrameIndex());

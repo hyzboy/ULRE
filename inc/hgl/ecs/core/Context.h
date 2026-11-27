@@ -35,6 +35,7 @@
 #include<hgl/ecs/support/render/WorldGPUResources.h>
 #include<hgl/ecs/support/render/WorldRenderRunner.h>
 #include<hgl/ecs/support/render/WorldRenderPipelineRegistry.h>
+#include<hgl/ecs/support/render/WorldRenderEnvironment.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -155,17 +156,7 @@ namespace hgl
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
             /// GPU 设备（从旧集中式入口迁移来）
-            hgl::graph::VulkanDevice* gpu_device = nullptr;
-
-            /// 用于渲染的目标
-            hgl::graph::IRenderTarget* render_target = nullptr;
-
-            /// 本世界的环境 profile（**Env 随世界**，C2）：显式覆盖（`SetEnvProfileID` /
-            /// `CreateEnvProfile`）优先；未显式设置时**按需解析本世界 RT 的 env_profile**
-            /// （作者侧在 `SetEnvironmentProfile`，可能发生在世界创建之后 ⇒ 不能只在 Initialize 取一次）。
-            graph::EnvProfileID env_profile = graph::kEnvProfileDefault;
-            bool env_profile_explicit = false;   ///< true ⇒ 用 `env_profile`；false ⇒ 跟随本世界 RT
-            bool env_profile_owned = false;      ///< true ⇒ Shutdown 时 `Release()` 归还（本世界创建）
+            WorldRenderEnvironment render_environment;
 
             // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
 
@@ -178,8 +169,6 @@ namespace hgl
             uint64_t static_scene_revision = 0;
 
             /// Graphics context adapter (Phase 2) - now raw pointer
-            hgl::graph::GraphicsContext* graphics_context = nullptr;
-            hgl::graph::RenderContext* render_context = nullptr;
 
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
@@ -187,9 +176,6 @@ namespace hgl
 
         private:
 
-            void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
-            void RunRenderPhaseUpdates(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
-            void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime) override;
 
             /// 组件行增/删 ⇒ 系统组计数（A2/P-4 的挂卸驱动路径；组归属取自类型表）
@@ -203,16 +189,6 @@ namespace hgl
             void OnEntityDestroying(EntityID id) override;
             void OnEntityCleanup(EntityID id) override;
 
-            bool EnsureRenderCoreInitialized();
-            void ExecuteScenePrePassWorkflow(float deltaTime);
-
-            bool BeginManagedRenderFrame(float deltaTime, bool need_swapchain_acquire = true, const graph::RenderPassOptions *options = nullptr);
-            bool EndManagedRenderFrame(float deltaTime);
-            void RecordPreparedRenderPhaseRange(ExecutionPhase minPhase,
-                                               ExecutionPhase maxPhase,
-                                               float deltaTime,
-                                               bool submit_transforms,
-                                               const char *log_prefix);
             void ExecuteRenderGraphPasses(const RenderGraph& graph,
                                           float deltaTime,
                                           const std::function<void(float)> &pre_render);
@@ -221,26 +197,7 @@ namespace hgl
             // 公共入口只有 Render(dt, pre_render) 与 RenderTo(rt, clear, dt)；
             // 以下相位方法仅由上述两者与托管帧流程按 ExecutionPhase 顺序编排。
 
-            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
             void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
-
-            /// Run pre-begin-frame render updates (no command buffer).
-            void RenderPreBeginFrame(float deltaTime);
-
-            void RenderSwapchainNextImage(float deltaTime);
-            bool AcquireSwapchainImage(float deltaTime = 0.0f);
-            void SyncRenderTargetViewportToExtent();
-            void RenderBufferCommit(float deltaTime);
-            void RenderBufferUpload(float deltaTime);
-            void RenderFrameSync(float deltaTime);
-
-            /// Orchestrate pre-pass render setup phases for a specific frame index.
-            /// Strict order: BeginFrame → Collect → Batch → BufferCommit → BufferUpload → FrameSync
-            void PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime = 0.0f);
-
-            void RenderSubmit(float deltaTime);
-            bool SubmitFrameToRenderTarget(float deltaTime = 0.0f);
-            bool RecreateSwapchainIfNeeded();
 
         public:
 
@@ -340,10 +297,13 @@ namespace hgl
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
 
             /// 获取 GPU 设备
-            hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
+            WorldRenderEnvironment &Environment() { return render_environment; }
+            const WorldRenderEnvironment &Environment() const { return render_environment; }
+
+            hgl::graph::VulkanDevice* GetGPUDevice() { return render_environment.GetGPUDevice(); }
 
             /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
-            void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_target = target; }
+            void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_environment.SetRenderTarget(target); }
             void OnSwapchainTargetChanged(hgl::graph::IRenderTarget *target) override;
             void OnRenderTargetResized(hgl::graph::IRenderTarget *target, uint32 width, uint32 height) override;
 
@@ -353,7 +313,7 @@ namespace hgl
             /// （RenderContext::GetCurrentRenderTarget / AppFramework::GetSwapchainRenderTarget /
             ///  SwapchainModule::GetRenderTarget / RenderTargetSystem::GetRenderTarget）
             /// 均为框架内部接线或系统内缓存，不应在应用层直接依赖。
-            hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
+            hgl::graph::IRenderTarget* GetRenderTarget() { return render_environment.GetRenderTarget(); }
 
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return render_runner.GetCurrentRenderCmd(); }
@@ -445,16 +405,16 @@ namespace hgl
             const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame) { return lane_waits.TakeSubmitWaits(count,is_main_frame); }
 
             /// Graphics context adapter (Phase 2)
-            void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }
+            void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { render_environment.SetGraphicsContext(ctx); }
             // W7：封装 render_ctx fallback（实现见 Context.cpp——RenderContext
             // 前向声明，内联体无法调用成员函数）——此前各系统复制三段样板
             hgl::graph::GraphicsContext* GetGraphicsContext();
             const hgl::graph::GraphicsContext* GetGraphicsContext() const;
 
             /// Render context adapter (Phase 2)
-            void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
-            hgl::graph::RenderContext* GetRenderContext() { return render_context; }
-            const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
+            void SetRenderContext(hgl::graph::RenderContext* ctx) { render_environment.SetRenderContext(ctx); }
+            hgl::graph::RenderContext* GetRenderContext() { return render_environment.GetRenderContext(); }
+            const hgl::graph::RenderContext* GetRenderContext() const { return render_environment.GetRenderContext(); }
 
             /// Asset world registry (Phase 3)
 
@@ -535,7 +495,7 @@ namespace hgl
              *
              * 生产方（如 `OffscreenWorld`）据此判断「刚画的那一帧内容是否完整」。
              */
-            bool HasPendingRenderableResources() const;
+            bool HasPendingRenderableResources() const { return render_runner.HasPendingRenderableResources(); }
 
             RenderSystemCore* GetRenderCore() const { return render_runner.GetRenderCore(); }
         };

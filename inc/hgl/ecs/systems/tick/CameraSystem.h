@@ -122,7 +122,7 @@ namespace hgl
             /// "一个世界 + 多个渲染过滤程"，见 doc/world-addresses-and-camera-model-plan.md §7。）
             void PublishCamera(const CameraComponent* camera, uint32_t frame_slot);
 
-            /// 发布本世界全部相机（由 ECSContext::PrepareRenderPassSetup 调用）。
+            /// 发布本世界全部相机（由 WorldRenderRunner::PrepareRenderPassSetup 调用）。
             ///
             /// 不能在 tick 阶段发布：本帧数据槽要等 acquire（主帧）/ 进入离屏 pass
             /// （RT 槽带）之后才确定，tick 时拿到的是上一帧的槽。
