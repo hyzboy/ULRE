@@ -64,7 +64,7 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        const auto initial_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
+        const auto initial_revision = world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         const auto initial_shadow_revision = world.GetStaticSceneRevision();
         world.Spatial().SetEntityVisible(id,false);
         if (world.Spatial().IsEntityVisible(id) || !world.Spatial().Visibility()->IsDirectlyInvisible(id))
@@ -73,10 +73,10 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        const auto hidden_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
+        const auto hidden_revision = world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         world.Spatial().SetEntityVisible(id,false);
         if (hidden_revision != initial_revision + 1
-            || world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != hidden_revision
+            || world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility) != hidden_revision
             || world.GetStaticSceneRevision() != initial_shadow_revision + 1)
             return 10;
 
@@ -114,20 +114,20 @@ int main(int argc, char** argv)
         const EntityID child_id  = child->GetEntityID();
 
         // 建立父子关系（可见性上溯走的是变换父链 ⇒ 必须有变换行）
-        const auto topology_before_transform = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
+        const auto topology_before_transform = world.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure);
         const TransformID parent_transform = world.Spatial().CreateTransform(parent_id,Mobility::Static);
         const TransformID child_transform  = world.Spatial().CreateTransform(child_id,Mobility::Movable);
 
         if (!IsValidTransformID(parent_transform) || !IsValidTransformID(child_transform)
-            || world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_transform + 2)
+            || world.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_transform + 2)
         {
             GLogError(u8"Test 2 Failed: 建变换行失败");
             return 11;
         }
 
-        const auto parent_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
+        const auto parent_revision = world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         world.Spatial().GetTransform(child_transform).SetParent(parent_transform);
-        if (world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != parent_revision + 1)
+        if (world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility) != parent_revision + 1)
             return 11;
 
         if (!world.Spatial().IsEntityVisible(child_id))
@@ -166,10 +166,10 @@ int main(int argc, char** argv)
 
         GLogInfo(u8"Test 2 Passed: 祖先不可见 ⇒ 后代不可见（后代自身非“直接”不可见）。");
 
-        const auto topology_before_destroy = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
+        const auto topology_before_destroy = world.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure);
         world.Spatial().DestroyTransform(child_transform);
         world.Spatial().DestroyTransform(child_transform);
-        if (world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_destroy + 1)
+        if (world.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_destroy + 1)
         {
             GLogError(u8"Test 2 Failed: 变换销毁未正确通知拓扑变化");
             return 11;

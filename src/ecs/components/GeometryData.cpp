@@ -24,7 +24,7 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+        context->RenderData().InvalidateEntityRuntimePipeline(owner->GetEntityID());
     }
 
     void GeometryData::SetPrimitiveAsset(const hgl::graph::PrimitiveAsset *asset)
@@ -42,7 +42,7 @@ namespace hgl::ecs
         Entity *owner = GetOwner();
         ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         MaterialData *material_data = context
-            ? context->GetMaterialData(owner)
+            ? context->RenderData().GetMaterialData(owner)
             : nullptr;
         if (material_data)
             material_data->BumpAuthoredGeneration();
@@ -64,7 +64,7 @@ namespace hgl::ecs
         ECSContext *context = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
         if (context)
         {
-            if (MaterialData *material_data = context->GetMaterialData(owner))
+            if (MaterialData *material_data = context->RenderData().GetMaterialData(owner))
                 material_data->BumpAuthoredGeneration();
             context->MarkTopologyChanged(TopologyChange::GeometryBinding);
         }
@@ -86,7 +86,7 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        if (MaterialData *material_data = context->GetMaterialData(owner))
+        if (MaterialData *material_data = context->RenderData().GetMaterialData(owner))
             material_data->BumpAuthoredGeneration();
 
         context->MarkTopologyChanged(TopologyChange::GeometryBinding);

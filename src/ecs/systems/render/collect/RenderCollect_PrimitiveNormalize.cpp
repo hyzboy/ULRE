@@ -75,7 +75,7 @@ namespace hgl::ecs
             if (!tpl_row || tpl_row->part_count == 0 || tpl_row->part_offset == 0)
                 return false;
 
-            MaterialRuntimeSlot &material_slot = world->GetOrCreateMaterialRuntimeSlot(entity);
+            MaterialRuntimeSlot &material_slot = world->RenderData().GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
             if (!EnsureForwardProgram(entity, material_slot))
                 return false;
 
@@ -160,7 +160,7 @@ namespace hgl::ecs
         if (!geo || !registry)
             return false;
 
-        MaterialRuntimeSlot &material_slot = world->GetOrCreateMaterialRuntimeSlot(entity);
+        MaterialRuntimeSlot &material_slot = world->RenderData().GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
         if (!EnsureForwardProgram(entity, material_slot))
             return false;
 

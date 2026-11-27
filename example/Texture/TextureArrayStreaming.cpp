@@ -455,7 +455,7 @@ bool TextureArrayStreamingApp::AttachIcon(const uint32_t index,const U8String &i
     if (!layer_recipe.AddTexture("base_color", icon_handle, true, index))
         return false;
 
-    ecs_world->GetOrCreateMaterialData(entity)->SetRecipe(layer_recipe);
+    ecs_world->RenderData().GetOrCreateMaterialData(entity)->SetRecipe(layer_recipe);
 
     ++loaded_count;
 

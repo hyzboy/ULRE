@@ -109,7 +109,7 @@ namespace ulre_example
         for (uint32_t g = 0; g < expected_buckets; ++g)
             ok &= seen_group[g];
         const uint64_t hits = collect->GetCollectCacheHits();
-        ok &= !world->IsMainFrameCollectCacheEnabled() || hits > 0u;
+        ok &= !world->Runner().GetMainFrameTopology().IsCollectCacheEnabled() || hits > 0u;
         GLogInfo(u8"[%s] GPU buckets=%u instances=%u cache_hits=%llu",
                  tag, buckets, total, static_cast<unsigned long long>(hits));
         if (!ok)

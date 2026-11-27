@@ -311,7 +311,7 @@ namespace hgl::ecs
             // 幂等：已绑过**数据行**的图元不再重绑（重启流送时也不会把行号打乱）。
             // 注意判据是「有行」而不是「有组件」—— 渲染侧每帧收集会给带几何的实体
             // 建出空的 `MaterialData`，据此跳过会让材质永远绑不上。
-            if (ecs::MaterialData *existing = world->GetMaterialData(entity))
+            if (ecs::MaterialData *existing = world->RenderData().GetMaterialData(entity))
                 if (existing->HasDataResource())
                     continue;
 
@@ -328,7 +328,7 @@ namespace hgl::ecs
             ecs::MaterialData::MaterialDataAuthoringResource resource{};
             resource = options.material_rows[row];
 
-            ecs::MaterialData *material_data = world->GetOrCreateMaterialData(entity);
+            ecs::MaterialData *material_data = world->RenderData().GetOrCreateMaterialData(entity);
             if (!material_data || !material_data->SetDataResource(resource))
             {
                 FLogError(u8"AttachMaterials: 材质行绑定失败（图元 #%zu, row=%u）", k, row);

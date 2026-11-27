@@ -260,7 +260,7 @@ private:
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
         auto quad_transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(quad_entity->GetEntityID(), Mobility::Static));
         quad_primitive = quad_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(quad_entity);
-        quad_material_data = ecs_world->GetOrCreateMaterialData(quad_entity);
+        quad_material_data = ecs_world->RenderData().GetOrCreateMaterialData(quad_entity);
 
         quad_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         quad_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

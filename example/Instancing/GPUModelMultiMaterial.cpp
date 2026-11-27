@@ -380,7 +380,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         }
         auto collect = world->GetSystem<RenderCollectSystem>();
         const auto hits = collect ? collect->GetCollectCacheHits() : 0u;
-        if (world->IsMainFrameCollectCacheEnabled() && !hits)
+        if (world->Runner().GetMainFrameTopology().IsCollectCacheEnabled() && !hits)
             Fail("cache enabled but never replayed");
         GLogInfo(u8"[GMM] CACHE hits=%llu", static_cast<unsigned long long>(hits));
         world->Shutdown();
@@ -617,16 +617,16 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             if (phase == 2 && phase_samples > 0)
             {
                 const auto collect = world->GetSystem<RenderCollectSystem>();
-                ok &= world->GetPrimitiveTopologyLedger().GetTopologyRevision() == row_update_revision;
-                ok &= !world->IsMainFrameCollectCacheEnabled()
+                ok &= world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure) == row_update_revision;
+                ok &= !world->Runner().GetMainFrameTopology().IsCollectCacheEnabled()
                    || (collect && collect->GetCollectCacheHits() > row_update_cache_hits);
             }
             if (phase == 0) baseline_hash = digest;
             if (phase == 0 && phase_samples > 0 && fallback_fixture)
                 ok &= world->GetSystem<RenderCollectSystem>()->GetCollectCacheFallbacks() > fallback_count_before;
-            if (phase == 1 && world->IsMainFrameCollectCacheEnabled())
+            if (phase == 1 && world->Runner().GetMainFrameTopology().IsCollectCacheEnabled())
             {
-                const auto &snapshot = world->GetMainFrameTopologySnapshot();
+                const auto &snapshot = world->Runner().GetMainFrameTopology().Snapshot();
                 ok &= snapshot.IsReady() && snapshot.GetStats().commits > invalidated_snapshot_commits;
             }
             if (phase == 1 || phase == 4 || phase == 7 || phase == 8) ok &= digest == baseline_hash;
@@ -671,8 +671,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                      static_cast<unsigned long long>(digest));
             if (!phase_samples)
             {
-                const auto &snapshot = world->GetMainFrameTopologySnapshot();
-                const auto &ledger = world->GetPrimitiveTopologyLedger();
+                const auto &snapshot = world->Runner().GetMainFrameTopology().Snapshot();
+                const auto &ledger = world->Runner().GetMainFrameTopology().Ledger();
                 GLogInfo(u8"[GMM] CACHE_STATE steady=%d gpu=%d ready=%d items=%d/%u revision=%llu/%llu hits=%llu fallbacks=%llu",
                          world->Runner().FrameCache().is_collect_steady, ledger.GetLastGPUCullEngaged(),
                          snapshot.IsReady(), snapshot.GetItemCount(), snapshot.GetCollectedItemCount(),
@@ -699,9 +699,9 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (!sample_ok)
             Fail("GPU data or per-part pixel validation failed");
         ++phase_samples;
-        if (phase == 0u && phase_samples == 1u && world->IsMainFrameCollectCacheEnabled())
+        if (phase == 0u && phase_samples == 1u && world->Runner().GetMainFrameTopology().IsCollectCacheEnabled())
         {
-            const auto &snapshot = world->GetMainFrameTopologySnapshot();
+            const auto &snapshot = world->Runner().GetMainFrameTopology().Snapshot();
             const auto *items = snapshot.GetItems();
             if (!snapshot.IsReady() || snapshot.GetItemCount() < 2 || !items)
                 Fail("cache fallback fixture requires a complete snapshot");
@@ -712,7 +712,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             if (!world->GetEntity(id))
                 Fail("cache fallback fixture entity unavailable");
             fallback_count_before = world->GetSystem<RenderCollectSystem>()->GetCollectCacheFallbacks();
-            world->GetMaterialRuntimePipelineTable().Clear(id);
+            world->RenderData().GetMaterialRuntimePipelineTable().Clear(id);
             fallback_fixture = true;
             warmup = 2u;
         }
@@ -725,7 +725,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             if (!row2 || !row1)
                 Fail("material content rows unavailable");
             original_row2 = *row2;
-            row_update_revision = world->GetPrimitiveTopologyLedger().GetTopologyRevision();
+            row_update_revision = world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure);
             row_update_cache_hits = world->GetSystem<RenderCollectSystem>()->GetCollectCacheHits();
             if (!registry->Write(data[2].ssbo_type, data[2].data_index, *row1))
                 Fail("material row content update failed");
@@ -737,9 +737,9 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         ++phase;
         warmup = 2u;
         auto *c = models[2]->GetComponent<GPUModelRefComponent>();
-        if (phase == 1 && world->IsMainFrameCollectCacheEnabled())
+        if (phase == 1 && world->Runner().GetMainFrameTopology().IsCollectCacheEnabled())
         {
-            auto &snapshot = world->GetMainFrameTopologySnapshot();
+            auto &snapshot = world->Runner().GetMainFrameTopology().Snapshot();
             invalidated_snapshot_commits = snapshot.GetStats().commits;
             snapshot.Invalidate();
         }
@@ -747,14 +747,14 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         {
             MaterialData::MaterialDataAuthoringResource row;
             row = data[2];
-            if (!world->GetOrCreateMaterialData(probe)->SetDataResource(row))
+            if (!world->RenderData().GetOrCreateMaterialData(probe)->SetDataResource(row))
                 Fail("material row switch rejected");
         }
         if (phase == 3)
         {
             if (!registry->Write(data[2].ssbo_type, data[2].data_index, original_row2))
                 Fail("material row content restoration failed");
-            if (!world->GetOrCreateMaterialData(probe)->SetDataResource(MaterialData::MaterialDataAuthoringResource{}))
+            if (!world->RenderData().GetOrCreateMaterialData(probe)->SetDataResource(MaterialData::MaterialDataAuthoringResource{}))
                 Fail("material row restoration rejected");
             c->HidePart(1u);
         }
@@ -762,11 +762,11 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         {
             c->ShowAllParts();
         }
-        if (phase == 5) world->GetOrCreateMaterialData(probe)->SetRecipe(recipes[2]);
+        if (phase == 5) world->RenderData().GetOrCreateMaterialData(probe)->SetRecipe(recipes[2]);
         if (phase == 6) world->GetOrCreateGeometryData(probe)->SetPrimitiveAsset(&sphere_asset);
         if (phase == 7)
         {
-            world->GetOrCreateMaterialData(probe)->ClearRecipeOverride();
+            world->RenderData().GetOrCreateMaterialData(probe)->ClearRecipeOverride();
             world->GetOrCreateGeometryData(probe)->SetPrimitiveAsset(&assets[0]);
         }
         if (phase == 8)
@@ -807,7 +807,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 Fail("line topology fixture creation failed");
             MaterialData::MaterialDataAuthoringResource line_data;
             line_data = data[2];
-            if (!world->GetOrCreateMaterialData(line_probe)->SetDataResource(line_data))
+            if (!world->RenderData().GetOrCreateMaterialData(line_probe)->SetDataResource(line_data))
                 Fail("line topology fixture material rejected");
         }
         if (phase == 14)

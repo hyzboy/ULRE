@@ -640,7 +640,7 @@ namespace hgl::ecs
         MaterialBatchPlanCache::Slot *plan_slot = batch_plan_cache.Acquire(static_cast<const void *>(current_render_pass));
 
         if (plan_slot && batch_plan_cache.TryReplay(cache, *plan_slot,
-                                                    world->GetPrimitiveTopologyLedger(),
+                                                    world->Runner().GetMainFrameTopology().Ledger(),
                                                     shared_transform_buffer, buffer_manager, device))
         {
             return;
@@ -742,7 +742,7 @@ namespace hgl::ecs
         // ── 计划整体重存（拒绝半成品：只有跑完全程才提交）──────────────────────
         if (plan_slot)
         {
-            const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+            const PrimitiveTopologyLedger &ledger = world->Runner().GetMainFrameTopology().Ledger();
 
             uint32_t visible_count = 0;
             const uint64_t item_sig = batch_plan_cache.ComputeSignature(cache, visible_count);
@@ -855,7 +855,7 @@ namespace hgl::ecs
         PassTemplateGroupRouteCache route_cache;
 
         // P4：模板事实缓存的失效检查（每帧 O(1)：两个代数比对）
-        template_facts.Refresh(world->GetPrimitiveTopologyLedger());
+        template_facts.Refresh(world->Runner().GetMainFrameTopology().Ledger());
 
         for (auto& pair : cache.materialBatches)
         {
@@ -1091,7 +1091,7 @@ namespace hgl::ecs
                 }
             }
 
-            world->GetPrimitiveTopologyLedger().ObserveGPUCullEngaged(all_engaged);
+            world->Runner().GetMainFrameTopology().Ledger().ObserveGPUCullEngaged(all_engaged);
         }
 
         // P2：主帧拓扑快照 —— 构建 + 对拍，**不改变任何绘制结果**。
@@ -1114,18 +1114,18 @@ namespace hgl::ecs
             }
         }
 
-        if (world && world->IsMainFrameTopologySnapshotEnabled() && world->IsMainFrameTopologyPass())
+        if (world && world->Runner().GetMainFrameTopology().IsSnapshotEnabled() && world->IsMainFrameTopologyPass())
         {
             if (cache.is_collect_steady && !cache.has_pending_resources)
             {
-                world->GetMainFrameTopologySnapshot().BuildFromCache(
+                world->Runner().GetMainFrameTopology().Snapshot().BuildFromCache(
                     cache,
-                    world->GetPrimitiveTopologyLedger().GetTopologyRevision(),
+                    world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure),
                     cache.frame_serial);
             }
             else
             {
-                world->GetMainFrameTopologySnapshot().Invalidate();
+                world->Runner().GetMainFrameTopology().Snapshot().Invalidate();
             }
         }
 
@@ -1151,10 +1151,10 @@ namespace hgl::ecs
             snapshot.last_collect_steady = cache.is_collect_steady;
             snapshot.has_pending_resources = cache.has_pending_resources;
 
-            const auto &topo_snap = world->GetMainFrameTopologySnapshot();
+            const auto &topo_snap = world->Runner().GetMainFrameTopology().Snapshot();
             snapshot.snapshot_ready = topo_snap.IsReady();
             snapshot.snapshot_topology_rev = topo_snap.GetTopologyRevision();
-            snapshot.world_topology_rev = world->GetPrimitiveTopologyLedger().GetTopologyRevision();
+            snapshot.world_topology_rev = world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure);
             snapshot.snapshot_item_count = topo_snap.GetItemCount();
 
             snapshot.dropped_invisible = cache.dropped_invisible;

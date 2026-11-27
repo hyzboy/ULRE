@@ -284,7 +284,7 @@ private:
                 item_transforms[row][col] = transform;
 
                 auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+                hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
 
                 // A3：Opaque 行最后一格 = 不可接管批的样本（独立 program）
                 const bool as_partial =

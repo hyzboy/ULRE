@@ -409,7 +409,7 @@ private:
             bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(bbox->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             bbox->primitive_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(bbox->entity);
-            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(bbox->entity);
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(bbox->entity);
 
             bbox->transform.SetParent(ecs_context->Spatial().GetTransformID(rm->entity->GetEntityID()));
 
@@ -450,7 +450,7 @@ private:
             rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(rm->entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             rm->primitive_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->entity);
-            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rm->entity);
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(rm->entity);
 
             const float angle = pack_mode_ ? 0.0f
                 : glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));

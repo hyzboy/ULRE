@@ -587,7 +587,7 @@ private:
         planet_transform.SetMobility(Mobility::Static);
 
         auto planet_prim = planet_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(planet_entity);
-        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(planet_entity);
+        hgl::ecs::MaterialData *material_data_comp = planet_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(planet_entity);
         planet_prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(planet_prim->GetOwnerID())->SetPrimitiveAsset(&planet_asset);
         MaterialData::MaterialDataAuthoringResource p_res{};
         p_res = planet_mtl_accessor.GetGlobalSSBOBinding();
@@ -609,7 +609,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto *prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&asteroid_assets[i]);
             MaterialData::MaterialDataAuthoringResource a_res{};
             a_res = asteroid_mtl_accessors[i].GetGlobalSSBOBinding();

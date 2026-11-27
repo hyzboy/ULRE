@@ -304,7 +304,7 @@ private:
 
         geometry_data->SetPrimitiveAsset(&asset);
 
-        auto *material_data = world->GetOrCreateMaterialData(entity);
+        auto *material_data = world->RenderData().GetOrCreateMaterialData(entity);
         if (!material_data)
             return false;
 
@@ -448,7 +448,7 @@ private:
         if (!child_screen_entity)
             return LogStageFail("BindChildScreenTexture", "ChildScreen entity missing");
 
-        auto *material_data = ecs_context->GetOrCreateMaterialData(child_screen_entity);
+        auto *material_data = ecs_context->RenderData().GetOrCreateMaterialData(child_screen_entity);
         if (!material_data)
             return LogStageFail("BindChildScreenTexture", "screen material data missing");
 

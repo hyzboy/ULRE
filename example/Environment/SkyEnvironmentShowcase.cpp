@@ -259,7 +259,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto * primitive_comp = ecs_context->GetOrCreateGeometryData(entity);
-            auto * material_comp  = ecs_context->GetOrCreateMaterialData(entity);
+            auto * material_comp  = ecs_context->RenderData().GetOrCreateMaterialData(entity);
             if (!primitive_comp || !material_comp)
                 return false;
 

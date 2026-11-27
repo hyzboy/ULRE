@@ -1505,14 +1505,14 @@ int main(int argc, char** argv)
                     return 9;
                 }
 
-                if (empty_world.GetDefaultCamera() != nullptr)
+                if (empty_world.RenderData().GetDefaultCamera() != nullptr)
                 {
                     GLogError(u8"Test 9C+ Failed: a fresh world must not have a default camera before resolution");
                     return 9;
                 }
 
                 auto *fallback = no_cam_sys->GetMainCameraComponent();   // 无相机 ⇒ 第 ④ 级
-                if (!fallback || !empty_world.IsFallbackCamera(fallback))
+                if (!fallback || !empty_world.RenderData().IsFallbackCamera(fallback))
                 {
                     GLogError(u8"Test 9C+ Failed: a world with no camera must resolve to the resident fallback camera");
                     return 9;
@@ -1525,15 +1525,15 @@ int main(int argc, char** argv)
                 }
 
                 // A6：槽号只在**世界相机表**里 ⇒ 断言走世界访问器（组件已不持有槽号）
-                if (empty_world.GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
+                if (empty_world.RenderData().GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
                 {
                     GLogError(u8"Test 9C+ Failed: fallback camera must own slot 0 (world camera table says %u)",
-                              empty_world.GetCameraSlot(fallback));
+                              empty_world.RenderData().GetCameraSlot(fallback));
                     return 9;
                 }
 
-                if (empty_world.GetDefaultCamera() != fallback
-                 || empty_world.GetCamera(CameraInfoStorage::kDefaultCameraSlot) != fallback)
+                if (empty_world.RenderData().GetDefaultCamera() != fallback
+                 || empty_world.RenderData().GetCamera(CameraInfoStorage::kDefaultCameraSlot) != fallback)
                 {
                     GLogError(u8"Test 9C+ Failed: slot 0 owner must equal the resolved default camera"
                               u8"（世界级访问器 GetCamera(0) / GetDefaultCamera 必须与三级解析同一落点）");
@@ -1561,10 +1561,10 @@ int main(int argc, char** argv)
                 // 导致"没槽的相机"被当成默认相机发出去）。
                 // A6：槽号只存在于世界相机表 ⇒ 新相机在世界里必须反查不到槽（不能借它把 0 号槽读错）
                 CameraComponent fresh_camera("TestFreshCamera");
-                if (empty_world.GetCameraSlot(&fresh_camera) != CameraComponent::kInvalidSlot)
+                if (empty_world.RenderData().GetCameraSlot(&fresh_camera) != CameraComponent::kInvalidSlot)
                 {
                     GLogError(u8"Test 9C+ Failed: a fresh camera must start unclaimed (kInvalidSlot), got %u",
-                              empty_world.GetCameraSlot(&fresh_camera));
+                              empty_world.RenderData().GetCameraSlot(&fresh_camera));
                     return 9;
                 }
             }
@@ -4260,28 +4260,28 @@ int main(int argc, char** argv)
             auto main_camera  = std::make_shared<CameraComponent>("Test23MainCamera");
             auto extra_camera = std::make_shared<CameraComponent>("Test23ExtraCamera");
 
-            if (world.GetDefaultCamera() != nullptr)
+            if (world.RenderData().GetDefaultCamera() != nullptr)
             {
                 GLogError(u8"Test 23 Failed: 新世界不该已经有默认相机");
                 return 23;
             }
 
-            if (world.GetCameraSlot(main_camera.get()) != CameraComponent::kInvalidSlot)
+            if (world.RenderData().GetCameraSlot(main_camera.get()) != CameraComponent::kInvalidSlot)
             {
                 GLogError(u8"Test 23 Failed: 未认领的相机不该有槽号");
                 return 23;
             }
 
             // 0 号槽（默认相机）与行池无关：无设备也能落在 0 号槽
-            if (!world.EnsureCameraSlot(main_camera.get(), true))
+            if (!world.RenderData().EnsureCameraSlot(main_camera.get(), true))
             {
                 GLogError(u8"Test 23 Failed: 默认相机应当拿到 0 号槽（槽账目与行池无关）");
                 return 23;
             }
 
-            if (world.GetDefaultCamera() != main_camera.get()
-             || world.GetCamera(CameraInfoStorage::kDefaultCameraSlot) != main_camera.get()
-             || world.GetCameraSlot(main_camera.get()) != CameraInfoStorage::kDefaultCameraSlot)
+            if (world.RenderData().GetDefaultCamera() != main_camera.get()
+             || world.RenderData().GetCamera(CameraInfoStorage::kDefaultCameraSlot) != main_camera.get()
+             || world.RenderData().GetCameraSlot(main_camera.get()) != CameraInfoStorage::kDefaultCameraSlot)
             {
                 GLogError(u8"Test 23 Failed: 世界访问器与相机表不一致"
                           u8"（GetCamera(0) / GetDefaultCamera / GetCameraSlot 必须同一落点）");
@@ -4289,33 +4289,33 @@ int main(int argc, char** argv)
             }
 
             // 普通槽：行池未就绪 ⇒ fail-fast 保持未认领（不会按越界行号发出去）
-            if (world.EnsureCameraSlot(extra_camera.get(), false))
+            if (world.RenderData().EnsureCameraSlot(extra_camera.get(), false))
             {
                 GLogError(u8"Test 23 Failed: 行池未就绪时不该拿到普通槽");
                 return 23;
             }
 
-            if (world.GetCameraSlot(extra_camera.get()) != CameraComponent::kInvalidSlot)
+            if (world.RenderData().GetCameraSlot(extra_camera.get()) != CameraComponent::kInvalidSlot)
             {
                 GLogError(u8"Test 23 Failed: 没拿到槽的相机必须保持未认领（否则会按越界行号发布）");
                 return 23;
             }
 
             // 0 号槽唯一：换默认相机 = 直接改绑（原宿主自动让位，不需要显式释放）
-            if (!world.SetDefaultCamera(extra_camera))
+            if (!world.RenderData().SetDefaultCamera(extra_camera))
             {
                 GLogError(u8"Test 23 Failed: 换默认相机（改绑 0 号槽）被拒");
                 return 23;
             }
 
-            if (world.GetDefaultCamera() != extra_camera.get()
-             || world.GetCameraSlot(main_camera.get()) != CameraComponent::kInvalidSlot)
+            if (world.RenderData().GetDefaultCamera() != extra_camera.get()
+             || world.RenderData().GetCameraSlot(main_camera.get()) != CameraComponent::kInvalidSlot)
             {
                 GLogError(u8"Test 23 Failed: 0 号槽唯一 ⇒ 换默认相机后原宿主必须让位");
                 return 23;
             }
 
-            if (world.SetDefaultCamera(std::shared_ptr<CameraComponent>()))
+            if (world.RenderData().SetDefaultCamera(std::shared_ptr<CameraComponent>()))
             {
                 GLogError(u8"Test 23 Failed: 空宿主不该能成为默认相机");
                 return 23;
@@ -4325,8 +4325,8 @@ int main(int argc, char** argv)
             main_camera.reset();
             extra_camera.reset();
 
-            if (world.GetDefaultCamera() != nullptr
-             || world.GetCamera(CameraInfoStorage::kDefaultCameraSlot) != nullptr)
+            if (world.RenderData().GetDefaultCamera() != nullptr
+             || world.RenderData().GetCamera(CameraInfoStorage::kDefaultCameraSlot) != nullptr)
             {
                 GLogError(u8"Test 23 Failed: 默认相机宿主销毁后 GetDefaultCamera() 必须返回 nullptr"
                           u8"（否则地址复用会让新相机继承默认相机身份）");
@@ -4334,9 +4334,9 @@ int main(int argc, char** argv)
             }
 
             // 常驻 fallback：世界内没有相机组件时仍必须有相机，且它就是 0 号槽的宿主
-            auto *fallback = world.EnsureFallbackCamera();
+            auto *fallback = world.RenderData().EnsureFallbackCamera();
 
-            if (!fallback || world.GetDefaultCamera() != fallback || world.GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
+            if (!fallback || world.RenderData().GetDefaultCamera() != fallback || world.RenderData().GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
             {
                 GLogError(u8"Test 23 Failed: 常驻 fallback 必须是 0 号槽的宿主"
                           u8"（三级解析第 ④ 级与相机表落点必须一致）");
@@ -4359,7 +4359,7 @@ int main(int argc, char** argv)
                 return 23;
             }
 
-            if (ctx.GetCameraSlot(guard_camera.get()) != CameraComponent::kInvalidSlot)
+            if (ctx.RenderData().GetCameraSlot(guard_camera.get()) != CameraComponent::kInvalidSlot)
             {
                 GLogError(u8"Test 23 Failed: guard 没拿到槽时相机在世界相机表里必须仍未认领"
                           u8"（否则会按越界行号发布到别的世界）");
@@ -4411,14 +4411,14 @@ int main(int argc, char** argv)
               "指向解算数据的裸指针别名复活（可被外部改指世界共享载体 = 第二份真值）",
               true },
             // ② 世界级访问器（终态形状）：哪个世界 / 哪个槽只走这组 API
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "CameraComponent* GetCamera(uint32_t slot) const;",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "CameraComponent *GetCamera(uint32_t slot) const;",
               "世界不再提供按槽取相机的访问器（相机 = 世界级资源这条不成立）" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "uint32_t GetCameraSlot(const CameraComponent* camera) const;",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "uint32_t GetCameraSlot(const CameraComponent *camera) const;",
               "世界不再提供按相机反查槽的访问器" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "bool EnsureCameraSlot(CameraComponent* camera, bool is_default = false);",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "bool EnsureCameraSlot(CameraComponent *camera, bool is_default = false);",
               "认领槽的入口从世界挪走了（槽的唯一写者必须是世界）" },
             { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
               "std::weak_ptr<CameraComponent> default_camera;",
@@ -4429,10 +4429,10 @@ int main(int argc, char** argv)
               "0 号槽（本世界默认相机）不再由世界相机表绑定" },
             // ③ 相机系统：槽号一律问世界；升格默认相机先交回旧槽
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
-              "context->GetCameraSlot(camera)",
+              "context->RenderData().GetCameraSlot(camera)",
               "发布路径不再问世界要槽号（组件自持槽号 = 第二份真值）" },
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
-              "context->EnsureCameraSlot(camera, is_default)",
+              "context->RenderData().EnsureCameraSlot(camera, is_default)",
               "相机系统不再通过世界认领槽" },
             { "CameraSystem.cpp", OS_TEXT("src/ecs/systems/tick/CameraSystem.cpp"),
               "camera->camera_id",
@@ -5188,12 +5188,12 @@ int main(int argc, char** argv)
             return 28;
         }
 
-        MaterialData *mat_by_id  = world.GetOrCreateMaterialData(id);
-        MaterialData *mat_by_ptr = world.GetOrCreateMaterialData(entity);
+        MaterialData *mat_by_id  = world.RenderData().GetOrCreateMaterialData(id);
+        MaterialData *mat_by_ptr = world.RenderData().GetOrCreateMaterialData(entity);
 
         if (!mat_by_id || mat_by_id != mat_by_ptr
-         || world.GetMaterialData(id) != mat_by_id
-         || world.GetMaterialData(entity) != mat_by_id)
+         || world.RenderData().GetMaterialData(id) != mat_by_id
+         || world.RenderData().GetMaterialData(entity) != mat_by_id)
         {
             GLogError(u8"Test 28 Failed: GetMaterialData 的 EntityID 版与 Entity* 版不是同一落点");
             return 28;
@@ -5221,7 +5221,7 @@ int main(int argc, char** argv)
         // (a-3) 无效句柄一律 nullptr（不得把 ID 当指针用 / 不得返回垃圾）
         if (world.GetGeometryData(EntityID::Invalid()) != nullptr
          || world.GetGeometryData(static_cast<Entity *>(nullptr)) != nullptr
-         || world.GetMaterialData(static_cast<const Entity *>(nullptr)) != nullptr
+         || world.RenderData().GetMaterialData(static_cast<const Entity *>(nullptr)) != nullptr
          || world.GetCameraByEntity(static_cast<Entity *>(nullptr)) != nullptr
          || world.GetOrCreateCamera(static_cast<Entity *>(nullptr), "X") != nullptr
          || world.GetOrCreateGeometryData(static_cast<Entity *>(nullptr)) != nullptr)
@@ -5240,13 +5240,13 @@ int main(int argc, char** argv)
               "GetOrAddComponentOfEntity(Entity *entity, Args&&... args)",
               "「无则创建」的核心（接收 Entity*）缺失" },
 
-            // 键式访问器（slot 一族）：指针版只免掉调用方的 ->GetEntityID()
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(Entity *owner)",
-              "材质运行期 slot 缺 Entity* 重载" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "MaterialRuntimeSlot* GetMaterialRuntimeSlot(Entity *owner)",
-              "材质运行期 slot 取用缺 Entity* 重载" },
+            // 键式访问器（slot 一族）：统一使用 EntityID，调用方先取得实体稳定句柄。
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "MaterialRuntimeSlot &GetOrCreateMaterialRuntimeSlot(EntityID owner);",
+              "材质运行期 slot 缺 EntityID 权威入口" },
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "MaterialRuntimeSlot *GetMaterialRuntimeSlot(EntityID owner);",
+              "只读 slot 缺 EntityID 权威入口" },
         };
 
         if (const int failed = verify_source_contracts(28, kA7c2Contracts,
@@ -5279,7 +5279,7 @@ int main(int argc, char** argv)
             {
                 // 指针版**直通**（const + 非 const 两条）
                 { "return ComponentOfEntity<GeometryData>(owner);",         2, "GeometryData 指针版必须直通核心（不得再解析 ID）" },
-                { "return render_data.GetMaterialData(owner);",             4, "MaterialData 访问器必须委托世界渲染数据" },
+                { "return render_data.GetMaterialData(owner);",             0, "ECSContext 的旧 MaterialData 访问器已删除（禁复活）" },
                 // （2026-10-10 审计 §1.1）：`ECSContext` 的四个 ShadowProxy 包装重载全仓零调用者，已删 ⇒
                 // 该条"计数式直通契约"迁到组件侧自由函数上（见本块末尾 kDirectFree），这里只钉**禁复活**。
                 { "GetShadowProxy",                                          0, "ECSContext 的 ShadowProxy 包装已删（禁复活；指针版走组件侧自由函数）" },
@@ -5290,7 +5290,7 @@ int main(int argc, char** argv)
 
                 // 指针版「无则创建」**直通**（各一条：创建必须能改实体）
                 { "return GetOrAddComponentOfEntity<GeometryData>(owner);", 1, "GeometryData「无则创建」指针版必须直通核心" },
-                { "return render_data.GetOrCreateMaterialData(owner);",     2, "MaterialData 创建必须委托世界渲染数据" },
+                { "return render_data.GetOrCreateMaterialData(owner);",     0, "ECSContext 的旧 MaterialData 创建包装已删除（禁复活）" },
                 // §3-②：相机「无则创建」的指针版同样改走世界侧直通（判存在 + 世界侧创建），
                 // 不再经 `GetOrAddComponentOfEntity<T>`（其内部实例化被禁的两个 Entity 模板）。
                 { "if (CameraComponent *existing = GetCameraByEntity(owner))",       1, "相机「无则创建」指针版必须直通判存在（不经 ID→Entity 往返）" },
@@ -5909,8 +5909,8 @@ int main(int argc, char** argv)
               "MaterialData 又登记进类型表行（枚举条目 + 表行禁止复活）", true },
             // ④ 世界取用口直通旁表（2026-11：组件退役后「组件实现走旁表」升格为
             //    「Context 访问器直通旁表」；实体死亡摘除见 Test 32 ③）
-            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)",
+            { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),
+              "MaterialData *WorldRenderData::GetOrCreateMaterialData(EntityID owner)",
               "世界缺「无则创建」旁表取用口" },
             { "MaterialData.cpp", OS_TEXT("src/ecs/components/MaterialData.cpp"),
               "table->GetOrCreate(material_row_id)",
@@ -5976,8 +5976,8 @@ int main(int argc, char** argv)
             { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
               "AutoDelete<MaterialRuntimePipelineTable> material_runtime_pipeline_table;",
               "旁表不再由世界持有" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable()",
+            { "WorldRenderData.h", OS_TEXT("inc/hgl/ecs/support/render/WorldRenderData.h"),
+              "MaterialRuntimePipelineTable &GetMaterialRuntimePipelineTable()",
               "世界缺管线旁表取用口" },
             // ③ slot 变全 POD：两个指针禁复活 + 行宽冻结断言在位
             { "MaterialRuntimeTable.h", OS_TEXT("inc/hgl/ecs/support/material/MaterialRuntimeTable.h"),
@@ -5992,11 +5992,11 @@ int main(int argc, char** argv)
             // ④ 写：collect 解析后落旁表
             { "RenderCollectSystem.cpp",
               OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
-              "world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),",
+              "world->RenderData().GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),",
               "管线解析结果未落旁表（读侧会永远未命中）" },
             // ⑤ 读：查旁表（按 pass）
             { "PrimitiveRenderItem.cpp", OS_TEXT("src/ecs/core/render/PrimitiveRenderItem.cpp"),
-              "context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)",
+              "context->RenderData().GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)",
               "管线读取未走旁表" },
             // ⑥ 清理：失效路径 + 销毁路径都摘除
             { "WorldRenderData.cpp", OS_TEXT("src/ecs/support/render/WorldRenderData.cpp"),

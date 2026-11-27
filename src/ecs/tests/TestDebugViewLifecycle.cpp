@@ -69,7 +69,7 @@ int main()
     ECSContext world("DebugViewOwner");
     auto *entity=world.CreateEntity<hgl::ecs::Entity>("original");
     if(!entity || !world.GetOrCreateGeometryData(entity)) return 1;
-    auto *material=world.GetOrCreateMaterialData(entity);
+    auto *material=world.RenderData().GetOrCreateMaterialData(entity);
     if(!material) return 2;
     MaterialRecipe original;
     original.domain=MaterialDomain::StandardOpaque;

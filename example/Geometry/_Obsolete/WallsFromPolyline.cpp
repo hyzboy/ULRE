@@ -103,7 +103,7 @@ public:
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
             auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             auto prim_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(entity);
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

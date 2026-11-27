@@ -492,7 +492,7 @@ private:
         geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
             ->GetOrCreateGeometryData(geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
 
-        hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+        hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
         row_resource = base_row;
         material_data->SetDataResource(row_resource);
@@ -737,7 +737,7 @@ private:
         if (!ecs_context)
             return s;
 
-        const PrimitiveTopologyLedger &ledger = ecs_context->GetPrimitiveTopologyLedger();
+        const PrimitiveTopologyLedger &ledger = ecs_context->Runner().GetMainFrameTopology().Ledger();
 
         for (size_t i = 0; i < static_cast<size_t>(TopologyChange::Count); ++i)
             s.topo[i] = ledger.GetTopologyRevision(static_cast<TopologyChange>(i));
@@ -761,7 +761,7 @@ private:
         if (!ecs_context)
             return;
 
-        const PrimitiveTopologyLedger &ledger = ecs_context->GetPrimitiveTopologyLedger();
+        const PrimitiveTopologyLedger &ledger = ecs_context->Runner().GetMainFrameTopology().Ledger();
         const LedgerSnapshot now = CaptureLedger();
 
         const double div = (window_frames > 0) ? double(window_frames) : 1.0;
@@ -874,7 +874,7 @@ private:
         if (!ecs_context)
             return;
 
-        const MainFrameTopologySnapshot & snapshot = ecs_context->GetMainFrameTopologySnapshot();
+        const MainFrameTopologySnapshot & snapshot = ecs_context->Runner().GetMainFrameTopology().Snapshot();
         const SnapshotStats & s = snapshot.GetStats();
 
         const double div = (window_frames > 0) ? double(window_frames) : 1.0;
@@ -1256,9 +1256,9 @@ public:
         // **不改变任何绘制结果** —— 这正是 P2 允许默认落地的原因。
         // 三态解析：`CSTRESS_TOPO` 未设置 = 跟随引擎默认；`1`/`0` = 强制开/关。
         topo_snapshot = (topo_env < 0)
-            ? ecs_context->IsMainFrameTopologySnapshotEnabled()
+            ? ecs_context->Runner().GetMainFrameTopology().IsSnapshotEnabled()
             : (topo_env == 1);
-        ecs_context->SetMainFrameTopologySnapshotEnabled(topo_snapshot);
+        ecs_context->Runner().GetMainFrameTopology().SetSnapshotEnabled(topo_snapshot);
 
         if (topo_snapshot)
         {
@@ -1269,7 +1269,7 @@ public:
         // P3：主帧收集快路径（引擎默认**开启**）。**依赖 P2 快照**（快照就是快路径的
         // 输入），所以只要快照没开，快路径一律强制关闭 —— 不做「有开关无数据」的假配置。
         collect_cache = (collect_cache_env < 0)
-            ? ecs_context->IsMainFrameCollectCacheEnabled()
+            ? ecs_context->Runner().GetMainFrameTopology().IsCollectCacheEnabled()
             : (collect_cache_env == 1);
         if (collect_cache && !topo_snapshot)
         {
@@ -1277,7 +1277,7 @@ public:
             fflush(stdout);
             collect_cache = false;
         }
-        ecs_context->SetMainFrameCollectCacheEnabled(collect_cache);
+        ecs_context->Runner().GetMainFrameTopology().SetCollectCacheEnabled(collect_cache);
 
         if (collect_cache)
         {

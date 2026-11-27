@@ -259,7 +259,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(entity);
 
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -287,7 +287,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));

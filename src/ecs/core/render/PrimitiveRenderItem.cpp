@@ -70,7 +70,7 @@ namespace hgl::ecs
         // A5b：运行期管线归每实例（collect 阶段按当前 pass 解析）；
         // B5-b 起落世界级旁表（键 = 本实体），读时比对 pass —— 语义与旧 slot 字段逐字一致。
         return context
-            ? context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)
+            ? context->RenderData().GetMaterialRuntimePipelineTable().Get(entity_id, render_pass)
             : nullptr;
     }
 
@@ -81,7 +81,7 @@ namespace hgl::ecs
         // 由批次带到绘制期（`RenderCmdBuffer::ApplyPipelineState`）。
         // 与 `GetPipeline` 同一份旁表、同一套 pass 比对语义（未命中 ⇒ 默认配置）。
         return context
-            ? context->GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass)
+            ? context->RenderData().GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass)
             : hgl::graph::mtl::MaterialPipelineConfig{};
     }
 

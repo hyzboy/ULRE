@@ -86,7 +86,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity)->SetPrimitiveAsset(asset);
     hgl::ecs::ECSContext *material_world = entity->GetContextAs<hgl::ecs::ECSContext>();
     hgl::ecs::MaterialData *material_data = material_world
-        ? material_world->GetOrCreateMaterialData(entity)
+        ? material_world->RenderData().GetOrCreateMaterialData(entity)
         : nullptr;
     if (!material_data)
         return false;
@@ -149,7 +149,7 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     hgl::ecs::Entity *owner = entry.primitive;
     hgl::ecs::ECSContext *material_world = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
     hgl::ecs::MaterialData *material_data = material_world
-        ? material_world->GetOrCreateMaterialData(owner)
+        ? material_world->RenderData().GetOrCreateMaterialData(owner)
         : nullptr;
     if (!material_data)
         return;

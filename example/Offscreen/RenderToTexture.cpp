@@ -287,7 +287,7 @@ public:
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
         auto transform = world->Spatial().GetTransform(world->Spatial().CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
-        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(sphere_entity);
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(sphere_entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -456,7 +456,7 @@ private:
         cube_entity = ecs_context->CreateEntity<Entity>("RTTCube");
         cube_transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(cube_entity->GetEntityID(), Mobility::Static));
         auto cube_prim_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_entity);
-        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube_entity);
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(cube_entity);
 
         cube_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         cube_transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

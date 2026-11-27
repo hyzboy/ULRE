@@ -26,7 +26,7 @@ namespace hgl::ecs
             return false;
 
         // ── 前提①：开关（已把 P2 快照开关合成进判据）+ 只能在主帧 pass 上接管 ──
-        if (!world->IsMainFrameCollectCacheEnabled())
+        if (!world->Runner().GetMainFrameTopology().IsCollectCacheEnabled())
             return false;
 
         if (!world->IsMainFrameTopologyPass())
@@ -41,7 +41,7 @@ namespace hgl::ecs
         if (!collect_cache.IsLastMainCollectSteady())
             return false;
 
-        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+        const PrimitiveTopologyLedger &ledger = world->Runner().GetMainFrameTopology().Ledger();
 
         // ── 前提④：GPU 剔除接管中 ──
         // CPU 剔除只在接管期间直接 return 而不改 items ⇒ 快照的成员集合与顺序原样成立。
@@ -50,7 +50,7 @@ namespace hgl::ecs
         if (!ledger.GetLastGPUCullEngaged())
             return false;
 
-        MainFrameTopologySnapshot &snapshot = world->GetMainFrameTopologySnapshot();
+        MainFrameTopologySnapshot &snapshot = world->Runner().GetMainFrameTopology().Snapshot();
 
         // ── 前提⑤：快照就绪 + 代数一致 + **完整覆盖**上一次收集结果 ──
         if (!snapshot.IsReady())
@@ -178,7 +178,7 @@ namespace hgl::ecs
                 auto *render_target = world->GetRenderTarget();
                 auto *current_render_pass = render_target ? render_target->GetRenderPass() : nullptr;
                 auto *cached_pipeline = current_render_pass
-                    ? world->GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass, group_idx)
+                    ? world->RenderData().GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass, group_idx)
                     : nullptr;
 
                 // 若该实体在当前 pass 下未解析过管线，则快路径不成立，主动回退完整路径重新解析
@@ -189,7 +189,7 @@ namespace hgl::ecs
                 }
 
                 const auto cached_pipeline_config = current_render_pass
-                    ? world->GetMaterialRuntimePipelineTable().GetConfig(entity_id, current_render_pass, group_idx)
+                    ? world->RenderData().GetMaterialRuntimePipelineTable().GetConfig(entity_id, current_render_pass, group_idx)
                     : graph::mtl::MaterialPipelineConfig{};
 
                 auto item = std::make_unique<ModelTemplateRenderItem>(
@@ -251,7 +251,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        const PrimitiveTopologyLedger &ledger = world->GetPrimitiveTopologyLedger();
+        const PrimitiveTopologyLedger &ledger = world->Runner().GetMainFrameTopology().Ledger();
 
         // 本 pass 是否有资格：阴影 pass / 移动性过滤 pass 共用同一份 RenderFrameCache，
         // 它们的成员集合天然不同 ⇒ 只有「无过滤的非阴影 pass」才可能是主帧快照的消费者。
@@ -277,7 +277,7 @@ namespace hgl::ecs
         // 本 pass 非主帧时不计入统计：它本来就不参与主帧快照，算进分母会稀释命中率。
         if (is_main_swapchain_frame)
         {
-            world->GetPrimitiveTopologyLedger().RecordEligibility(reason);
+            world->Runner().GetMainFrameTopology().Ledger().RecordEligibility(reason);
 
             if (reason != CacheRejectReason::Eligible)
                 collect_cache.AdvanceDryRun(topology_now);

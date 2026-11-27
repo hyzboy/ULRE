@@ -113,7 +113,7 @@ namespace hgl::ecs
             if (failed || !entity)
                 return *this;
 
-            MaterialData *material_data = world->GetOrCreateMaterialData(entity);
+            MaterialData *material_data = world->RenderData().GetOrCreateMaterialData(entity);
             if (!material_data || !material_data->SetMaterialDataRow(accessor, data))
                 Fail("WithMaterialRow");
             return *this;

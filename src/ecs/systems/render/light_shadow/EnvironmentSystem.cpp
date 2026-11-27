@@ -534,7 +534,7 @@ namespace hgl::ecs
                                                  graph::PrimitiveType::Triangles);
 
             context->GetOrCreateGeometryData(sky_entity)->SetPrimitiveAsset(&sky_primitive);
-            context->GetOrCreateMaterialData(sky_entity);
+            context->RenderData().GetOrCreateMaterialData(sky_entity);
 
             const float scale = sky_config.sky_scale > 0.0f
                 ? sky_config.sky_scale

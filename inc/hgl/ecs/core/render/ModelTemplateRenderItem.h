@@ -56,7 +56,7 @@ namespace hgl::ecs
 
         graph::ShaderProgram *GetShaderProgram() const override
         {
-            auto *program = context ? context->GetMaterialRuntimePipelineTable().GetProgram(
+            auto *program = context ? context->RenderData().GetMaterialRuntimePipelineTable().GetProgram(
                 entity_id, cached_pass, shading_group) : nullptr;
             return program ? program : PrimitiveRenderItem::GetShaderProgram();
         }
@@ -67,7 +67,7 @@ namespace hgl::ecs
                 return pipeline;
 
             return context
-                ? context->GetMaterialRuntimePipelineTable().Get(entity_id, render_pass, shading_group)
+                ? context->RenderData().GetMaterialRuntimePipelineTable().Get(entity_id, render_pass, shading_group)
                 : nullptr;
         }
 
@@ -78,7 +78,7 @@ namespace hgl::ecs
                 return pipeline_config;
 
             return context
-                ? context->GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass, shading_group)
+                ? context->RenderData().GetMaterialRuntimePipelineTable().GetConfig(entity_id, render_pass, shading_group)
                 : graph::mtl::MaterialPipelineConfig{};
         }
     };

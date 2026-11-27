@@ -161,7 +161,7 @@ namespace hgl::ecs
             if (geometry_data->GetPrimitiveAsset() != &rect_asset)
                 geometry_data->SetPrimitiveAsset(&rect_asset);
 
-            auto *material_data = world->GetOrCreateMaterialData(entity);
+            auto *material_data = world->RenderData().GetOrCreateMaterialData(entity);
 
             // -- 像素 AABB → NDC TRS（像素空间原点左下 +Y 上，与 ZeroOneToNDC 同向，无需翻转） --
             const auto &b = t2->world_bounds;

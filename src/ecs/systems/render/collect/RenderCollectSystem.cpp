@@ -259,7 +259,7 @@ namespace hgl::ecs
             {
                 const auto *ref = entity->GetComponent<GPUModelRefComponent>();
                 if (!ref || ref->IsAutomaticallyNormalized())
-                    world->GetOrCreateMaterialRuntimeSlot(entity).program_dirty = true;
+                    world->RenderData().GetOrCreateMaterialRuntimeSlot(entity->GetEntityID()).program_dirty = true;
             }
             if (!EnsurePrimitiveModelTemplate(entity))
             {
@@ -286,7 +286,7 @@ namespace hgl::ecs
             // A4：材质运行期状态 = **每实例 slot**（世界表里按实体稀疏存放）+
             // **共享行**（绑定）。这里取/建 slot，再经行取 program 与缓存哈希。
             MaterialRuntimeSlot &material_slot =
-                world->GetOrCreateMaterialRuntimeSlot(entity);
+                world->RenderData().GetOrCreateMaterialRuntimeSlot(entity->GetEntityID());
 
             // 天光算法热切：provider 变 ⇒ program 身份变，快路径必须失效（见 Update 开头）。
             if (ambient_provider_changed)

@@ -113,7 +113,7 @@ private:
         sphere_transform = transform;
 
         auto primitive_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
-        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(sphere_entity);
+        hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(sphere_entity);
 
         sphere_asset = PrimitiveAsset(sphere_geometry, &sphere_recipe, PrimitiveType::Triangles);
         primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive_comp->GetOwnerID())->SetPrimitiveAsset(&sphere_asset);

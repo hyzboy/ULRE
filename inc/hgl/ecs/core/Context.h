@@ -296,27 +296,6 @@ namespace hgl
             void BumpStaticSceneRevision() { ++static_scene_revision; }
             uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
-            /// 拓扑失效台帐（只读访问；写入统一走 `MarkTopologyChanged/MarkDynamicFactChanged`）
-            const PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() const { return render_runner.GetMainFrameTopology().Ledger(); }
-
-            /// 可写访问：**只**给统计累加（`RecordEligibility`）与设备轮询用；
-            /// 拓扑/事实的标记仍应走下面的两个具名入口，以免绕过 `MarkSceneStructureDirty`。
-            PrimitiveTopologyLedger &GetPrimitiveTopologyLedger() { return render_runner.GetMainFrameTopology().Ledger(); }
-
-            /// 主帧拓扑快照（P2）。可写访问：构建方（批阶段尾部）与统计读取方共用。
-            MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() { return render_runner.GetMainFrameTopology().Snapshot(); }
-            const MainFrameTopologySnapshot &GetMainFrameTopologySnapshot() const { return render_runner.GetMainFrameTopology().Snapshot(); }
-
-            /// 开/关主帧拓扑快照。**关闭时必须完全不构建**（P2 的零开销保证）。
-            void SetMainFrameTopologySnapshotEnabled(bool enabled) { render_runner.GetMainFrameTopology().SetSnapshotEnabled(enabled); }
-            bool IsMainFrameTopologySnapshotEnabled() const { return render_runner.GetMainFrameTopology().IsSnapshotEnabled(); }
-
-            /// 开/关主帧**收集快路径**（P3）。开启后主帧在满足全部资格条件时直接从
-            /// 上一份主帧拓扑快照重建收集结果；条件不满足（任一帧）就退回完整收集，
-            /// 不做任何"部分复用"。关闭时整条快路径不存在（零开销）。
-            void SetMainFrameCollectCacheEnabled(bool enabled) { render_runner.GetMainFrameTopology().SetCollectCacheEnabled(enabled); }
-            bool IsMainFrameCollectCacheEnabled() const { return render_runner.GetMainFrameTopology().IsCollectCacheEnabled(); }
-
             /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
             /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
             /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
@@ -435,18 +414,6 @@ namespace hgl
             // 下面这组访问器。三级解析（0 号槽的默认相机 → 显式 `is_main_camera` → 最小 `EntityID`
             // → `(0,0,0)` 常驻 fallback）见 `CameraSystem::SelectMainCamera`，落点即"谁是 0 号槽的宿主"。
 
-            /// 槽的宿主相机（0 号槽 = 本世界默认相机）；槽空闲 / 宿主已销毁 ⇒ nullptr
-            CameraComponent* GetCamera(uint32_t slot) const;
-
-            /// 本世界默认相机 = **0 号槽的宿主**；尚未解析出相机 / 相机已销毁时为 nullptr
-            CameraComponent* GetDefaultCamera() const;
-
-            /// 让某相机成为本世界默认相机（占 0 号槽）。0 号槽唯一 ⇒ 原宿主自动让位（无需显式释放）。
-            bool SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera);
-
-            /// 相机在本世界相机表里的槽号（含 0 号槽）；不属于本世界 / 未认领 ⇒ `kInvalidSlot`
-            uint32_t GetCameraSlot(const CameraComponent* camera) const;
-
             /// **实体 → 挂在它上面的相机**（无则 nullptr）——相机是**世界级资源**，实体只是宿主。
             /// 与 `GetMaterialData` / `GetGeometryData` 同族：**取相机一律走世界**，不走
             /// `Entity::GetComponent<...>`（组件级读法会成为第二个相机读取入口 ⇒ 双真值）。
@@ -467,26 +434,6 @@ namespace hgl
             /// `Entity*` 版同上（创建必须能改实体 ⇒ 无 `const Entity*` 版）。
             CameraComponent* GetOrCreateCamera(EntityID owner, const AnsiString& name = "Camera");
             CameraComponent* GetOrCreateCamera(Entity* owner, const AnsiString& name = "Camera");
-
-            /// **幂等**认领槽：`is_default=true` ⇒ 占 0 号槽（原持普通槽则先交回；常驻 fallback 自动让位）；
-            /// 否则申请 1..15 的一个槽（槽耗尽 / 行池未就绪 ⇒ 报错并保持未认领 ⇒ 发布跳过 + 一次性告警）。
-            bool EnsureCameraSlot(CameraComponent* camera, bool is_default = false);
-
-            /// 归还相机占的槽（供拥有者显式归还：系统内建相机随系统状态开关）。
-            /// 实体相机**不需要**调用：槽按宿主弱引用计占用期，相机销毁即空出。
-            bool ReleaseCameraSlot(const CameraComponent* camera);
-
-            /// 惰性创建**常驻** fallback 相机（位置 `(0,0,0)`、占 0 号槽）——
-            /// 三级解析的第 ④ 级：世界内一个相机组件都没有时，渲染仍必须有一个相机。
-            /// 创建后一直存在（不按需销毁），且不是 Entity 组件（不是实体组件）。
-            CameraComponent* EnsureFallbackCamera();
-
-            bool IsFallbackCamera(const CameraComponent* camera) const
-            {
-                return render_data.IsFallbackCamera(camera);
-            }
-
-            CameraComponent* GetFallbackCamera() const { return render_data.GetFallbackCamera(); }
 
             // ---- A1 车道等待列表 ----
 
@@ -543,19 +490,6 @@ namespace hgl
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
             //   由基类 ECSCoreContext 统一提供。
 
-            /// 实体 → 材质授权记录 `MaterialData`（世界级旁表，非组件；无则 nullptr）。
-            /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
-            /// 届时不再返回裸指针。
-            MaterialData* GetMaterialData(EntityID owner);
-            const MaterialData* GetMaterialData(EntityID owner) const;
-            MaterialData* GetMaterialData(Entity* owner);
-            const MaterialData* GetMaterialData(const Entity* owner) const;
-
-            /// 实体 → 材质授权记录（无则在世界级旁表 `MaterialAuthoringSideTable` 建条目）。
-            /// 2026-11 退役：不再挂组件、不占行池；渲染/作者侧需要"一定有授权数据"时用。
-            MaterialData* GetOrCreateMaterialData(EntityID owner);
-            MaterialData* GetOrCreateMaterialData(Entity* owner);
-
             /// 实体 → 几何**资产侧**组件 `GeometryData`（无则 nullptr）。
             /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回裸指针。
@@ -577,10 +511,6 @@ namespace hgl
             // 取影子代理走组件侧自由函数 `hgl::ecs::GetShadowProxy(const Entity*)`（`components/ShadowProxy.h`）——
             // 它被 `CanCastShadow` / `GetShadowMaxDistance` / `CanReceiveShadow` / `GetShadowBiasMultiplier` 在用。
 
-            /// 让某实体已解析的运行期管线缓存失效（几何/变体变化时调用）。
-            /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
-            void InvalidateEntityRuntimePipeline(EntityID owner);
-
             WorldSpatialState&       Spatial()       { return spatial_state; }
             const WorldSpatialState& Spatial() const { return spatial_state; }
 
@@ -592,34 +522,6 @@ namespace hgl
 
             WorldGPUResources&       GPUResources()       { return gpu_resources; }
             const WorldGPUResources& GPUResources() const { return gpu_resources; }
-
-            MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() { return render_data.GetMaterialRuntimePipelineTable(); }
-            const MaterialRuntimePipelineTable& GetMaterialRuntimePipelineTable() const { return render_data.GetMaterialRuntimePipelineTable(); }
-
-            /// 实体 → 材质运行期 slot（无则创建）。命名向 `GetOrCreateMaterialData` 看齐。
-            /// ⚠ stage B 会换成**值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
-            /// 届时不再返回引用。
-            MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(EntityID owner)
-            {
-                return render_data.GetOrCreateMaterialRuntimeSlot(owner);
-            }
-
-            /// 指针版（作者/引擎手里已有实体）
-            MaterialRuntimeSlot& GetOrCreateMaterialRuntimeSlot(Entity *owner)
-            {
-                return render_data.GetOrCreateMaterialRuntimeSlot(owner ? owner->GetEntityID() : EntityID{});
-            }
-
-            /// 实体 → 材质运行期 slot（无则 nullptr）
-            MaterialRuntimeSlot* GetMaterialRuntimeSlot(EntityID owner)
-            {
-                return render_data.GetMaterialRuntimeSlot(owner);
-            }
-
-            MaterialRuntimeSlot* GetMaterialRuntimeSlot(Entity *owner)
-            {
-                return owner ? render_data.GetMaterialRuntimeSlot(owner->GetEntityID()) : nullptr;
-            }
 
             /// 本世界的 EnvironmentManager（经 RenderContext/GraphicsContext 解析；不可用时 nullptr）
             hgl::graph::EnvironmentManager *ResolveEnvManager() const;

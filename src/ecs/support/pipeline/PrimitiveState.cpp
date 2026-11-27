@@ -55,7 +55,7 @@ namespace hgl::ecs
     /// 没有材质数据覆盖时不做限制（由几何默认资产决定），保持既有行为。
     static bool IsMaterialResourceReady(const ECSContext *context, const Entity *entity)
     {
-        const MaterialData *material_data = context->GetMaterialData(entity);
+        const MaterialData *material_data = context->RenderData().GetMaterialData(entity);
 
         if (!material_data)
             return true;
@@ -143,7 +143,7 @@ namespace hgl::ecs
             return false;
 
         // A7d：手里已有实体 ⇒ 走 `Entity*` 重载（不做「指针 → ID → 再解析回指针」的往返）
-        const MaterialData *material_data = context->GetMaterialData(entity);
+        const MaterialData *material_data = context->RenderData().GetMaterialData(entity);
         const GeometryData *geometry = context->GetGeometryData(entity);
 
         return (material_data && material_data->HasRecipeOverride())

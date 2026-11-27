@@ -215,7 +215,7 @@ public:
             transform.SetMobility(Mobility::Static);
 
             auto * geometry_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
 
             geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(
                 geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);

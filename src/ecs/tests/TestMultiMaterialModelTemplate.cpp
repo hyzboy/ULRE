@@ -387,7 +387,7 @@ namespace
         if (!entity || !other)
             return false;
 
-        auto &table = context.GetMaterialRuntimePipelineTable();
+        auto &table = context.RenderData().GetMaterialRuntimePipelineTable();
         const EntityID id = entity->GetEntityID();
         const EntityID other_id = other->GetEntityID();
 
@@ -453,9 +453,9 @@ namespace
         if (!ref)
             return false;
 
-        const auto topo_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        const auto topo_revision = context.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate);
         ref->SetTemplateBinding(kTemplateID);
-        const auto changed_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        const auto changed_revision = context.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate);
         if (changed_revision <= topo_revision || ref->GetTemplateID() != kTemplateID)
             return false;
 
@@ -498,7 +498,7 @@ namespace
         if (!entity)
             return false;
 
-        MaterialData *mat_data = context.GetOrCreateMaterialData(entity);
+        MaterialData *mat_data = context.RenderData().GetOrCreateMaterialData(entity);
         if (!mat_data)
             return false;
 

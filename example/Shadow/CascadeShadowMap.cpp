@@ -959,7 +959,7 @@ private:
         ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
         ground_prim = ground_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(ground_entity);
-        hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(ground_entity);
+        hgl::ecs::MaterialData *material_data_comp = ground_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(ground_entity);
         ground_prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(ground_prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
         // 纹理已由配方文件声明，实体端不再重复绑定
         material_data_comp->SetDataResource(ground_accessor);
@@ -1049,7 +1049,7 @@ private:
             }
 
             auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&builtin_primitives[geom_idx]);
 
             // 每个物体是同一张数组纹理的不同图层 ⇒ 只覆盖配方里各纹理槽的 array_layer。
@@ -1093,7 +1093,7 @@ private:
                 tf.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.4f + 0.2f * i, 0.0f)));
 
                 auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-                hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+                hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
                 prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&alpha_primitive);
                 // base_color 驱动本体棋盘外观；opacity_mask 驱动 ShadowCasterMasked
                 // 的 EvalAlpha（采样 .r，0 = 镂空）——影子应呈同图案棋盘孔。

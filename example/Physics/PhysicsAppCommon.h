@@ -349,7 +349,7 @@ namespace hgl::example
             {
                 geo->SetPrimitiveAsset(asset);
             }
-            if(ecs::MaterialData *mat = ctx_->GetOrCreateMaterialData(child))
+            if(ecs::MaterialData *mat = ctx_->RenderData().GetOrCreateMaterialData(child))
             {
                 ecs::MaterialData::MaterialDataAuthoringResource res{};
                 res = solid_rows_[RowClamp(row)];
@@ -369,7 +369,7 @@ namespace hgl::example
         const graph::GlobalSSBOBinding &binding = solid_rows_[RowClamp(row)];
         for(const ecs::EntityID material_entity : it->second)
         {
-            ecs::MaterialData *mat = ctx_->GetMaterialData(material_entity);
+            ecs::MaterialData *mat = ctx_->RenderData().GetMaterialData(material_entity);
             if(mat == nullptr)
             {
                 continue;

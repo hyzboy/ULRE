@@ -14,7 +14,7 @@ namespace hgl::ecs
         automatically_normalized = automatic;
         if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
         {
-            context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+            context->RenderData().InvalidateEntityRuntimePipeline(owner->GetEntityID());
             context->MarkTopologyChanged(TopologyChange::ModelTemplate);
         }
     }

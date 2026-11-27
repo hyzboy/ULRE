@@ -329,7 +329,7 @@ private:
             geometry_data->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()
                 ->GetOrCreateGeometryData(geometry_data->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
 
-            hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData * material_data = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             hgl::ecs::MaterialData::MaterialDataAuthoringResource row_resource{};
             row_resource = base_row;
             material_data->SetDataResource(row_resource);

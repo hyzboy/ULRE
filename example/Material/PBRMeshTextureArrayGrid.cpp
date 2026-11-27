@@ -394,7 +394,7 @@ private:
                 }
 
                 hgl::ecs::MaterialData *material_data_comp =
-                    ecs_world->GetOrCreateMaterialData(e);
+                    ecs_world->RenderData().GetOrCreateMaterialData(e);
                 if (!material_data_comp)
                     return false;
 

@@ -47,7 +47,7 @@ namespace hgl::ecs
         const uint32_t pass_index = shadow_pass ? 1u : 0u;
 
         const MaterialRuntimeSlot *instance_slot = model_ref->IsAutomaticallyNormalized()
-            ? world->GetMaterialRuntimeSlot(entity_id) : nullptr;
+            ? world->RenderData().GetMaterialRuntimeSlot(entity_id) : nullptr;
         MaterialRuntimeRowID active_row_id = INVALID_MATERIAL_RUNTIME_ROW_ID;
         if (model_ref->IsAutomaticallyNormalized())
         {
@@ -118,7 +118,7 @@ namespace hgl::ecs
                 continue;
             }
 
-            world->GetMaterialRuntimePipelineTable().Set(entity_id, render_pass, pipeline, pipeline_config, g, program);
+            world->RenderData().GetMaterialRuntimePipelineTable().Set(entity_id, render_pass, pipeline, pipeline_config, g, program);
             auto item = std::make_unique<ModelTemplateRenderItem>(
                 entity_id, transform, row_id, g, model_ref->GetTemplateID(),
                 render_pass, pipeline, pipeline_config, world);

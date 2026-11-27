@@ -179,7 +179,7 @@ private:
             transform.SetMobility(Mobility::Static);
 
             auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
             MaterialData::MaterialDataAuthoringResource named_struct{};
             named_struct = mtl_data_ssbo_accessor;

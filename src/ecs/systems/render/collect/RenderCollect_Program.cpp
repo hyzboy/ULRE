@@ -945,7 +945,7 @@ namespace hgl::ecs
             // 即便 program 身份不变（例如仅 cull_mode 等渲染状态变化）也必须重建
             // 管线。原失效点在组件级配方设置里，A2 随
             // 配方覆盖迁到数据层后，改由这里在"配方内容确实变了"时触发。
-            world->InvalidateEntityRuntimePipeline(primitive_comp->GetEntityID());
+            world->RenderData().InvalidateEntityRuntimePipeline(primitive_comp->GetEntityID());
         }
 
         if (!slot.program_dirty
@@ -1183,7 +1183,7 @@ namespace hgl::ecs
         // B5-b：管线缓存落世界级旁表（键 = 本实体；slot 里不放指针 ⇒ 行宽才能冻结）
         // EDS 1/2/3：管线本身不带渲染状态 ⇒ 同一份旁表里连同**解析出的动态渲染状态**
         // 一起存（两都按 pass 键控、同源解析）；批装配时按同一个 pass 取出，进合批键。
-        world->GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
+        world->RenderData().GetMaterialRuntimePipelineTable().Set(primitive_comp->GetEntityID(),
                                                      render_pass,
                                                      resolved_pipeline,
                                                      resolved_pipeline_config);

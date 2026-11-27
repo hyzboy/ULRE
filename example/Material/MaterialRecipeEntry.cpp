@@ -124,7 +124,7 @@ private:
         transform.SetMobility(Mobility::Static);
 
         auto primitive_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_entity);
-        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube_entity);
+        hgl::ecs::MaterialData *material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(cube_entity);
         const mtl::MaterialRecipe *loaded_recipe =
             GetRecipe("rcp:pack(ShaderLibrary):asset/recipe/Examples/Material/Phase2.MaterialRecipeEntry.Cube");
         if (!loaded_recipe)

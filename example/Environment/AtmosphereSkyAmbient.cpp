@@ -194,7 +194,7 @@ private:
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
-            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
+            hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(count));
             // 水平环绕（xz 平面圆上 5 点）+ 高度 1.0——位置互不重叠；

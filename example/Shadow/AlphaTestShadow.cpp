@@ -566,7 +566,7 @@ public:
             ground_shadow = shadow;   // D3 契约：运行期拨 receive_shadow / bias_multiplier
 
             auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&ground_primitive);
             // 纹理已由配方声明（ground_recipe 的 base_color = 纯白数组），实体端不再重复绑定
             material_data_comp->SetDataResource(material_accessor);
@@ -597,7 +597,7 @@ public:
             tf.SetLocalScale(glm::vec3(2.0f));
 
             auto prim = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(e);
-            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(e);
+            hgl::ecs::MaterialData *material_data_comp = e->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(e);
             prim->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(prim->GetOwnerID())->SetPrimitiveAsset(&cube_primitive);
 
             // CubeA 额外绑 opacity_mask（影子镂空）；CubeB 不绑 ⇒ fallback 1.0 ⇒ 影子实心。

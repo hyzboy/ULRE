@@ -115,7 +115,7 @@ private:
             if (!entity || strncmp(entity->GetName().c_str(), "GizmoAssetMove_", 15) != 0
              || !ecs_context->Spatial().IsEntityVisible(entity->GetEntityID()))
                 return;
-            const auto *material = ecs_context->GetMaterialData(entity->GetEntityID());
+            const auto *material = ecs_context->RenderData().GetMaterialData(entity->GetEntityID());
             if (material && material->HasDataResource()
              && !gizmo_rows.Contains(material->data_resource.data_index))
                 gizmo_rows.Add(material->data_resource.data_index);
@@ -225,7 +225,7 @@ private:
         plane_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(plane_entity);
-        hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(plane_entity);
+        hgl::ecs::MaterialData *material_data_comp = plane_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(plane_entity);
         plane_primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(plane_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&grid_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource plane_struct{};
         plane_struct = grid_mtl_data_ssbo_accessor;
@@ -240,7 +240,7 @@ private:
         cube_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
         auto cube_primitive_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_entity);
-        hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube_entity);
+        hgl::ecs::MaterialData *cube_material_data_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(cube_entity);
         cube_primitive_comp->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_primitive_comp->GetOwnerID())->SetPrimitiveAsset(&cube_asset);
         hgl::ecs::MaterialData::MaterialDataAuthoringResource cube_struct{};
         cube_struct = cube_mtl_data_ssbo_accessor;

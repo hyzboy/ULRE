@@ -30,7 +30,7 @@ namespace hgl::ecs
             MaterialData *FindMaterialDataOf(Entity *entity)
             {
                 ECSContext *context = entity ? entity->GetContextAs<ECSContext>() : nullptr;
-                return context ? context->GetMaterialData(entity) : nullptr;
+                return context ? context->RenderData().GetMaterialData(entity) : nullptr;
             }
 
             MaterialRuntimeTable *GetRuntimeTable(ECSContext *world)
@@ -65,7 +65,7 @@ namespace hgl::ecs
                 material_id = row && row->data_index_row != uint32_t(-1) ? row->data_index_row : 0u;
                 texture_id = row && row->material_texture_configuration.IsValid()
                     ? row->material_texture_configuration.row_index : 0u;
-                const MaterialData *data = world ? world->GetMaterialData(entity_id) : nullptr;
+                const MaterialData *data = world ? world->RenderData().GetMaterialData(entity_id) : nullptr;
                 if (data && data->has_data_resource && data->data_resource.data_index != uint32_t(-1))
                     material_id = data->data_resource.data_index;
             }

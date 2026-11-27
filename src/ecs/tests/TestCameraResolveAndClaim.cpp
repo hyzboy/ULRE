@@ -50,24 +50,24 @@ int main()
             return 1;
         }
 
-        if (world.GetDefaultCamera() != nullptr || CountCameras(world) != 0)
+        if (world.RenderData().GetDefaultCamera() != nullptr || CountCameras(world) != 0)
         {
             GLogError(u8"Test 1 Failed: 纯读改动了世界（默认相机=%p / 相机数=%u）",
-                      static_cast<const void *>(world.GetDefaultCamera()), CountCameras(world));
+                      static_cast<const void *>(world.RenderData().GetDefaultCamera()), CountCameras(world));
             return 1;
         }
 
         // 认领版：必须兜底生成常驻 fallback 并占 0 号槽（渲染契约不变）
         auto *fallback = cam_sys->EnsureActiveCamera();
 
-        if (!fallback || !world.IsFallbackCamera(fallback))
+        if (!fallback || !world.RenderData().IsFallbackCamera(fallback))
         {
             GLogError(u8"Test 1 Failed: 认领版必须生成常驻 fallback 相机");
             return 1;
         }
 
-        if (world.GetDefaultCamera() != fallback
-         || world.GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
+        if (world.RenderData().GetDefaultCamera() != fallback
+         || world.RenderData().GetCameraSlot(fallback) != CameraInfoStorage::kDefaultCameraSlot)
         {
             GLogError(u8"Test 1 Failed: fallback 未成为 0 号槽宿主");
             return 1;
@@ -103,7 +103,7 @@ int main()
             return 2;
         }
 
-        if (world.GetDefaultCamera() != nullptr)
+        if (world.RenderData().GetDefaultCamera() != nullptr)
         {
             GLogError(u8"Test 2 Failed: 前置断言失败 —— 搭建期不该有默认相机");
             return 2;
@@ -118,25 +118,25 @@ int main()
             return 2;
         }
 
-        if (world.GetDefaultCamera() != nullptr)
+        if (world.RenderData().GetDefaultCamera() != nullptr)
         {
             GLogError(u8"Test 2 Failed: **纯读认领了相机**（默认相机=%p）—— 只读意图不该改世界",
-                      static_cast<const void *>(world.GetDefaultCamera()));
+                      static_cast<const void *>(world.RenderData().GetDefaultCamera()));
             return 2;
         }
 
         // 认领版：把选中的相机升格为 0 号槽宿主
         auto *ensured = cam_sys->EnsureActiveCamera();
 
-        if (ensured != cam_a || world.GetDefaultCamera() != cam_a)
+        if (ensured != cam_a || world.RenderData().GetDefaultCamera() != cam_a)
         {
             GLogError(u8"Test 2 Failed: 认领版未把选中的相机升格为默认相机（ensured=%p default=%p）",
-                      static_cast<void *>(ensured), static_cast<void *>(world.GetDefaultCamera()));
+                      static_cast<void *>(ensured), static_cast<void *>(world.RenderData().GetDefaultCamera()));
             return 2;
         }
 
         // 认领之后再纯读：仍是它，默认相机不变
-        if (cam_sys->ResolveActiveCamera() != cam_a || world.GetDefaultCamera() != cam_a)
+        if (cam_sys->ResolveActiveCamera() != cam_a || world.RenderData().GetDefaultCamera() != cam_a)
         {
             GLogError(u8"Test 2 Failed: 认领后纯读结果/默认相机发生了变化");
             return 2;

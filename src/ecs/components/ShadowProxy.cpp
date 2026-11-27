@@ -14,7 +14,7 @@ namespace hgl::ecs
         cast_shadow = enable;
         if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
         {
-            context->InvalidateEntityRuntimePipeline(owner->GetEntityID());
+            context->RenderData().InvalidateEntityRuntimePipeline(owner->GetEntityID());
             context->BumpStaticSceneRevision();
         }
     }

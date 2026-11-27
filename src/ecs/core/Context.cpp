@@ -453,26 +453,6 @@ namespace hgl
         // ==== 相机（世界级资源：16 槽 × 帧槽，0 号槽恒为本世界默认相机）====
         // 「相机属于哪个世界 / 哪个槽」的唯一真源 = camera_info_storage 的槽账目（槽 → 宿主弱引用）。
 
-        CameraComponent* ECSContext::GetCamera(const uint32_t slot) const
-        {
-            return render_data.GetCamera(slot);
-        }
-
-        CameraComponent* ECSContext::GetDefaultCamera() const
-        {
-            return render_data.GetDefaultCamera();
-        }
-
-        bool ECSContext::SetDefaultCamera(const std::shared_ptr<CameraComponent>& camera)
-        {
-            return render_data.SetDefaultCamera(camera);
-        }
-
-        uint32_t ECSContext::GetCameraSlot(const CameraComponent* camera) const
-        {
-            return render_data.GetCameraSlot(camera);
-        }
-
         namespace
         {
             // 世界级「实体 → 组件」访问器的**核心**：调用方手里已有实体（`Entity*`）时走这里，
@@ -562,21 +542,6 @@ namespace hgl
                 return existing;
 
             return CreateComponent<CameraComponent>(owner, name);
-        }
-
-        bool ECSContext::ReleaseCameraSlot(const CameraComponent* camera)
-        {
-            return render_data.ReleaseCameraSlot(camera);
-        }
-
-        bool ECSContext::EnsureCameraSlot(CameraComponent* camera, const bool is_default)
-        {
-            return render_data.EnsureCameraSlot(camera, is_default);
-        }
-
-        CameraComponent* ECSContext::EnsureFallbackCamera()
-        {
-            return render_data.EnsureFallbackCamera();
         }
 
         // ── T2-c：组件行 → 系统组计数（组归属是**类型属性**，取自类型表）──
@@ -676,36 +641,6 @@ namespace hgl
                 MarkTopologyChanged(TopologyChange::EntityStructure);
         }
 
-        MaterialData* ECSContext::GetMaterialData(EntityID owner)
-        {
-            return render_data.GetMaterialData(owner);
-        }
-
-        const MaterialData* ECSContext::GetMaterialData(EntityID owner) const
-        {
-            return render_data.GetMaterialData(owner);
-        }
-
-        MaterialData* ECSContext::GetMaterialData(Entity *owner)
-        {
-            return render_data.GetMaterialData(owner);
-        }
-
-        const MaterialData* ECSContext::GetMaterialData(const Entity *owner) const
-        {
-            return render_data.GetMaterialData(owner);
-        }
-
-        MaterialData* ECSContext::GetOrCreateMaterialData(EntityID owner)
-        {
-            return render_data.GetOrCreateMaterialData(owner);
-        }
-
-        MaterialData* ECSContext::GetOrCreateMaterialData(Entity *owner)
-        {
-            return render_data.GetOrCreateMaterialData(owner);
-        }
-
         GeometryData* ECSContext::GetGeometryData(EntityID owner)
         {
             return ComponentOfEntity<GeometryData>(GetEntity(owner));
@@ -736,14 +671,6 @@ namespace hgl
             return GetOrAddComponentOfEntity<GeometryData>(owner);
         }
 
-        void ECSContext::InvalidateEntityRuntimePipeline(EntityID owner)
-        {
-            // B5-b：管线缓存已迁到世界级旁表（slot 里不放指针）
-            render_data.InvalidateEntityRuntimePipeline(owner);
-
-            // P1：解析出的 shader/管线身份失效 ⇒ 材质批的键可能变（拓扑类别）。
-            MarkTopologyChanged(TopologyChange::MaterialBinding);
-        }
 
     }//namespace ecs
 }//namespace hgl

@@ -526,7 +526,7 @@ namespace hgl::ecs
             const bool camera_in_this_world = (req.camera->world_owner == nullptr)
                                            || (req.camera->world_owner == context);
             const uint32_t override_camera_slot = camera_in_this_world
-                                                    ? context->GetCameraSlot(req.camera)
+                                                    ? context->RenderData().GetCameraSlot(req.camera)
                                                     : CameraInfoStorage::INVALID_SLOT;
             pass_scope.SetCameraSlot(CameraInfoStorage::IsValidSlot(override_camera_slot)
                                  ? override_camera_slot
@@ -586,7 +586,7 @@ namespace hgl::ecs
             {
                 GLogError("[WorldRenderRunner::RenderTo] 离屏 pass 的相机行落在主帧槽带：frame_index=%u "
                          "camera=\"%s\" slot=%u（主帧在途的相机行会被这个 pass 覆写）",
-                         frame_index, req.camera->GetName().c_str(), context->GetCameraSlot(req.camera));
+                         frame_index, req.camera->GetName().c_str(), context->RenderData().GetCameraSlot(req.camera));
             }
 
             if (auto cs = context->GetSystem<CameraSystem>())

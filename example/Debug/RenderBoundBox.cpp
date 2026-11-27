@@ -141,7 +141,7 @@ private:
     void CheckWireframe()
     {
         auto *target = ecs_context->GetRenderTarget();
-        auto &pipelines = ecs_context->GetMaterialRuntimePipelineTable();
+        auto &pipelines = ecs_context->RenderData().GetMaterialRuntimePipelineTable();
         for (const auto &box : bounding_boxes)
         {
             auto *program = pipelines.GetProgram(box->entity->GetEntityID(), target->GetRenderPass());
@@ -379,7 +379,7 @@ private:
             floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
             floor_mesh->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
             floor_mesh->primitive_comp = floor_mesh->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(floor_mesh->entity);
-            hgl::ecs::MaterialData *material_data_comp = floor_mesh->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(floor_mesh->entity);
+            hgl::ecs::MaterialData *material_data_comp = floor_mesh->entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(floor_mesh->entity);
 
             floor_mesh->transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             floor_mesh->transform.SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
@@ -407,7 +407,7 @@ private:
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             rm->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
             rm->primitive_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->entity);
-            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rm->entity);
+            hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(rm->entity);
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -450,7 +450,7 @@ private:
             bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
             bbox->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
             bbox->primitive_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(bbox->entity);
-            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(bbox->entity);
+            hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(bbox->entity);
 
             bbox->transform.SetParent(ecs_context->Spatial().GetTransformID(rm->entity->GetEntityID()));
 

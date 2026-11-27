@@ -243,7 +243,7 @@ private:
 
         sphere_transform = transform;
         sphere_primitive_component = primitive_component;
-        sphere_material_data = ecs_world->GetOrCreateMaterialData(sphere_entity);
+        sphere_material_data = ecs_world->RenderData().GetOrCreateMaterialData(sphere_entity);
 
         sphere_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         sphere_transform.SetLocalScale(glm::vec3(1.6f, 1.6f, 1.6f));

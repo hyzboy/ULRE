@@ -266,7 +266,7 @@ private:
 
             auto primitive = row_entities[row]->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(row_entities[row]);
             // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
-            row_entities[row]->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(row_entities[row]);
+            row_entities[row]->GetContextAs<hgl::ecs::ECSContext>()->RenderData().GetOrCreateMaterialData(row_entities[row]);
             primitive->GetOwner()->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(primitive->GetOwnerID())->SetPrimitiveAsset(&ruler_asset[row]);
 
             row_primitives[row] = primitive;

@@ -207,7 +207,7 @@ namespace
         Entity *core_entity = core.CreateEntity();
         EXPECT(core_entity && !core_entity->GetContextAs<ECSContext>());
         auto *geometry = ctx.GetOrCreateGeometryData(e1);
-        auto *material = ctx.GetOrCreateMaterialData(e1);
+        auto *material = ctx.RenderData().GetOrCreateMaterialData(e1);
         EXPECT(geometry && material);
         const auto authored = material->GetAuthoredGeneration();
         geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
@@ -224,14 +224,14 @@ namespace
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();
         EXPECT(ref != nullptr);
         EXPECT(ref->GetTemplateID() == 0u);
-        const auto initial_template_revision = ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        const auto initial_template_revision = ctx.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate);
         ref->SetTemplateBinding(7u);
-        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
+        EXPECT(ctx.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
         ref->SetTemplateBinding(7u);
-        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
+        EXPECT(ctx.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 1);
         ref->SetTemplateBinding(7u, true);
         EXPECT(ref->IsAutomaticallyNormalized());
-        EXPECT(ctx.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 2);
+        EXPECT(ctx.Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate) == initial_template_revision + 2);
 
         Entity *e2 = ctx.CreateEntity<Entity>("BatchB");
         GPUInstancedModelBatchComponent *batch = e2->AddComponent<GPUInstancedModelBatchComponent>();
@@ -448,27 +448,27 @@ namespace
 
         const EntityID first_id = first->GetEntityID();
         const EntityID second_id = second->GetEntityID();
-        auto *first_material = ctx.GetOrCreateMaterialData(first);
+        auto *first_material = ctx.RenderData().GetOrCreateMaterialData(first);
         EXPECT(first_material != nullptr);
         EXPECT(first_material && first_material->GetWorldRenderData() == &ctx.RenderData());
-        EXPECT(ctx.GetOrCreateMaterialData(second) != nullptr);
-        ctx.GetOrCreateMaterialRuntimeSlot(first_id);
+        EXPECT(ctx.RenderData().GetOrCreateMaterialData(second) != nullptr);
+        ctx.RenderData().GetOrCreateMaterialRuntimeSlot(first_id);
 
         graph::mtl::MaterialPipelineConfig config;
         config.wireframe = true;
-        auto &pipelines = ctx.GetMaterialRuntimePipelineTable();
+        auto &pipelines = ctx.RenderData().GetMaterialRuntimePipelineTable();
         pipelines.Set(first_id, nullptr, nullptr, config);
         pipelines.Set(second_id, nullptr, nullptr, config);
         EXPECT(pipelines.GetConfig(first_id, nullptr).wireframe);
         EXPECT(pipelines.GetConfig(second_id, nullptr).wireframe);
 
         ctx.DestroyEntity(first_id);
-        EXPECT(!ctx.GetMaterialData(first_id));
-        EXPECT(!ctx.GetMaterialRuntimeSlot(first_id));
+        EXPECT(!ctx.RenderData().GetMaterialData(first_id));
+        EXPECT(!ctx.RenderData().GetMaterialRuntimeSlot(first_id));
         EXPECT(!pipelines.GetConfig(first_id, nullptr).wireframe);
 
         ctx.Shutdown();
-        EXPECT(!ctx.GetMaterialData(second_id));
+        EXPECT(!ctx.RenderData().GetMaterialData(second_id));
         EXPECT(!pipelines.GetConfig(second_id, nullptr).wireframe);
     }
 }//namespace
