@@ -16,7 +16,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* LineRenderSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline(LineRenderPipeline::kName);
+        return context->PipelineRegistry().Get(LineRenderPipeline::kName);
     }
 
     void LineRenderSystem::OnRender(RenderPipelineBase* pipeline, hgl::graph::RenderCmdBuffer* cmd)

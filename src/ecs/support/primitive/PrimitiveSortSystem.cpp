@@ -13,7 +13,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* PrimitiveSortSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Primitive");
+        return context->PipelineRegistry().Get("Primitive");
     }
 
     void PrimitiveSortSystem::OnSort(RenderPipelineBase* pipeline)

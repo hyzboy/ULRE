@@ -111,7 +111,7 @@ namespace
         // devolved into a one-shot installer; Context stays element-agnostic
         // via this installer mechanism instead)
         auto pipeline = std::make_unique<hgl::ecs::PrimitiveRenderPipeline>(ctx);
-        ctx->RegisterRenderPipeline("Primitive", std::move(pipeline));
+        ctx->PipelineRegistry().Register("Primitive", pipeline.release());
         ctx->RegisterSystem<hgl::ecs::PrimitiveCullSystem>();
         ctx->RegisterSystem<hgl::ecs::PrimitiveSortSystem>();
         ctx->RegisterSystem<hgl::ecs::PrimitiveBuildSystem>();
@@ -155,7 +155,7 @@ namespace
         auto text_pipeline = std::make_unique<hgl::ecs::TextRenderPipeline>();
         text_pipeline->SetWorld(ctx);
         text_pipeline->SetRenderContext(ctx->GetRenderContext());
-        ctx->RegisterRenderPipeline("Text", std::move(text_pipeline));
+        ctx->PipelineRegistry().Register("Text", text_pipeline.release());
         ctx->RegisterSystem<hgl::ecs::TextCollectSystem>();
         ctx->RegisterSystem<hgl::ecs::TextBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::TextSyncSystem>();
@@ -178,7 +178,7 @@ namespace
 
         // Register the Line pipeline and its thin proxy systems directly
         auto line_pipeline = std::make_unique<hgl::ecs::LineRenderPipeline>(ctx);
-        ctx->RegisterRenderPipeline("Line", std::move(line_pipeline));
+        ctx->PipelineRegistry().Register("Line", line_pipeline.release());
         ctx->RegisterSystem<hgl::ecs::LineCollectSystem>();
         ctx->RegisterSystem<hgl::ecs::LineBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::LineRenderSystem>();
@@ -195,7 +195,7 @@ namespace
             simple_line_bounds_update_system->SetWorld(ctx);
 
         auto simple_line_pipeline = std::make_unique<hgl::ecs::SimpleLineRenderPipeline>(ctx);
-        ctx->RegisterRenderPipeline(hgl::ecs::SimpleLineRenderPipeline::kName, std::move(simple_line_pipeline));
+        ctx->PipelineRegistry().Register(hgl::ecs::SimpleLineRenderPipeline::kName, simple_line_pipeline.release());
         ctx->RegisterSystem<hgl::ecs::SimpleLineCollectSystem>();
         ctx->RegisterSystem<hgl::ecs::SimpleLineBuildSystem>();
         ctx->RegisterSystem<hgl::ecs::SimpleLineRenderSystem>();

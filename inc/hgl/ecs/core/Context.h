@@ -34,6 +34,7 @@
 #include<hgl/ecs/support/render/WorldRenderData.h>
 #include<hgl/ecs/support/render/WorldGPUResources.h>
 #include<hgl/ecs/support/render/WorldRenderRunner.h>
+#include<hgl/ecs/support/render/WorldRenderPipelineRegistry.h>
 #include<hgl/ecs/support/material/MaterialVariantTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/ModelTemplateMaterialTable.h>
@@ -149,10 +150,7 @@ namespace hgl
             // 渲染执行器与调度器（渲染帧生命周期、Pass 调度、阶段驱动与帧缓存）
             WorldRenderRunner render_runner;
 
-            /// Unified render pipeline registry: name → RenderPipelineBase
-            /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
-            /// Supports dynamic enable/disable per SystemGroup
-            hgl::UnorderedMap<AnsiString, RenderPipelineBase*> render_pipelines;
+            WorldRenderPipelineRegistry render_pipeline_registry;
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -460,21 +458,8 @@ namespace hgl
 
             /// Asset world registry (Phase 3)
 
-            /// Unified render pipeline registry
-            /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")
-            /// @param name: pipeline group name from SystemGroup
-            /// @return pointer to RenderPipelineBase, or nullptr if not registered
-            RenderPipelineBase* GetRenderPipeline(const char* name);
-            RenderPipelineBase* GetRenderPipeline(const AnsiString& name);
-
-            /// Register a render pipeline (typically called during system group installation)
-            /// @param name: pipeline group name
-            /// @param pipeline: newly created pipeline instance
-            void RegisterRenderPipeline(const char* name, std::unique_ptr<RenderPipelineBase> pipeline);
-            void RegisterRenderPipeline(const AnsiString& name, std::unique_ptr<RenderPipelineBase> pipeline);
-
-            /// Clear and release all registered render pipelines
-            void ClearPipelines();
+            WorldRenderPipelineRegistry& PipelineRegistry() { return render_pipeline_registry; }
+            const WorldRenderPipelineRegistry& PipelineRegistry() const { return render_pipeline_registry; }
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"

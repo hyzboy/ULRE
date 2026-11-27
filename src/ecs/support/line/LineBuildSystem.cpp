@@ -15,7 +15,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* LineBuildSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline(LineRenderPipeline::kName);
+        return context->PipelineRegistry().Get(LineRenderPipeline::kName);
     }
 
     void LineBuildSystem::OnBuild(RenderPipelineBase* pipeline)

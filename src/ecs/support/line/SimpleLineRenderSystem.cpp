@@ -14,7 +14,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* SimpleLineRenderSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline(SimpleLineRenderPipeline::kName);
+        return context->PipelineRegistry().Get(SimpleLineRenderPipeline::kName);
     }
 
     void SimpleLineRenderSystem::OnRender(RenderPipelineBase* pipeline, hgl::graph::RenderCmdBuffer* cmd)

@@ -13,7 +13,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* PrimitiveCullSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Primitive");
+        return context->PipelineRegistry().Get("Primitive");
     }
 
     void PrimitiveCullSystem::OnCull(RenderPipelineBase* pipeline)

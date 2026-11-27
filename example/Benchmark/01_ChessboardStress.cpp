@@ -959,7 +959,7 @@ private:
         if (!ecs_context)
             return;
 
-        auto *rp = dynamic_cast<PrimitiveRenderPipeline *>(ecs_context->GetRenderPipeline("Primitive"));
+        auto *rp = dynamic_cast<PrimitiveRenderPipeline *>(ecs_context->PipelineRegistry().Get("Primitive"));
 
         if (!rp)
             return;

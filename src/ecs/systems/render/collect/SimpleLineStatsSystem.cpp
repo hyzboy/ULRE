@@ -25,7 +25,7 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto* raw = world->GetRenderPipeline(SimpleLineRenderPipeline::kName);
+        auto* raw = world->PipelineRegistry().Get(SimpleLineRenderPipeline::kName);
         if (!raw)
             return;
 

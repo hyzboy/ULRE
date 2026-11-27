@@ -14,7 +14,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* TextSyncSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Text");
+        return context->PipelineRegistry().Get("Text");
     }
 
     void TextSyncSystem::OnSync(RenderPipelineBase* pipeline)

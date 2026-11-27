@@ -14,7 +14,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* TextOverlayRenderSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Text");
+        return context->PipelineRegistry().Get("Text");
     }
 
     void TextOverlayRenderSystem::OnRender(RenderPipelineBase* pipeline, hgl::graph::RenderCmdBuffer* cmd)

@@ -35,7 +35,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* PrimitiveRenderSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Primitive");
+        return context->PipelineRegistry().Get("Primitive");
     }
 
     void PrimitiveRenderSystem::RenderBatches(ECSContext* context, hgl::graph::RenderCmdBuffer* cmdBuffer, hgl::graph::mtl::RenderLayer layer)

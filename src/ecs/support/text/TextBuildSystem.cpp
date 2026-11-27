@@ -13,7 +13,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* TextBuildSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Text");
+        return context->PipelineRegistry().Get("Text");
     }
 
     void TextBuildSystem::OnBuild(RenderPipelineBase* pipeline)

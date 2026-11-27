@@ -14,7 +14,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* PrimitiveUI2DRenderSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Primitive");
+        return context->PipelineRegistry().Get("Primitive");
     }
 
     void PrimitiveUI2DRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)

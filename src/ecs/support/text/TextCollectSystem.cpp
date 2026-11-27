@@ -14,7 +14,7 @@ namespace hgl::ecs
 
     RenderPipelineBase* TextCollectSystem::GetPipeline(ECSContext* context)
     {
-        return context->GetRenderPipeline("Text");
+        return context->PipelineRegistry().Get("Text");
     }
 
     void TextCollectSystem::OnCollect(RenderPipelineBase* pipeline)
