@@ -39,8 +39,31 @@ namespace hgl
                 element_types.Add(name);
             });
 
+            // Restore the deterministic name order used by the former
+            // ECSContext::GetAllRenderElementTypes() facade. Element registration
+            // metadata must not depend on UnorderedMap iteration order.
+            AnsiStringList sorted_element_types;
+            while (!element_types.IsEmpty())
+            {
+                AnsiString *first = nullptr;
+                for (AnsiString *element_type : element_types)
+                {
+                    if (!element_type)
+                        continue;
+
+                    if (!first || element_type->Comp(*first) < 0)
+                        first = element_type;
+                }
+
+                if (!first)
+                    break;
+
+                sorted_element_types.Add(*first);
+                element_types.Delete(*first);
+            }
+
             size_t added = 0;
-            for (AnsiString *element_type : element_types)
+            for (AnsiString *element_type : sorted_element_types)
             {
                 if (!element_type)
                     continue;
