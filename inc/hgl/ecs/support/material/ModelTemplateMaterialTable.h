@@ -21,7 +21,6 @@ namespace hgl::ecs
     struct SinglePrimitiveTemplateKey
     {
         uint32_t geometry_id = 0;
-        MaterialRuntimeRowID runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
         bool can_cast_shadow = true;
         bool is_opaque = true;
         graph::PrimitiveType primitive_type = graph::PrimitiveType::Triangles;
@@ -29,7 +28,6 @@ namespace hgl::ecs
         bool operator==(const SinglePrimitiveTemplateKey &rhs) const
         {
             return geometry_id == rhs.geometry_id
-                && runtime_row == rhs.runtime_row
                 && can_cast_shadow == rhs.can_cast_shadow
                 && is_opaque == rhs.is_opaque
                 && primitive_type == rhs.primitive_type;
@@ -41,7 +39,7 @@ namespace hgl::ecs
         std::size_t operator()(const SinglePrimitiveTemplateKey &k) const
         {
             hgl::hash::FNV1aHasher64 h;
-            h << k.geometry_id << k.runtime_row << (k.can_cast_shadow ? 1u : 0u) << (k.is_opaque ? 1u : 0u);
+            h << k.geometry_id << (k.can_cast_shadow ? 1u : 0u) << (k.is_opaque ? 1u : 0u);
             h << static_cast<uint32_t>(k.primitive_type);
             return static_cast<std::size_t>(h.Result());
         }

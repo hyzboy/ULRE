@@ -152,9 +152,13 @@ namespace hgl::ecs
 
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t geometry_id  = record.draw_geometry_id;
-                const uint32_t material_id  = (material_row->data_index_row != uint32_t(-1))
+                const MaterialData *mat_data = world->GetMaterialData(entity_id);
+                uint32_t material_id = (material_row->data_index_row != uint32_t(-1))
                     ? material_row->data_index_row : 0u;
-                const uint32_t texture_id   = material_row->material_texture_configuration.IsValid()
+                if (mat_data && mat_data->has_data_resource
+                 && mat_data->data_resource.data_index != uint32_t(-1))
+                    material_id = mat_data->data_resource.data_index;
+                const uint32_t texture_id = material_row->material_texture_configuration.IsValid()
                     ? material_row->material_texture_configuration.row_index : 0u;
 
                 const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();

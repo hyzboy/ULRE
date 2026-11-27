@@ -416,7 +416,6 @@ namespace hgl::ecs
         // 检查缓存
         SinglePrimitiveTemplateKey cache_key;
         cache_key.geometry_id = geometry_id;
-        cache_key.runtime_row = desc.material_input.runtime_row;
         cache_key.can_cast_shadow = desc.can_cast_shadow;
         cache_key.is_opaque = desc.is_opaque;
         cache_key.primitive_type = desc.primitive_type;
@@ -515,7 +514,7 @@ namespace hgl::ecs
         binding.template_id = template_id;
         if (desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
             binding.owned_part_rows.Add(desc.material_input.runtime_row);
-        binding.owns_gpu_rows = true;
+        binding.owns_gpu_rows = false;
 
         TemplateShadingGroupDesc grp;
         grp.runtime_row = desc.material_input.runtime_row;

@@ -192,7 +192,6 @@ namespace
 
         SinglePrimitiveTemplateKey key;
         key.geometry_id = kGeoID;
-        key.runtime_row = kRow;
         key.can_cast_shadow = true;
         key.is_opaque = true;
 
@@ -506,11 +505,13 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString collect_src, batch_src, template_src, shader_src;
+        AnsiString collect_src, batch_src, template_src, builder_src, replay_src, shader_src;
 
         if (!ReadCollectSources(collect_src)
          || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src)
          || !ReadSource(OS_TEXT("inc/hgl/ecs/support/material/ModelTemplateMaterialTable.h"), template_src)
+         || !ReadSource(OS_TEXT("src/ecs/support/material/ModelTemplateBuilder.cpp"), builder_src)
+         || !ReadSource(OS_TEXT("src/ecs/systems/render/collect/RenderCollect_CacheReplay.cpp"), replay_src)
          || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), shader_src))
         {
             GLogError(u8"TestMultiMaterialModelTemplate: 无法读取源文件");
@@ -578,23 +579,41 @@ namespace
             GLogError(u8"TestMultiMaterialModelTemplate 源码契约缺失: %s", c.why);
         }
 
-        // Baseline audit for the pre-simplification implementation.
-        // Phase 2/3 replace these with direct per-instance and shared-template contracts.
-        if (!ContainsToken(template_src, "runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID"))
+        // Simplification contracts: data rows are per-instance facts, while template identity
+        // is shared across compatible geometries and rendering states.
+        if (ContainsToken(builder_src, "cache_key.runtime_row"))
         {
             ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: runtime_row 模板键字段");
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约违反: runtime_row 仍参与单图元模板键");
         }
-        if (!ContainsToken(template_src, "<< k.runtime_row"))
+        if (!ContainsToken(template_src, "h << k.geometry_id << (k.can_cast_shadow ? 1u : 0u)"))
         {
             ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: runtime_row 模板键哈希");
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 单图元模板共享哈希");
         }
-        if (!ContainsToken(shader_src, "(has_part_mtl ? part.material_id : ids_blk.material_id)")
-         || !ContainsToken(shader_src, "group_route.w != 0u"))
+        if (!ContainsToken(builder_src, "binding.owns_gpu_rows = false"))
         {
             ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: GPU 三段材质行回退");
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 单图元模板不占有 GPU 材质行");
+        }
+        if (ContainsToken(shader_src, "has_part_mtl")
+         || ContainsToken(shader_src, "part.material_id")
+         || ContainsToken(shader_src, "part.texture_id"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约违反: GPU 剔除仍回退部件行");
+        }
+        if (!ContainsToken(shader_src, "const uint material_id = group_route.w != 0u ? group_route.y : ids_blk.material_id")
+         || !ContainsToken(shader_src, "const uint texture_id  = group_route.w != 0u ? group_route.z : ids_blk.texture_id"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: GPU 材质行直通");
+        }
+        if (!ContainsToken(replay_src, "mat_data && mat_data->has_data_resource")
+         || !ContainsToken(replay_src, "mat_data->data_resource.data_index"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 缓存重放未复用实体专属材质行");
         }
 
         return ok;
