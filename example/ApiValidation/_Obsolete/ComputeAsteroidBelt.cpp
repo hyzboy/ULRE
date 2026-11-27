@@ -5,7 +5,7 @@
 // 特性：
 // 1. 中央巨型主星（Planet Sphere，半径 35.0）
 // 2. 1,000,000 颗陨星环绕轨道构成的行星环（半径 70.0 ~ 220.0）
-// 3. 涵盖 PBRSpheres 中的全部 10 种内建几何体（Sphere, Dome, Cone, Cylinder, Torus, HollowCylinder, HexSphere, Capsule, TaperedCapsule, Cube），每种各 100,000 颗
+// 3. 涵盖 PBRMeshTextureArrayGrid 中的全部 10 种内建几何体（Sphere, Dome, Cone, Cylinder, Torus, HollowCylinder, HexSphere, Capsule, TaperedCapsule, Cube），每种各 100,000 颗
 // 4. 10 种几何体对应 10 种独特的太空矿物色谱（通过 EmissiveSurfaceRow SSBO 区分）
 // 5. GPU-Driven 全 Compute Shader 模拟：
 //    - 开普勒轨道自转差速模拟（Keplerian differential rotation: 内圈快、外圈慢）
@@ -402,7 +402,7 @@ private:
         if (!planet_geometry)
             return false;
 
-        // 2. 创建 10 种代表陨星群的内建几何体 (来自 PBRSpheres)
+        // 2. 创建 10 种代表陨星群的内建几何体 (来自 PBRMeshTextureArrayGrid)
         builtin_geometries[0] = create_geometry([](GeometryCreater *pc)
         {
             return CreateSphere(pc, 48);

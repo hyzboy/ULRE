@@ -1,3 +1,4 @@
+// PBRMeshTextureArrayGrid —— 10×10 的多几何体 × 贴图数组图层 × PBR 数据行网格。
 // 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal 纹理（Albedo+Normal）
 // 通过 metallic/roughness 参数渐变来控制材质
@@ -76,11 +77,11 @@ static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 static constexpr const char * PBR_GRID_DATA_PATH =
     "mtldata:pack(ShaderLibrary):asset/material_data/pbr_10x10_grid";
 
-class PBRSpheresApp : public ulre_example::ExampleAppBase
+class PBRMeshTextureArrayGridApp : public ulre_example::ExampleAppBase
 {
 public:
 
-    PBRSpheresApp()
+    PBRMeshTextureArrayGridApp()
     {
         SetupExampleConfig({
             "PBR",
@@ -473,7 +474,7 @@ private:
 
 public:
 
-    ~PBRSpheresApp()
+    ~PBRMeshTextureArrayGridApp()
     {
         // 共享顶点池的几何由 GeometryAssetRegistry 持有：先销毁几何，再销毁顶点池
         if (auto *registry = GetGeometryAssetRegistry())
@@ -536,5 +537,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<PBRSpheresApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10"), argc, argv, 1280, 720);
+    return RunFramework<PBRMeshTextureArrayGridApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10"), argc, argv, 1280, 720);
 }

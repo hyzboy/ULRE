@@ -87,7 +87,7 @@ namespace
     // 10 种 PBR 地面材质的贴图顺序（层号 → 文件夹）搬到了 texarray 规约里：
     //   ShaderLibrary/asset/texarray/pbr_10x10_baseColor.texarray.toml
     //   ShaderLibrary/asset/texarray/pbr_10x10_normal.texarray.toml
-    // 那两张数组与 PBRSpheres 示例共用同一份规约（文件夹顺序完全一致）。
+    // 那两张数组与 PBRMeshTextureArrayGrid 示例共用同一份规约（文件夹顺序完全一致）。
     //
     // 三张数组的 URI 现在写在配方文件里：
     //   CascadeShadowMap.Lit.recipe.toml       ⇒ base_color / normal（pbr_10x10_*）

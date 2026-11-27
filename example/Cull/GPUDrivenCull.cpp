@@ -71,7 +71,7 @@ namespace
     }
 
     // ⚠ 世界是 **Z 轴向上**（相机 `forward.z = sin(pitch)`、yaw 绕 Z）⇒ 水平面 = XY、竖向 = Z。
-    // 本示例摆**地板式方阵**（X 纵深 × Y 横向、全部贴 Z=0），与 PBRSpheres 同款布局；
+    // 本示例摆**地板式方阵**（X 纵深 × Y 横向、全部贴 Z=0），与 PBRMeshTextureArrayGrid 同款布局；
     // 相机自上方俯视 + 轨道旋转。
     constexpr uint  GRID_DIM     = 8;
     constexpr uint  CUBE_COUNT   = GRID_DIM * GRID_DIM;

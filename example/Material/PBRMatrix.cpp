@@ -6,7 +6,7 @@
 // 无任何贴图（配方不带 [[textures]]，数据行底色统一 0.72 灰、fresnel 走缺省 0.04），
 // 用来肉眼检视阶段一 BRDF（Correlated GGX / Smith / 解析 DFG / 能量补偿）的正确性。
 //
-// 自检台架（与 PBRSpheres 同款，共用 example/Shared/FrameDigest.h）：
+// 自检台架（与 PBRMeshTextureArrayGrid 同款，共用 example/Shared/FrameDigest.h）：
 //   PBRM_SELFCHECK=1  第 8 帧冻结回读 → {尺寸, distinct 下限, FNV-1a64} 比对内联常量；
 //   PBRM_FRAMES=N     定帧退出（性能/冒烟）；
 //   PBRM_PITCH / PBRM_YAW / PBRM_DIST / PBRM_TX / PBRM_Z  相机覆盖（敏感性对照）。
@@ -47,7 +47,7 @@ using namespace hgl::ecs;
 
 namespace
 {
-    // 10×10 网格参数（与 PBRSpheres 同口径，方便两例并排对比）
+    // 10×10 网格参数（与 PBRMeshTextureArrayGrid 同口径，方便两例并排对比）
     constexpr uint GRID_SIZE       = 10;    // 每轴球数
     constexpr float SPHERE_SPACING = 2.5f;  // 中心间距
 
@@ -123,7 +123,7 @@ private:
             return false;
         }
 
-        // 与 PBRSpheres 同型的标准纹理坐标顶点格式（球几何自带 UV，本示例不采样）
+        // 与 PBRMeshTextureArrayGrid 同型的标准纹理坐标顶点格式（球几何自带 UV，本示例不采样）
         GeometryVertexFormat gvf{
             {VertexSemantic::Position, VF_V3F},
             {VertexSemantic::TexCoord, VF_V2F},

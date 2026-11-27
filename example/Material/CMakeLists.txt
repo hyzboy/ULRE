@@ -1,7 +1,7 @@
 ﻿# 材质：PBR/Lit 配方、材质数据行(SSBO)、纹理集、运行时切换与 MaterialRecipe 入口。
 
 CreateProject(MaterialRecipeEntry            MaterialRecipeEntry.cpp)
-CreateProject(PBRSpheres                     PBRSpheres.cpp)
+CreateProject(PBRMeshTextureArrayGrid         PBRMeshTextureArrayGrid.cpp)
 CreateProject(PBRMatrix                      PBRMatrix.cpp)
 CreateProject(PBRAdvanced                    PBRAdvanced.cpp)
 CreateProject(SingleSphereMaterialSwitch     SingleSphereMaterialSwitch.cpp)
