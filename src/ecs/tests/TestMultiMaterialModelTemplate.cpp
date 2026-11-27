@@ -506,10 +506,12 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString collect_src, batch_src;
+        AnsiString collect_src, batch_src, template_src, shader_src;
 
         if (!ReadCollectSources(collect_src)
-         || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src))
+         || !ReadSource(OS_TEXT("src/ecs/support/pipeline/RenderBatchPipeline.cpp"), batch_src)
+         || !ReadSource(OS_TEXT("inc/hgl/ecs/support/material/ModelTemplateMaterialTable.h"), template_src)
+         || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), shader_src))
         {
             GLogError(u8"TestMultiMaterialModelTemplate: 无法读取源文件");
             return false;
@@ -574,6 +576,25 @@ namespace
 
             ok = false;
             GLogError(u8"TestMultiMaterialModelTemplate 源码契约缺失: %s", c.why);
+        }
+
+        // Baseline audit for the pre-simplification implementation.
+        // Phase 2/3 replace these with direct per-instance and shared-template contracts.
+        if (!ContainsToken(template_src, "runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: runtime_row 模板键字段");
+        }
+        if (!ContainsToken(template_src, "<< k.runtime_row"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: runtime_row 模板键哈希");
+        }
+        if (!ContainsToken(shader_src, "(has_part_mtl ? part.material_id : ids_blk.material_id)")
+         || !ContainsToken(shader_src, "group_route.w != 0u"))
+        {
+            ok = false;
+            GLogError(u8"TestMultiMaterialModelTemplate 基线契约缺失: GPU 三段材质行回退");
         }
 
         return ok;
