@@ -459,6 +459,49 @@ namespace
         return true;
     }
 
+    // ── 2d. 实体专属材质数据行直通 4-ID 事实表测试 ────────────────────
+
+    bool TestEntityDedicatedMaterialDataRowFact()
+    {
+        ECSContext context("TestDedicatedMatDataContext");
+        Entity *entity = context.CreateEntity();
+        if (!entity)
+            return false;
+
+        MaterialData *mat_data = context.GetOrCreateMaterialData(entity);
+        if (!mat_data)
+            return false;
+
+        // 设置专属材质数据行 (data_index = 42u, 属于 PBRSurface 池)
+        MaterialData::MaterialDataAuthoringResource res{};
+        res.ssbo_type = graph::GlobalSSBOType::PBRSurface;
+        res.ssbo_id = 1u;
+        res.data_index = 42u;
+
+        if (!mat_data->SetDataResource(res))
+            return false;
+
+        if (!mat_data->HasDataResource() || mat_data->data_resource.data_index != 42u)
+            return false;
+
+        // 验证写入实体 4-ID 事实表
+        const uint32_t pass_index = 0u;
+        graph::RenderItemDescriptor ids{};
+        ids.transform_id = 10u;
+        ids.geometry_id = 0u;
+        ids.material_id = mat_data->data_resource.data_index;
+        ids.texture_id = 5u;
+
+        context.GetEntityRenderIDTable().SetRenderIDs(pass_index, entity->GetEntityID(), ids);
+
+        const auto *read_ids = context.GetEntityRenderIDTable().Row(pass_index, entity->GetEntityID().index);
+        if (!read_ids || read_ids->material_id != 42u || read_ids->texture_id != 5u)
+            return false;
+
+        context.DestroyEntity(entity->GetEntityID());
+        return true;
+    }
+
     // ── 3. 源码契约测试（验证 Step 1.4.4 与 1.4.5 的核心修改）──────────
 
     bool TestSourceContracts()
@@ -507,6 +550,9 @@ namespace
             { collect_src,
               "NoModelTemplate",
               "主收集循环必须彻底清理旧单图元物化分支，仅保留纯模板快线与 NoModelTemplate 兜底" },
+            { collect_src,
+              "mat_data->has_data_resource",
+              "4-ID 事实表必须优先消费实体专属材质数据行 (data_resource.data_index)" },
 
             // 批处理流水线多组支持契约
             { batch_src,
@@ -544,6 +590,7 @@ int main()
     Check(TestTemplateRenderItemCarrier(), "2. ModelTemplateRenderItem 载体项属性");
     Check(TestGroupPipelineCache(), "2c. Group pipeline isolation, pass mismatch and entity invalidation");
     Check(TestGPUModelRefBindingAndFacts(), "2b. 模型引用绑定与 GPU 事实纯净化");
+    Check(TestEntityDedicatedMaterialDataRowFact(), "2d. 实体专属材质数据行直通 4-ID 事实表");
     Check(TestSourceContracts(), "3. 收集快线与批处理多组源码契约");
 
     if (g_failed > 0)

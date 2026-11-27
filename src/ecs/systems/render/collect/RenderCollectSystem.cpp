@@ -2497,9 +2497,16 @@ namespace hgl::ecs
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t pass_index = shadow_pass ? 1u : 0u;
 
-                // 提取材质 4-ID 事实（默认回退模板 group 0）
+                // 提取材质 4-ID 事实（优先采用实体专属材质数据行，默认回退模板 group 0）
                 uint32_t fact_material_id = 0u;
                 uint32_t fact_texture_id = 0u;
+
+                const MaterialData *mat_data = world->GetMaterialData(entity_id);
+                if (mat_data && mat_data->has_data_resource)
+                {
+                    fact_material_id = mat_data->data_resource.data_index;
+                }
+
                 MaterialRuntimeRowID active_row_id = INVALID_MATERIAL_RUNTIME_ROW_ID;
                 if (!binding->groups.IsEmpty())
                 {
@@ -2509,7 +2516,7 @@ namespace hgl::ecs
                 {
                     if (const MaterialRuntimeRow *mat_row = current_runtime_table ? current_runtime_table->Get(active_row_id) : nullptr)
                     {
-                        if (mat_row->data_index_row != uint32_t(-1))
+                        if (fact_material_id == 0u && mat_row->data_index_row != uint32_t(-1))
                             fact_material_id = mat_row->data_index_row;
                         if (mat_row->material_texture_configuration.IsValid())
                             fact_texture_id = mat_row->material_texture_configuration.row_index;
