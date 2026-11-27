@@ -32,7 +32,7 @@ namespace hgl::ecs
 
     void MaterialBatch::Clear()
     {
-        items.clear();
+        items.Clear();
         texture_reference_base_addr = 0;
         icb_count_buffer = nullptr;
         // T4c3c：切片**按 pass 存**（下标 = `RenderPassSlot`）
@@ -57,7 +57,7 @@ namespace hgl::ecs
         if (!item)
             return;
 
-        items.push_back(item);
+        items.Add(item);
     }
 
 }//namespace hgl::ecs

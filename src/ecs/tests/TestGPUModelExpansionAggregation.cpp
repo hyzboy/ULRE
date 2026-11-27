@@ -456,7 +456,7 @@ namespace
             const char *why;
         } kCpuChecks[] =
         {
-            { "bucket_capacity[grp.group_bucket + s] +=",
+            { "bucket_drafts[static_cast<int>(grp.group_bucket + s)].capacity +=",
               "容量必须逐实例累加到**模板组**的槽上（聚合而非每实例一组桶）" },
             { "const uint32_t group_size = MeshDispatchGroupSize(batch_is_lines);",
               "CPU 必须用 MeshDispatchGroupSize 单一真源下发组大小" },
@@ -468,7 +468,7 @@ namespace
               "模板实体必须按实体写回**组表偏移**（二级表寻址）" },
             { "gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset,",
               "各组的块内首桶号必须回填进二级组表" },
-            { "need_rows += cap;",
+            { "need_rows += bucket_drafts[bucket_index].capacity;",
               "竞技场前置校验必须按 Σ(1 + 容量) 计（实例行连续占用）" },
         };
 

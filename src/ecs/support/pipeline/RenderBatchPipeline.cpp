@@ -3,6 +3,7 @@
 #include<hgl/ecs/support/cull/BoundingVolumeCull.h>
 #include<hgl/ecs/support/storage/PerfTimer.h>
 #include<hgl/ecs/support/storage/FrameProfiler.h>
+#include<hgl/type/ValueArray.h>
 #include<source_location>
 #include<cmath>
 #include<cstdlib>
@@ -51,6 +52,12 @@ namespace hgl::ecs
 {
     namespace
     {
+        struct DrawBucketDraft
+        {
+            uint32_t geometry_id = 0;
+            uint32_t capacity = 0;
+        };
+
         // 材质来源判据已收敛为实体级自由函数 HasAnyMaterialSource(Entity*)（support/PrimitiveState.h）。
 
         // 材质是否含 mesh stage（ShaderGen 材质恒是——mesh 为唯一顶点路径）
@@ -538,7 +545,7 @@ namespace hgl::ecs
             // 系统的 `items.empty()` 早退）都以空批跳过 ⇒ 不发绘制命令（CPU 侧的 ICB / 行表
             // 构建链已随 2026-10-14 批 D 整族删除）。标签留无效 ⇒ cull 也不为本批写行。
             if (b)
-                b->items.clear();
+                b->items.Clear();
         };
 
         /// T5：待接管的批（**一个批 = 若干连续桶 + 一段连续实例行**）
@@ -566,8 +573,7 @@ namespace hgl::ecs
         uint32_t *tags = nullptr;
 
         // 模板部件桶草稿，跨批复用。
-        std::vector<uint32_t> bucket_geometry;    // 桶 → geometry_id
-        std::vector<uint32_t> bucket_capacity;    // 桶 → 容量（= 该几何体的项数）
+        ValueArray<DrawBucketDraft> bucket_drafts; // 桶的几何与容量草稿
 
         // T3.1 模板实体：本批的**模板部件桶组**草稿。
         // 一个模板在一批里占 `part_bucket_count` 个**连续**桶（桶组），槽 i 对应
@@ -584,8 +590,8 @@ namespace hgl::ecs
             uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase; ///< 二级组表偏移
         };
 
-        std::vector<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
-        std::vector<uint32_t> template_entity_group;          // 项 → 组下标（UINT32_MAX = 非模板项）
+        ValueArray<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
+        ValueArray<uint32_t> template_entity_group;           // 项 → 组下标（UINT32_MAX = 非模板项）
 
         // A shared template can have different effective bindings in this pass.
         // Packing two uint32 IDs is lossless; equality is not based on a hash.
@@ -616,8 +622,7 @@ namespace hgl::ecs
             //  本类里同名的那套 mesh per-draw 参数表构建 —— 两者都已不在。）
             const char *why = nullptr;
 
-            bucket_geometry.clear();
-            bucket_capacity.clear();
+            bucket_drafts.Clear();
 
             if (next_index >= GPUCullSystem::kMaxBatches)
                 why = "接管素材桶数超 kMaxBatches(1024)";
@@ -632,8 +637,10 @@ namespace hgl::ecs
                 // = 展开行数，与旧口径等同，不浪费竞技场行。
                 if (!why)
                 {
-                    template_groups.clear();
-                    template_entity_group.assign(item_count, UINT32_MAX);
+                    template_groups.Clear();
+                    template_entity_group.Clear();
+                    for (size_t i = 0; i < item_count; ++i)
+                        template_entity_group.Add(UINT32_MAX);
 
                     for (size_t i = 0; i < item_count && !why; ++i)
                     {
@@ -721,7 +728,7 @@ namespace hgl::ecs
 
                         uint32_t gi = UINT32_MAX;
 
-                        for (uint32_t g = 0; g < uint32_t(template_groups.size()); ++g)
+                        for (uint32_t g = 0; g < static_cast<uint32_t>(template_groups.GetCount()); ++g)
                             if (template_groups[g].template_id == ref->GetTemplateID()
                              && template_groups[g].shading_group == target_group
                              && template_groups[g].group_table_offset == group_table_offset)
@@ -733,21 +740,22 @@ namespace hgl::ecs
                         if (gi == UINT32_MAX)
                         {
                             // 首次出现：建组（槽几何体来自该模板该组的部件事实）
-                            gi = uint32_t(template_groups.size());
-                            template_groups.push_back(TemplateGroupDraft{});
+                            gi = static_cast<uint32_t>(template_groups.GetCount());
+                            template_groups.Add(TemplateGroupDraft{});
 
-                            TemplateGroupDraft &grp = template_groups.back();
+                            TemplateGroupDraft &grp = template_groups[static_cast<int>(gi)];
                             grp.template_id        = ref->GetTemplateID();
                             grp.shading_group      = target_group;
-                            grp.group_bucket       = uint32_t(bucket_geometry.size());
+                            grp.group_bucket       = static_cast<uint32_t>(bucket_drafts.GetCount());
                             grp.bucket_count       = grp_bucket_count;
                             grp.group_count        = facts->shading_group_count;
                             grp.group_table_offset = group_table_offset;
 
                             for (uint32_t s = 0; s < grp_bucket_count; ++s)
                             {
-                                bucket_geometry.push_back(slot_geo_data ? slot_geo_data[s] : 0u);
-                                bucket_capacity.push_back(0u);
+                                DrawBucketDraft bucket;
+                                bucket.geometry_id = slot_geo_data ? slot_geo_data[s] : 0u;
+                                bucket_drafts.Add(bucket);
                             }
                         }
 
@@ -757,7 +765,7 @@ namespace hgl::ecs
                         for (uint32_t s = 0; s < grp.bucket_count; ++s)
                         {
                             if (slot_cnt_data)
-                                bucket_capacity[grp.group_bucket + s] += slot_cnt_data[s];
+                                bucket_drafts[static_cast<int>(grp.group_bucket + s)].capacity += slot_cnt_data[s];
                         }
 
                         template_entity_group[i] = gi;
@@ -765,7 +773,7 @@ namespace hgl::ecs
                 }
 
                 if (!why
-                 && next_index + uint32_t(bucket_geometry.size()) > GPUCullSystem::kMaxBatches)
+                 && next_index + static_cast<uint32_t>(bucket_drafts.GetCount()) > GPUCullSystem::kMaxBatches)
                 {
                     why = "接管素材桶数超 kMaxBatches(1024)";
                 }
@@ -776,10 +784,10 @@ namespace hgl::ecs
                     const uint32_t sector_begin = GPUCullSystem::ArenaSectorBase(pass_index);
                     const uint32_t sector_end   = sector_begin + GPUCullSystem::kArenaRowsPerPass;
 
-                    uint32_t need_rows = uint32_t(bucket_geometry.size());   // ≥1 行/桶
+                    uint32_t need_rows = static_cast<uint32_t>(bucket_drafts.GetCount());   // ≥1 行/桶
 
-                    for (uint32_t cap : bucket_capacity)
-                        need_rows += cap;
+                    for (int bucket_index = 0; bucket_index < bucket_drafts.GetCount(); ++bucket_index)
+                        need_rows += bucket_drafts[bucket_index].capacity;
 
                     if (row_cursor + need_rows > sector_end)
                         why = "竞技场实例行超容量（kArenaRowsPerPass）";
@@ -806,7 +814,7 @@ namespace hgl::ecs
                 }
             }
 
-            const uint32_t bucket_total = uint32_t(bucket_geometry.size());
+            const uint32_t bucket_total = static_cast<uint32_t>(bucket_drafts.GetCount());
             const uint32_t bucket_first = next_index;
             const uint32_t inst_base    = row_cursor;
 
@@ -823,7 +831,7 @@ namespace hgl::ecs
 
             for (uint32_t k = 0; k < bucket_total; ++k)
             {
-                const uint32_t capacity = bucket_capacity[k];
+                const uint32_t capacity = bucket_drafts[static_cast<int>(k)].capacity;
 
                 // 布局行 = 一个桶：`row_base` 是**实例行起点**（gather 写 l2w/mtl 用），
                 // capacity = 桶容量（溢出判据 + 台架走查上界）。
@@ -842,7 +850,7 @@ namespace hgl::ecs
             {
                 Entity *owner = b->items[i]->GetEntity();
                 // 接管判据与展开落点均由组表提供，不再写代表几何体标签。
-                const uint32_t gi = template_entity_group.empty()
+                const uint32_t gi = template_entity_group.IsEmpty()
                     ? UINT32_MAX : template_entity_group[i];
 
                 if (gi != UINT32_MAX)
@@ -880,9 +888,9 @@ namespace hgl::ecs
                 {
                     if (k)
                         bucket_list += ",";
-                    bucket_list += AnsiString::numberOf(bucket_capacity[k]);
+                    bucket_list += AnsiString::numberOf(bucket_drafts[static_cast<int>(k)].capacity);
                     bucket_list += "x";
-                    bucket_list += AnsiString::numberOf(bucket_geometry[k]);
+                    bucket_list += AnsiString::numberOf(bucket_drafts[static_cast<int>(k)].geometry_id);
                 }
 
                 GLogInfo(u8"[T5][BUCKETS] 批=%s items=%u 桶=%u [%s] 档=%u 组大小=%u",

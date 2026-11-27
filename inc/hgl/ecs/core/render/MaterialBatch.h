@@ -8,7 +8,7 @@
 #include<hgl/graph/ShaderBufferSources.h>
 #include<hgl/mtl/MaterialRecipe.h>
 #include<hgl/vk/VK.h>
-#include<vector>
+#include<hgl/type/ValueArray.h>
 
 namespace hgl
 {
@@ -52,7 +52,7 @@ namespace hgl::ecs
         /// 不会落进同一批。
         graph::mtl::MaterialPipelineConfig      pipeline_config;                            ///<本批动态渲染状态
 
-        std::vector<RenderItem *>               items;                                      ///<渲染项列表
+        ValueArray<RenderItem *>                items;                                      ///<渲染项列表
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
         graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
 

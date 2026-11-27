@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
-#include <vector>
-#include <unordered_map>
 
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/support/pipeline/TemplateFactCache.h>
