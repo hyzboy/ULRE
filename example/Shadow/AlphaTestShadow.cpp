@@ -558,7 +558,7 @@ public:
         // 地面：不投射阴影（规范化声明，防自遮挡）
         {
             Entity *e = ecs_context->CreateEntity<Entity>("Ground");
-            ground_transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            ground_transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
             ground_transform.SetLocalScale(glm::vec3(40.0f));
 
             auto shadow = e->AddComponent<ShadowProxy>();
@@ -592,7 +592,7 @@ public:
             Entity *e = ecs_context->CreateEntity<Entity>(names[i]);
 
             // Movable：进 CSM 0 动态层（每帧全量重绘），验证不受静态缓存影响
-            auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Movable));
+            auto tf = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Movable));
             tf.SetLocalPosition(glm::vec3(i == 0 ? -1.6f : 1.6f, 0.0f, 2.6f));
             tf.SetLocalScale(glm::vec3(2.0f));
 

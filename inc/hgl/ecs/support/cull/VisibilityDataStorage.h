@@ -13,7 +13,7 @@ namespace hgl::ecs
      * VisibilityDataStorage - Fast lookup for invisible entities with hierarchical support
      *
      * Maintains a set of invisible entity IDs for O(1) query during rendering.
-     * **唯一真值**：由世界通过 `ECSContext::SetEntityVisible` 写入（A5a 起组件级可见性副本已删除）。
+     * **唯一真值**：由世界通过 `WorldSpatialState::SetEntityVisible` 写入（A5a 起组件级可见性副本已删除）。
      *
      * **极性 = 负向**（集合成员 = 不可见；默认可见）；`IsInvisible` **含祖先链继承**，
      * `IsDirectlyInvisible` 只查自己 —— 后者**不得**冒充前者做可见判定（漏继承 ⇒ 后代被误判可见）。

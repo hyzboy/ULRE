@@ -129,7 +129,7 @@ namespace hgl::ecs
 
             const bool template_carrier = IsModelTemplateCarrier(owner);
 
-            out.facts.entity_visible      = owner ? world->IsEntityVisible(owner->GetEntityID()) : false;
+            out.facts.entity_visible      = owner ? world->Spatial().IsEntityVisible(owner->GetEntityID()) : false;
             out.facts.has_owner           = (owner != nullptr);
             out.facts.renderable          = template_carrier || CanRender(owner);
             out.facts.has_material_source = template_carrier || HasAnyMaterialSource(owner);
@@ -144,7 +144,7 @@ namespace hgl::ecs
                 if (max_dist > 0.0f && world->HasShadowOrigin())
                 {
                     const TransformAccessor transform =
-                        world->GetTransformByEntity(owner->GetEntityID());
+                        world->Spatial().GetTransformByEntity(owner->GetEntityID());
 
                     if (transform.IsValid())
                     {
@@ -221,7 +221,7 @@ namespace hgl::ecs
             // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
                 const bool legacy_collect =
-                       world->IsEntityVisible(entity->GetEntityID())
+                       world->Spatial().IsEntityVisible(entity->GetEntityID())
                     && (CanRender(entity) || IsModelTemplateCarrier(entity))
                     && (entity != nullptr)
                     && (!strategy.facts.shadow_pass
@@ -249,7 +249,7 @@ namespace hgl::ecs
 
             if (active_mobility_filter >= 0)
             {
-                TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
+                TransformAccessor transform = world->Spatial().GetTransformByEntity(entity->GetEntityID());
                 if (!transform.IsValid() || static_cast<int>(transform.GetMobility()) != active_mobility_filter)
                     continue;
             }
@@ -465,7 +465,7 @@ namespace hgl::ecs
             // 剔除、或把回退规则写歪，都会在那条守卫上立刻报不一致。
             {
                 const bool legacy_collect =
-                       world->IsEntityVisible(entity->GetEntityID())
+                       world->Spatial().IsEntityVisible(entity->GetEntityID())
                     && (CanRender(entity) || IsModelTemplateCarrier(entity))
                     && (entity != nullptr)
                     && (!strategy.facts.shadow_pass
@@ -554,7 +554,7 @@ namespace hgl::ecs
 
             // 实体级可见性与 owner 已由表的 CollectForCurrentPass 要求 ⇒ 不再单独判据
 
-            TransformAccessor transform = world->GetTransformByEntity(entity->GetEntityID());
+            TransformAccessor transform = world->Spatial().GetTransformByEntity(entity->GetEntityID());
 
             if (!transform.IsValid())
             {

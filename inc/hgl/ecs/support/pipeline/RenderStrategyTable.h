@@ -78,7 +78,7 @@ namespace hgl
             None = 0,
 
             /// 实体级可见（A5a：**唯一可见性真值** —— 组件级 `visible` 已删，
-            /// 读法 = `ECSContext::IsEntityVisible`，含祖先继承，已算完）
+            /// 读法 = `WorldSpatialState::IsEntityVisible`，含祖先继承，已算完）
             EntityVisible     = 1u << 0,
             HasOwner          = 1u << 1,   ///< 有 owner 实体
             Renderable        = 1u << 2,   ///< 具备可渲染资源（现 = `GeometryData::GetPrimitiveAsset() != nullptr`）

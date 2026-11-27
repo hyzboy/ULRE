@@ -341,8 +341,8 @@ private:
                 return false;
             }
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(entity->GetEntityID(),
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(entity->GetEntityID(),
                                              hgl::ecs::Mobility::Static));
 
             // Z-up：网格铺开（列沿 +Y、行沿 +Z），保证一屏内全部可见。

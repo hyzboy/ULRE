@@ -274,13 +274,13 @@ int main(int argc, char** argv)
 
         const EntityID eid = ent->GetEntityID();
 
-        if (context.GetBoundingBoxByEntity(eid).IsValid())
+        if (context.Spatial().GetBoundingBoxByEntity(eid).IsValid())
         {
             GLogError(u8"Test 3 Failed: 尚未创建包围盒时应返回无效句柄");
             return 3;
         }
 
-        const BoundingBoxAccessor a = context.GetOrCreateBoundingBox(eid);
+        const BoundingBoxAccessor a = context.Spatial().GetOrCreateBoundingBox(eid);
 
         if (!a.IsValid())
         {
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
             return 3;
         }
 
-        const BoundingBoxAccessor b = context.GetOrCreateBoundingBox(eid);
+        const BoundingBoxAccessor b = context.Spatial().GetOrCreateBoundingBox(eid);
 
         if (!b.IsValid() || b.GetID() != a.GetID())
         {

@@ -954,7 +954,7 @@ private:
 
         // 1. 创建地面实体（Static，超大范围，网格随相机平铺对齐）
         ground_entity = ecs_context->CreateEntity<Entity>("InfiniteGround");
-        ground_transform = ecs_context->GetTransform(ecs_context->CreateTransform(ground_entity->GetEntityID(), Mobility::Static));
+        ground_transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(ground_entity->GetEntityID(), Mobility::Static));
         ground_transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         ground_transform.SetLocalScale(glm::vec3(kGroundExtent, kGroundExtent, 1.0f));
 
@@ -1017,7 +1017,7 @@ private:
             AnsiString name = (is_movable ? "Movable_" : "Static_") + AnsiString::numberOf(i);
             Entity *e = ecs_context->CreateEntity<Entity>(name.c_str());
 
-            auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), mobility));
+            auto tf = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(e->GetEntityID(), mobility));
             tf.SetLocalPosition(pos);
             tf.SetLocalScale(scale);
 
@@ -1086,7 +1086,7 @@ private:
                 Entity *e = ecs_context->CreateEntity<Entity>(
                     (AnsiString("AlphaCube_") + AnsiString::numberOf(i)).c_str());
 
-                auto tf = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+                auto tf = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
                 tf.SetLocalPosition(alpha_positions[i]);
                 const float s = (i == 0) ? 3.0f : 2.4f;
                 tf.SetLocalScale(glm::vec3(s));

@@ -24,7 +24,7 @@ static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
         if (!entity)
             return;
 
-        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        auto t = gizmo->world->Spatial().GetTransformByEntity(entity->GetEntityID());
         if (!t.IsValid())
             return;
 
@@ -50,7 +50,7 @@ static void SetPrimitiveEntityVisible(const GizmoVisualPrimitive &entry, bool vi
     hgl::ecs::ECSContext *world = owner ? owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
 
     if (owner && world)
-        world->SetEntityVisible(owner->GetEntityID(), visible);
+        world->Spatial().SetEntityVisible(owner->GetEntityID(), visible);
 }
 
 static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
@@ -86,7 +86,7 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
         if (!entity)
             return;
 
-        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        auto t = gizmo->world->Spatial().GetTransformByEntity(entity->GetEntityID());
         if (t.IsValid())
             t.SetLocalRotation(q);
     };
@@ -114,7 +114,7 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
         if (!entity)
             return;
 
-        auto t = gizmo->world->GetTransformByEntity(entity->GetEntityID());
+        auto t = gizmo->world->Spatial().GetTransformByEntity(entity->GetEntityID());
         if (t.IsValid() && t.IsFixedPixelSizingEnabled())
             t.SetFixedPixelSizingContextAndApply(camera_info, viewport_info);
     };

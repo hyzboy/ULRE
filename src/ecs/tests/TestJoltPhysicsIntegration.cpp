@@ -57,7 +57,7 @@ namespace
         // 2.1 盒体 Box
         {
             Entity *box_entity = ctx.CreateEntity<Entity>("BoxEntity");
-            ctx.CreateTransform(box_entity->GetEntityID(), Mobility::Movable);
+            ctx.Spatial().CreateTransform(box_entity->GetEntityID(), Mobility::Movable);
             auto *proxy = box_entity->AddComponent<ModelCollisionProxyComponent>();
             proxy->AddBox(math::Vector3f(0.0f), math::Vector3f(1.0f, 2.0f, 3.0f));
 
@@ -73,7 +73,7 @@ namespace
         // 2.2 胶囊体 Capsule（Z-up 轴向映射）
         {
             Entity *capsule_entity = ctx.CreateEntity<Entity>("CapsuleEntity");
-            ctx.CreateTransform(capsule_entity->GetEntityID(), Mobility::Movable);
+            ctx.Spatial().CreateTransform(capsule_entity->GetEntityID(), Mobility::Movable);
             auto *proxy = capsule_entity->AddComponent<ModelCollisionProxyComponent>();
             proxy->AddCapsule(math::Vector3f(0.0f), 0.5f, 1.0f);
 
@@ -88,7 +88,7 @@ namespace
         // 2.3 凸包 ConvexHull
         {
             Entity *hull_entity = ctx.CreateEntity<Entity>("HullEntity");
-            ctx.CreateTransform(hull_entity->GetEntityID(), Mobility::Movable);
+            ctx.Spatial().CreateTransform(hull_entity->GetEntityID(), Mobility::Movable);
             auto *proxy = hull_entity->AddComponent<ModelCollisionProxyComponent>();
 
             math::Vector3f vertices[8] = {
@@ -114,7 +114,7 @@ namespace
         // 2.4 复合体 Compound (Box + Capsule)
         {
             Entity *compound_entity = ctx.CreateEntity<Entity>("CompoundEntity");
-            ctx.CreateTransform(compound_entity->GetEntityID(), Mobility::Movable);
+            ctx.Spatial().CreateTransform(compound_entity->GetEntityID(), Mobility::Movable);
             auto *proxy = compound_entity->AddComponent<ModelCollisionProxyComponent>();
             proxy->AddBox(math::Vector3f(0.0f, 0.0f, 0.0f), math::Vector3f(1.0f));
             proxy->AddCapsule(math::Vector3f(0.0f, 0.0f, 2.0f), 0.3f, 0.8f);
@@ -144,8 +144,8 @@ namespace
 
         // 创建下落的动态盒体
         Entity *dyn = ctx.CreateEntity<Entity>("FallingBox");
-        ctx.CreateTransform(dyn->GetEntityID(), Mobility::Movable);
-        TransformAccessor tf = ctx.GetTransformByEntity(dyn->GetEntityID());
+        ctx.Spatial().CreateTransform(dyn->GetEntityID(), Mobility::Movable);
+        TransformAccessor tf = ctx.Spatial().GetTransformByEntity(dyn->GetEntityID());
         tf.SetWorldPosition(glm::vec3(0.0f, 0.0f, 10.0f));
 
         auto *proxy = dyn->AddComponent<ModelCollisionProxyComponent>();
@@ -185,8 +185,8 @@ namespace
         physics->Initialize();
 
         Entity *kin = ctx.CreateEntity<Entity>("KinematicEntity");
-        ctx.CreateTransform(kin->GetEntityID(), Mobility::Movable);
-        TransformAccessor tf = ctx.GetTransformByEntity(kin->GetEntityID());
+        ctx.Spatial().CreateTransform(kin->GetEntityID(), Mobility::Movable);
+        TransformAccessor tf = ctx.Spatial().GetTransformByEntity(kin->GetEntityID());
         tf.SetWorldPosition(glm::vec3(1.0f, 2.0f, 3.0f));
 
         auto *proxy = kin->AddComponent<ModelCollisionProxyComponent>();
@@ -225,8 +225,8 @@ namespace
 
         // 创建静态地面盒体，位于原点，厚度沿 Z 为 2（half_extents = (10, 10, 1)），表面在 z = 1.0f
         Entity *ground = ctx.CreateEntity<Entity>("GroundEntity");
-        ctx.CreateTransform(ground->GetEntityID(), Mobility::Static);
-        TransformAccessor tf = ctx.GetTransformByEntity(ground->GetEntityID());
+        ctx.Spatial().CreateTransform(ground->GetEntityID(), Mobility::Static);
+        TransformAccessor tf = ctx.Spatial().GetTransformByEntity(ground->GetEntityID());
         tf.SetWorldPosition(glm::vec3(0.0f, 0.0f, 0.0f));
 
         auto *proxy = ground->AddComponent<ModelCollisionProxyComponent>();
@@ -290,7 +290,7 @@ namespace
         physics->Initialize();
 
         Entity *entity = ctx.CreateEntity<Entity>("CleanupTestEntity");
-        ctx.CreateTransform(entity->GetEntityID(), Mobility::Movable);
+        ctx.Spatial().CreateTransform(entity->GetEntityID(), Mobility::Movable);
         auto *proxy = entity->AddComponent<ModelCollisionProxyComponent>();
         proxy->AddBox(math::Vector3f(0.0f), math::Vector3f(1.0f));
 

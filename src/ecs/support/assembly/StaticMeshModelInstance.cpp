@@ -94,7 +94,7 @@ namespace hgl::ecs
             record.entity = entity->GetEntityID();
 
             ecs::TransformID transform_id =
-                world->CreateTransform(record.entity, ecs::Mobility::Movable);
+                world->Spatial().CreateTransform(record.entity, ecs::Mobility::Movable);
             if (!ecs::IsValidTransformID(transform_id))
             {
                 FLogError(u8"InstantiateSkeleton: 节点 Transform 创建失败（index=%zu）", i);
@@ -103,7 +103,7 @@ namespace hgl::ecs
             }
             record.transform = transform_id;
 
-            ecs::TransformAccessor transform = world->GetTransform(transform_id);
+            ecs::TransformAccessor transform = world->Spatial().GetTransform(transform_id);
             if (!transform.IsValid())
             {
                 FLogError(u8"InstantiateSkeleton: 节点 Transform 句柄无效（index=%zu）", i);
@@ -136,7 +136,7 @@ namespace hgl::ecs
                 Release();
                 return false;
             }
-            ecs::TransformAccessor child = world->GetTransform(node_records[i].transform);
+            ecs::TransformAccessor child = world->Spatial().GetTransform(node_records[i].transform);
             child.SetParent(node_records[parent].transform);
         }
 
@@ -235,7 +235,7 @@ namespace hgl::ecs
                         FLogError(u8"AttachGeometries: 派生图元实体创建失败（node=%zu）", i);
                         return false;
                     }
-                    ecs::TransformID child_transform = world->CreateTransform(
+                    ecs::TransformID child_transform = world->Spatial().CreateTransform(
                         child_entity->GetEntityID(), ecs::Mobility::Movable);
                     if (!ecs::IsValidTransformID(child_transform))
                     {
@@ -243,7 +243,7 @@ namespace hgl::ecs
                         return false;
                     }
                     ecs::TransformAccessor child_accessor =
-                        world->GetTransform(child_transform);
+                        world->Spatial().GetTransform(child_transform);
                     child_accessor.SetLocalTRS(kUnitPos, kUnitRot, kUnitScale);
                     child_accessor.SetParent(node_records[i].transform);
                     child_accessor.SetMobility(skeleton_mobility);

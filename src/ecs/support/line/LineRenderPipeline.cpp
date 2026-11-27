@@ -531,7 +531,7 @@ namespace hgl::ecs
             if (!owner) continue;
 
             // 可见性检查：真值只在实体级（原组件级 visible 已删；祖先不可见 ⇒ 后代不可见）
-            if (!context_->IsEntityVisible(owner->GetEntityID()))
+            if (!context_->Spatial().IsEntityVisible(owner->GetEntityID()))
             {
                 ++stats_.culled_by_visibility;
                 continue;
@@ -540,7 +540,7 @@ namespace hgl::ecs
             // Frustum cull
             if (frustum_valid)
             {
-                const BoundingBoxAccessor bbox = context_->GetBoundingBoxByEntity(owner->GetEntityID());
+                const BoundingBoxAccessor bbox = context_->Spatial().GetBoundingBoxByEntity(owner->GetEntityID());
 
                 if (bbox.IsValid() && bbox.HasWorldBounds())
                 {
@@ -659,14 +659,14 @@ namespace hgl::ecs
             if (transform_system)
             {
                 Entity* owner = comp ? comp->GetOwner() : nullptr;
-                const TransformAccessor transform = owner ? context_->GetTransformByEntity(owner->GetEntityID())
+                const TransformAccessor transform = owner ? context_->Spatial().GetTransformByEntity(owner->GetEntityID())
                                                           : TransformAccessor{};
                 if (transform.IsValid())
                 {
                     const TransformDataStorage::HandleID handle = transform.GetID();
                     uint32_t slot = 0;
                     if (handle != TransformDataStorage::INVALID_HANDLE
-                        && transform_system->TryGetTransformSlot(handle, transform.IsMovable(), slot))
+                        && context_->Spatial().TryGetTransformSlot(handle, transform.IsMovable(), slot))
                     {
                         // L2W 行号约定（具名权威 = `TransformAssignmentBuffer.h`）：静态 `kFirstObjectL2WSlot + slot`
                         // / 动态 `预算基址 + slot`
@@ -863,7 +863,7 @@ namespace hgl::ecs
             device_,
             material_->GetPipelineLayout(),
             addr_global_addresses,
-            context_ ? context_->GetWorldAddressesAddress(context_->GetFrameIndex()) : 0,
+            context_ ? context_->GPUResources().GetWorldAddressesAddress(context_->GetFrameIndex()) : 0,
             line_buffer_.mesh_draw_params
                 ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr,
             l2w_gpu,

@@ -377,7 +377,7 @@ private:
 
         {
             floor_mesh->entity = ecs_context->CreateEntity<Entity>("Floor");
-            floor_mesh->transform = ecs_context->GetTransform(ecs_context->CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
+            floor_mesh->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(floor_mesh->entity->GetEntityID(), Mobility::Static));
             floor_mesh->primitive_comp = floor_mesh->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(floor_mesh->entity);
             hgl::ecs::MaterialData *material_data_comp = floor_mesh->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(floor_mesh->entity);
 
@@ -405,7 +405,7 @@ private:
                 continue;
 
             rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            rm->transform = ecs_context->GetTransform(ecs_context->CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
+            rm->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(rm->entity->GetEntityID(), Mobility::Static));
             rm->primitive_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rm->entity);
             hgl::ecs::MaterialData *material_data_comp = rm->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rm->entity);
 
@@ -448,11 +448,11 @@ private:
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
-            bbox->transform = ecs_context->GetTransform(ecs_context->CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
+            bbox->transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(bbox->entity->GetEntityID(), Mobility::Static));
             bbox->primitive_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(bbox->entity);
             hgl::ecs::MaterialData *material_data_comp = bbox->entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(bbox->entity);
 
-            bbox->transform.SetParent(ecs_context->GetTransformID(rm->entity->GetEntityID()));
+            bbox->transform.SetParent(ecs_context->Spatial().GetTransformID(rm->entity->GetEntityID()));
 
             const auto &center = local_aabb.GetCenter();
             const auto &size = local_aabb.GetLength();

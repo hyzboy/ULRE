@@ -171,7 +171,7 @@ private:
         {
             auto *e = ecs_context->CreateEntity<Entity>(("Cube_" + AnsiString::numberOf(i)).c_str());
 
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
             const float x = (static_cast<float>(i) - static_cast<float>(TOTAL_CUBES - 1) * 0.5f) * 2.2f;
             transform.SetLocalPosition(glm::vec3(x, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));

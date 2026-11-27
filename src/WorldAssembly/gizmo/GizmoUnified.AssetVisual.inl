@@ -11,13 +11,13 @@ static hgl::ecs::Entity *CreateChildEntityWithTransform(hgl::ecs::ECSContext *wo
     if (!entity)
         return nullptr;
 
-    world->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable);
-    auto transform = world->GetTransformByEntity(entity->GetEntityID());
+    world->Spatial().CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+    auto transform = world->Spatial().GetTransformByEntity(entity->GetEntityID());
     if (!transform.IsValid())
         return nullptr;
 
     transform.SetLocalTRS(position, rotation, scale);
-    transform.SetParent(world->GetTransformID(parent->GetEntityID()));
+    transform.SetParent(world->Spatial().GetTransformID(parent->GetEntityID()));
 
     if (out_transform)
         *out_transform = transform;
@@ -95,11 +95,11 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
 
     // A5a：可见性真值在实体级（组件级 SetVisible 已删）——子图元初始不可见，
     // 由 SyncGizmoAssetModeBindings 按当前模式置可见。
-    material_world->SetEntityVisible(entity->GetEntityID(), false);
+    material_world->Spatial().SetEntityVisible(entity->GetEntityID(), false);
 
     GizmoVisualPrimitive item;
     item.primitive = entity;
-    item.transform = entity->GetContextAs<hgl::ecs::ECSContext>()->GetTransformByEntity(entity->GetEntityID());
+    item.transform = entity->GetContextAs<hgl::ecs::ECSContext>()->Spatial().GetTransformByEntity(entity->GetEntityID());
     item.shape = shape;
     item.base_color = color;
     item.applied_color = color;
@@ -259,7 +259,7 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &ite
         // A5a：可见性真值只在实体级（组件级 IsVisible 已删）
         hgl::ecs::Entity *entry_owner = entry.primitive;
         hgl::ecs::ECSContext *entry_world = entry_owner ? entry_owner->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
-        if (entry_world && !entry_world->IsEntityVisible(entry_owner->GetEntityID()))
+        if (entry_world && !entry_world->Spatial().IsEntityVisible(entry_owner->GetEntityID()))
             continue;
 
         entry.transform.UpdateIfDirty();

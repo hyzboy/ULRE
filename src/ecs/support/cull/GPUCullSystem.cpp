@@ -803,7 +803,7 @@ namespace hgl::ecs
 
         // 获取世界地址和全局地址的设备地址
         uint32_t frame_slot = context_->GetFrameIndex();
-        uint64_t world_addr = context_->GetWorldAddressesAddress(frame_slot);
+        uint64_t world_addr = context_->GPUResources().GetWorldAddressesAddress(frame_slot);
         if (world_addr == 0) return;
 
         // 全局地址表从 GlobalSSBOBufferRegistry 获取

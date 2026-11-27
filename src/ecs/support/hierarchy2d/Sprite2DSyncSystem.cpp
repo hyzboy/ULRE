@@ -148,13 +148,13 @@ namespace hgl::ecs
 
             // -- 3D 载体 Transform（Movable：每帧由本系统重写 TRS） --
             const auto eid = entity->GetEntityID();
-            auto tid = world->GetTransformID(eid);
+            auto tid = world->Spatial().GetTransformID(eid);
             if (tid == INVALID_TRANSFORM_ID)
-                tid = world->CreateTransform(eid, Mobility::Movable);
+                tid = world->Spatial().CreateTransform(eid, Mobility::Movable);
             if (tid == INVALID_TRANSFORM_ID)
                 continue;
 
-            const auto accessor = world->GetTransform(tid);
+            const auto accessor = world->Spatial().GetTransform(tid);
 
             // -- 几何/材质载体 --
             auto *geometry_data = world->GetOrCreateGeometryData(entity);

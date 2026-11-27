@@ -54,8 +54,8 @@ bool SunDirectionControlSystem::EnsureProxyEntity()
     if (!proxy_entity)
         return false;
 
-    context->CreateTransform(proxy_entity->GetEntityID(), hgl::ecs::Mobility::Movable);
-    proxy_transform = context->GetTransformByEntity(proxy_entity->GetEntityID());
+    context->Spatial().CreateTransform(proxy_entity->GetEntityID(), hgl::ecs::Mobility::Movable);
+    proxy_transform = context->Spatial().GetTransformByEntity(proxy_entity->GetEntityID());
     if (!proxy_transform.IsValid())
         return false;
 
@@ -215,7 +215,7 @@ void SunDirectionControlSystem::Update(float)
         math::Vector3f dir(0.0f, 0.0f, 1.0f);
         if (auto *gizmo_root = GetGizmoRootEntity(gizmo))
         {
-            auto gizmo_root_transform = context->GetTransformByEntity(gizmo_root->GetEntityID());
+            auto gizmo_root_transform = context->Spatial().GetTransformByEntity(gizmo_root->GetEntityID());
             if (gizmo_root_transform.IsValid())
             {
                 dir = hgl::math::RotationToDirection(gizmo_root_transform.GetLocalRotation());

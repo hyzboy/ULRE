@@ -271,7 +271,7 @@ private:
         {
         #ifdef DRAW_SKY_SPHERE
             sky_entity = ecs_context->CreateEntity<Entity>("SkySphere");
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), Mobility::Movable));
+            auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(sky_entity->GetEntityID(), Mobility::Movable));
             auto primitive_comp = sky_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sky_entity);
             hgl::ecs::MaterialData *material_data_comp = sky_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(sky_entity);
 
@@ -287,7 +287,7 @@ private:
 
         {
             auto* entity = ecs_context->CreateEntity<Entity>("Floor");
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
             hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 
@@ -315,7 +315,7 @@ private:
                 continue;
 
             auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
             auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
             hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 

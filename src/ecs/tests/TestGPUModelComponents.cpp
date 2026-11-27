@@ -263,16 +263,16 @@ namespace
         Entity *stat = ctx.CreateEntity<Entity>("StaticModel");
         GPUModelRefComponent *sref = stat->AddComponent<GPUModelRefComponent>();
         sref->SetTemplateBinding(3u);
-        const TransformID sid = ctx.CreateTransform(stat->GetEntityID(), Mobility::Static);
-        TransformAccessor stf = ctx.GetTransformByEntity(stat->GetEntityID());
+        const TransformID sid = ctx.Spatial().CreateTransform(stat->GetEntityID(), Mobility::Static);
+        TransformAccessor stf = ctx.Spatial().GetTransformByEntity(stat->GetEntityID());
         EXPECT(stf.IsStatic());
         stf.SetLocalPosition(glm::vec3(10.0f, 0.0f, 2.0f));
 
         Entity *dyn = ctx.CreateEntity<Entity>("MovableModel");
         GPUModelRefComponent *dref = dyn->AddComponent<GPUModelRefComponent>();
         dref->SetTemplateBinding(4u);
-        const TransformID did = ctx.CreateTransform(dyn->GetEntityID(), Mobility::Movable);
-        TransformAccessor dtf = ctx.GetTransformByEntity(dyn->GetEntityID());
+        const TransformID did = ctx.Spatial().CreateTransform(dyn->GetEntityID(), Mobility::Movable);
+        TransformAccessor dtf = ctx.Spatial().GetTransformByEntity(dyn->GetEntityID());
         EXPECT(dtf.IsMovable());
 
         // 段名单归属
@@ -281,21 +281,21 @@ namespace
             for (const TransformID t : list) if (t == id) return true;
             return false;
         };
-        EXPECT(inList(ctx.GetStaticTransforms(), sid));
-        EXPECT(!inList(ctx.GetMovableTransforms(), sid));
-        EXPECT(inList(ctx.GetMovableTransforms(), did));
+        EXPECT(inList(ctx.Spatial().GetStaticTransforms(), sid));
+        EXPECT(!inList(ctx.Spatial().GetMovableTransforms(), sid));
+        EXPECT(inList(ctx.Spatial().GetMovableTransforms(), did));
 
         // 换段：静态 → 可动
         stf.SetMobility(Mobility::Movable);
         EXPECT(stf.IsMovable());
-        EXPECT(!inList(ctx.GetStaticTransforms(), sid));
-        EXPECT(inList(ctx.GetMovableTransforms(), sid));
+        EXPECT(!inList(ctx.Spatial().GetStaticTransforms(), sid));
+        EXPECT(inList(ctx.Spatial().GetMovableTransforms(), sid));
 
         // 换段：可动 → 静态
         dtf.SetMobility(Mobility::Static);
         EXPECT(dtf.IsStatic());
-        EXPECT(!inList(ctx.GetMovableTransforms(), did));
-        EXPECT(inList(ctx.GetStaticTransforms(), did));
+        EXPECT(!inList(ctx.Spatial().GetMovableTransforms(), did));
+        EXPECT(inList(ctx.Spatial().GetStaticTransforms(), did));
 
         // 世界矩阵求值不依赖组件字段（组件零 TRS 复制）
         const glm::mat4 m = stf.GetWorldMatrix();

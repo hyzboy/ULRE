@@ -277,7 +277,7 @@ namespace hgl::example
         {
             return;
         }
-        ecs::TransformAccessor parent_t = ctx_->GetTransformByEntity(phys->GetEntityID());
+        ecs::TransformAccessor parent_t = ctx_->Spatial().GetTransformByEntity(phys->GetEntityID());
         if(!parent_t.IsValid())
         {
             GLogWarning("[PhysicsKit] entity %p has no transform; visuals skipped", (void *)phys);
@@ -302,8 +302,8 @@ namespace hgl::example
             {
                 continue;
             }
-            ecs::TransformID tid = ctx_->CreateTransform(child->GetEntityID(), ecs::Mobility::Movable);
-            ecs::TransformAccessor t = ctx_->GetTransform(tid);
+            ecs::TransformID tid = ctx_->Spatial().CreateTransform(child->GetEntityID(), ecs::Mobility::Movable);
+            ecs::TransformAccessor t = ctx_->Spatial().GetTransform(tid);
             if(!t.IsValid())
             {
                 continue;

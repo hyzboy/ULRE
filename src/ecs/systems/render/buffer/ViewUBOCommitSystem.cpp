@@ -31,7 +31,7 @@ namespace hgl::ecs
         if (auto *rt = context->GetRenderTarget())
         {
             if (!context->IsCurrentPassShadow())
-                context->CommitShadowInfo(rt->GetCurrentFrameIndex());
+                context->GPUResources().CommitShadowInfo(rt->GetCurrentFrameIndex());
         }
     }
 }//namespace hgl::ecs

@@ -34,7 +34,7 @@ namespace hgl::ecs
             if (!owner)
                 continue;
 
-            const BoundingBoxAccessor bbox = world->GetOrCreateBoundingBox(owner->GetEntityID());
+            const BoundingBoxAccessor bbox = world->Spatial().GetOrCreateBoundingBox(owner->GetEntityID());
 
             if (!bbox.IsValid())
                 continue;
@@ -42,7 +42,7 @@ namespace hgl::ecs
             const auto& local_bounds = line_comp->GetLocalBounds();
             bbox.SetLocalBounds(local_bounds);
 
-            const TransformAccessor transform = world->GetTransformByEntity(owner->GetEntityID());
+            const TransformAccessor transform = world->Spatial().GetTransformByEntity(owner->GetEntityID());
             if (transform.IsValid())
             {
                 const auto world_aabb = local_bounds.Transformed(transform.GetWorldMatrix());

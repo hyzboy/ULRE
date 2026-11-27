@@ -83,7 +83,7 @@ private:
             return false;
 
         auto* entity = ecs_context->CreateEntity<Entity>("SkyLambertDome");
-        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
+        auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
         auto primitive_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
         hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 

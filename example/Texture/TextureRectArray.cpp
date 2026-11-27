@@ -137,7 +137,7 @@ private:
             offset.x=rect_right*2*float(i);
 
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(render_obj[i].entity->GetEntityID(), Mobility::Static));
             auto primitive = render_obj[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(render_obj[i].entity);
             // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
             render_obj[i].entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(render_obj[i].entity);

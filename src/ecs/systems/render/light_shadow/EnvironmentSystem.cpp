@@ -541,8 +541,8 @@ namespace hgl::ecs
                 : (SkyModeGeometryHasUV(sky_config.mode) ? kDomeSkyScale : kSphereSkyScale);
 
             // Mobility 保持 Movable：`track_camera` 要逐帧改它的世界位置（跟随相机 ≠ 静态）。
-            auto transform = context->GetTransform(
-                context->CreateTransform(sky_entity_id, Mobility::Movable));
+            auto transform = context->Spatial().GetTransform(
+                context->Spatial().CreateTransform(sky_entity_id, Mobility::Movable));
 
             transform.SetLocalPosition(glm::vec3(0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -757,7 +757,7 @@ namespace hgl::ecs
 
         const math::Vector3f &pos = camera->camera_world_pos;
 
-        auto transform = context->GetTransformByEntity(sky_entity_id);
+        auto transform = context->Spatial().GetTransformByEntity(sky_entity_id);
         if (!transform.IsValid())
             return;
 

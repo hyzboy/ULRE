@@ -187,7 +187,7 @@ private:
             ticks[i].entity = ecs_world->CreateEntity<Entity>((AnsiString("ClockTick_") + AnsiString::numberOf((uint)i)).c_str());
 
             // 添加变换 - 静态变换
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(ticks[i].entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(ticks[i].entity->GetEntityID(), Mobility::Static));
 
             // 计算刻度角度（360 / 12 = 30度）
             float tick_angle = deg2rad(30.0f * i);
@@ -230,7 +230,7 @@ private:
             hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
 
             // 添加变换 - 动态变换
-            hands[i].transform = ecs_world->GetTransform(ecs_world->CreateTransform(hands[i].entity->GetEntityID(), Mobility::Movable));
+            hands[i].transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(hands[i].entity->GetEntityID(), Mobility::Movable));
 
             hands[i].transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             hands[i].transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数

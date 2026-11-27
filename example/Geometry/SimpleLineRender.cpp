@@ -141,7 +141,7 @@ public:
 
             if(with_transform)
             {
-                auto tc = ecs->GetTransform(ecs->CreateTransform(entity->GetEntityID(), Mobility::Movable));
+                auto tc = ecs->Spatial().GetTransform(ecs->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Movable));
                 if(tc.IsValid())
                 {
                     tc.SetLocalPosition(position);

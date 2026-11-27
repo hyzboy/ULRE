@@ -31,9 +31,9 @@ namespace hgl::ecs
             const Mobility mobility = (desc.motion == BodyMotionType::Static)
                                           ? Mobility::Static
                                           : Mobility::Movable;
-            ctx->CreateTransform(entity->GetEntityID(), mobility);
+            ctx->Spatial().CreateTransform(entity->GetEntityID(), mobility);
 
-            TransformAccessor transform = ctx->GetTransformByEntity(entity->GetEntityID());
+            TransformAccessor transform = ctx->Spatial().GetTransformByEntity(entity->GetEntityID());
             transform.SetWorldPosition(pos);
             transform.SetWorldRotation(rot);
 
@@ -311,7 +311,7 @@ namespace hgl::ecs
         if (!ctx || !sc.platform)
             return;
 
-        TransformAccessor transform = ctx->GetTransformByEntity(sc.platform->GetEntityID());
+        TransformAccessor transform = ctx->Spatial().GetTransformByEntity(sc.platform->GetEntityID());
         if (!transform.IsValid())
             return;
 

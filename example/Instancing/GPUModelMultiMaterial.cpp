@@ -120,7 +120,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     Entity *CreatePrimitive(const char *name, const math::Vector3f &position, PrimitiveAsset *asset)
     {
         auto *entity = world->CreateEntity<Entity>(name);
-        auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), Mobility::Static));
+        auto transform = world->Spatial().GetTransform(world->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
         transform.SetLocalPosition(position);
         world->GetOrCreateGeometryData(entity)->SetPrimitiveAsset(asset);
         entity->AddComponent<ShadowProxy>()->SetCastShadow(false);
@@ -147,9 +147,9 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         for (uint32_t n = 0; n < 3; ++n)
         {
             const uint32_t i = reverse_creation ? 2u - n : n;
-            world->SetEntityVisible(seeds[i]->GetEntityID(), false);
+            world->Spatial().SetEntityVisible(seeds[i]->GetEntityID(), false);
             models[i] = world->CreateEntity<Entity>("MultiMaterialModel");
-            auto transform = world->GetTransform(world->CreateTransform(models[i]->GetEntityID(), Mobility::Static));
+            auto transform = world->Spatial().GetTransform(world->Spatial().CreateTransform(models[i]->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition({ModelX(i), 0.0f, 0.5f});
             models[i]->AddComponent<GPUModelRefComponent>()->SetTemplateBinding(template_id);
             models[i]->AddComponent<ShadowProxy>();
@@ -157,7 +157,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 Fail("model must not have representative GeometryData");
         }
         for (auto *seed : lit_seeds)
-            world->SetEntityVisible(seed->GetEntityID(), false);
+            world->Spatial().SetEntityVisible(seed->GetEntityID(), false);
         if (phase == 0u && selfcheck && !core_only)
         {
             ReplaceWithLit(0u);
@@ -569,7 +569,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         bool ok = EntityGPUTable::IsVisible(*gpu)
                && gpu->model_template_id == model_ref->GetTemplateID()
                && gpu->model_part_mask == model_ref->part_visibility_mask
-               && main_ids->transform_id == world->GetTransformByEntity(id).GetID()
+               && main_ids->transform_id == world->Spatial().GetTransformByEntity(id).GetID()
                && main_ids->geometry_id == 0u;
         if (phase <= 8u || phase == 13u)
             ok &= main_ids->material_id == data[0].data_index;
@@ -785,7 +785,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 mipmap_variants[0]->GetFilename(), false);
             if (!mipmap_raced_sync) Fail("mipmap race sync load failed");
         }
-        if (phase == 9) { ReplaceWithLit(0u); world->SetEntityVisible(ground->GetEntityID(), true); }
+        if (phase == 9) { ReplaceWithLit(0u); world->Spatial().SetEntityVisible(ground->GetEntityID(), true); }
         if (phase == 10 && !world->GetSystem<EnvironmentSystem>()->SetAmbientProvider("ambient_light_none"))
             Fail("ambient provider switch rejected");
         if (phase == 11 && !world->GetSystem<EnvironmentSystem>()->SetAmbientProvider("ambient_light_sh"))
@@ -794,7 +794,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         if (phase == 13)
         {
             c->SetTemplateBinding(template_id);
-            world->SetEntityVisible(ground->GetEntityID(), false);
+            world->Spatial().SetEntityVisible(ground->GetEntityID(), false);
             for (auto &id : lit_templates)
             {
                 if (!DestroyMultiMaterialModelTemplate(registry, world, id))
@@ -816,7 +816,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             line_probe = nullptr;
             RemoveLegacyPartMaterialFixture();
             ReplaceWithLit(0u);
-            world->SetEntityVisible(ground->GetEntityID(), true);
+            world->Spatial().SetEntityVisible(ground->GetEntityID(), true);
         }
         if (phase == 15) models[2]->GetComponent<ShadowProxy>()->SetCastShadow(false);
         if (phase == 16) models[2]->GetComponent<ShadowProxy>()->SetCastShadow(true);
@@ -825,7 +825,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             c->SetTemplateBinding(template_id);
             if (!DestroyMultiMaterialModelTemplate(registry, world, lit_templates[0]))
                 Fail("shadow template retirement rejected");
-            world->SetEntityVisible(ground->GetEntityID(), false);
+            world->Spatial().SetEntityVisible(ground->GetEntityID(), false);
             BeginLifecycle();
         }
     }
@@ -980,8 +980,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         ground_recipe.material_ssbo_binding = lit_data;
         ground_asset = PrimitiveAsset(cube, &ground_recipe, PrimitiveType::Triangles);
         ground = CreatePrimitive("ShadowReceiver", {0.0f, 0.0f, -0.12f}, &ground_asset);
-        world->GetTransformByEntity(ground->GetEntityID()).SetLocalScale({14.0f, 8.0f, 0.1f});
-        world->SetEntityVisible(ground->GetEntityID(), false);
+        world->Spatial().GetTransformByEntity(ground->GetEntityID()).SetLocalScale({14.0f, 8.0f, 0.1f});
+        world->Spatial().SetEntityVisible(ground->GetEntityID(), false);
         if (!world->EnsureCameraSystem()) return false;
         camera_entity = world->CreateEntity<Entity>("MainCamera");
         auto *camera = world->GetOrCreateCamera(camera_entity);

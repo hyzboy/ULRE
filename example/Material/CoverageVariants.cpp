@@ -278,8 +278,8 @@ private:
                 const float y = float(i % side) * step - off;
                 const float z = float(i / side) * step - off;
 
-                auto transform = ecs_world->GetTransform(
-                    ecs_world->CreateTransform(e->GetEntityID(), Mobility::Static));
+                auto transform = ecs_world->Spatial().GetTransform(
+                    ecs_world->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
                 transform.SetLocalPosition(glm::vec3(0.0f, y, z));
                 transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -322,8 +322,8 @@ private:
                 const float y = col * ITEM_SPACING - offset_x;
                 const float z = (row == 0) ? ROW_OFFSET_Z : -ROW_OFFSET_Z;
 
-                auto transform = ecs_world->GetTransform(
-                    ecs_world->CreateTransform(e->GetEntityID(), Mobility::Static));
+                auto transform = ecs_world->Spatial().GetTransform(
+                    ecs_world->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
                 transform.SetLocalPosition(glm::vec3(0.0f, y, z));
                 transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                 transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

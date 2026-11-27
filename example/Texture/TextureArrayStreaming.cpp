@@ -437,8 +437,8 @@ bool TextureArrayStreamingApp::AttachIcon(const uint32_t index,const U8String &i
 
     Entity *entity = ecs_world->CreateEntity<Entity>();
 
-    auto transform = ecs_world->GetTransform(
-        ecs_world->CreateTransform(entity->GetEntityID(), Mobility::Static));
+    auto transform = ecs_world->Spatial().GetTransform(
+        ecs_world->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
 
     // 格心：第 0 个图标落在**左上角**（Y 轴 + 向下 ⇒ 行号直接正向）
     transform.SetLocalPosition(glm::vec3(CellPosX(col), CellPosY(row), 0.0f));

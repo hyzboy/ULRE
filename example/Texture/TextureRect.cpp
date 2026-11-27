@@ -102,7 +102,7 @@ private:
             return false;
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
-        auto rect_transform = ecs_world->GetTransform(ecs_world->CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
+        auto rect_transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(rect_entity->GetEntityID(), Mobility::Static));
         auto rect_primitive = rect_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(rect_entity);
         // 材质授权记录（配方/绑定/行号的承载者，世界级旁表条目而非组件）——本示例的纹理绑定需要它存在
         rect_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(rect_entity);

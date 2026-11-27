@@ -501,7 +501,7 @@ namespace hgl::ecs
             if (!entity)
                 continue;
 
-            const BoundingBoxAccessor bbox = world->GetBoundingBoxByEntity(entity->GetEntityID());
+            const BoundingBoxAccessor bbox = world->Spatial().GetBoundingBoxByEntity(entity->GetEntityID());
 
             if (bbox.IsValid())
             {
@@ -578,7 +578,7 @@ namespace hgl::ecs
         // 本批次的**世界表**（WorldAddresses）本帧槽地址：表内各列（相机行 / 实体 4-ID 表 / 光源行 …）
         // 都是世界私有地址 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
         batch.world_addresses_address = world
-            ? world->GetWorldAddressesAddress(world->GetFrameIndex()) : 0;
+            ? world->GPUResources().GetWorldAddressesAddress(world->GetFrameIndex()) : 0;
 
         for (auto *item : batch.items)
         {

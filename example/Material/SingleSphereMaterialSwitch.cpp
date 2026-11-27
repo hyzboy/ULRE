@@ -236,7 +236,7 @@ private:
         if (!sphere_entity)
             return LogFail("InitECSScene", "create sphere entity failed");
 
-        auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
+        auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
         auto primitive_component = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
         if (!transform.IsValid() || !primitive_component)
             return LogFail("InitECSScene", "create sphere components failed");

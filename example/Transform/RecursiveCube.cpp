@@ -161,9 +161,9 @@ private:
             return nullptr;
 
         auto *entity = ecs_context->CreateEntity<Entity>(name);
-        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
+        auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
         if (parent_id.IsValid())
-            transform.SetParent(ecs_context->GetTransformID(parent_id));
+            transform.SetParent(ecs_context->Spatial().GetTransformID(parent_id));
         transform.SetLocalPosition(local_pos);
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(scale, scale, scale));

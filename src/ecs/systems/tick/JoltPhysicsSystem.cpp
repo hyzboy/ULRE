@@ -297,7 +297,7 @@ namespace hgl::ecs
 
             if (w)
             {
-                TransformAccessor transform = w->GetTransformByEntity(entity->GetEntityID());
+                TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
                 if (transform.IsValid() && transform.IsMovable())
                 {
                     rb->motion_type = BodyMotionType::Kinematic;
@@ -379,7 +379,7 @@ namespace hgl::ecs
 
         if (w)
         {
-            TransformAccessor transform = w->GetTransformByEntity(entity->GetEntityID());
+            TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
             if (transform.IsValid())
             {
                 world_pos = transform.GetWorldPosition();
@@ -581,7 +581,7 @@ namespace hgl::ecs
             if (!rb || !rb->IsValidBody())
                 return;
 
-            TransformAccessor transform = w->GetTransformByEntity(entity->GetEntityID());
+            TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
             if (!transform.IsValid())
                 return;
 
@@ -631,7 +631,7 @@ namespace hgl::ecs
                     JPH::RVec3 jpos = bi.GetPosition(bid);
                     JPH::Quat jrot = bi.GetRotation(bid);
 
-                    TransformAccessor transform = w->GetTransformByEntity(entity->GetEntityID());
+                    TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
                     if (transform.IsValid())
                     {
                         transform.SetWorldPosition(FromJPH(jpos));

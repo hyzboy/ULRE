@@ -291,7 +291,7 @@ private:
         if (!entity)
             return false;
 
-        auto transform = world->GetTransform(world->CreateTransform(entity->GetEntityID(), mobility));
+        auto transform = world->Spatial().GetTransform(world->Spatial().CreateTransform(entity->GetEntityID(), mobility));
         transform.SetLocalPosition(glm::vec3(position.x, position.y, position.z));
         // 世界是 Z 轴向上：绕 Z 的 yaw 决定平面朝哪儿（地面 0°；展示屏幕转向相机）
         transform.SetLocalRotation(glm::quat(glm::vec3(0.0f, 0.0f, glm::radians(yaw_deg))));

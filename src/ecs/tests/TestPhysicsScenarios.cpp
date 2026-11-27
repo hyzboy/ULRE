@@ -34,7 +34,7 @@ namespace
     {
         if (!e)
             return math::Vector3f(9999.0f);
-        return ctx.GetTransformByEntity(e->GetEntityID()).GetWorldPosition();
+        return ctx.Spatial().GetTransformByEntity(e->GetEntityID()).GetWorldPosition();
     }
 
     // ── 场景 1：箱体堆叠收敛 + 落箱反弹 ───────────────────────────────────────

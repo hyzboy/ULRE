@@ -48,7 +48,7 @@ namespace hgl::ecs
                 return;
 
             const EntityID owner = entity->GetEntityID();
-            const TransformID transform_id = world->GetTransformID(owner);
+            const TransformID transform_id = world->Spatial().GetTransformID(owner);
 
             if (!IsValidTransformID(transform_id))
             {
@@ -57,11 +57,11 @@ namespace hgl::ecs
                 return;
             }
 
-            const TransformAccessor transform = world->GetTransformByEntity(owner);
+            const TransformAccessor transform = world->Spatial().GetTransformByEntity(owner);
             const bool movable = transform.IsMovable();
             uint32_t slot = 0;
 
-            if (!world->TryGetTransformSlot(transform_id, movable, slot))
+            if (!world->Spatial().TryGetTransformSlot(transform_id, movable, slot))
             {
                 world->EntityRenderState().EntityGPU().SetTransformRow(owner, 0, 0);
                 world->EntityRenderState().EntityGPU().VerifyAfterWrite(entity, "TransformSystem::WriteEntityTransformRows");   // §2.2 问题 2(a)
@@ -109,7 +109,7 @@ namespace hgl::ecs
         // 结构性遍历（内部跳空洞）：禁裸遍历 `movable_transforms` —— 空洞会让
         // IsDirty / GetChangeMask 以 (uint32)-1 索引平行数组（2026-10-02 实测崩溃）。
         if (storage)
-            world->ForEachMovableTransform([&](TransformID id)
+            world->Spatial().ForEachMovableTransform([&](TransformID id)
         {
             ++total_movable;
 
@@ -174,7 +174,7 @@ namespace hgl::ecs
                                      ToChangeMask(TransformChange::Mobility);
 
         // 同上：结构性遍历（内部跳空洞）
-        world->ForEachStaticTransform([&](TransformID id)
+        world->Spatial().ForEachStaticTransform([&](TransformID id)
         {
             if (ShouldUpdateTransform(id, update_mask))
             {
@@ -202,13 +202,13 @@ namespace hgl::ecs
         // 槽位表长度同帧增减（加/删实体、mobility 翻转）⇒ 回全量路径（重填同一切片幂等）。
         const uint32_t frame_epoch = transform_buffer ? transform_buffer->GetFrameEpoch() : 0u;
         const bool slot_layout_changed =
-            (static_cast<uint32_t>(world->GetStaticTransforms().size())  != last_static_slot_count) ||
-            (static_cast<uint32_t>(world->GetMovableTransforms().size()) != last_dynamic_slot_count);
+            (static_cast<uint32_t>(world->Spatial().GetStaticTransforms().size())  != last_static_slot_count) ||
+            (static_cast<uint32_t>(world->Spatial().GetMovableTransforms().size()) != last_dynamic_slot_count);
         const bool full_fill = (frame_epoch == 0u) || (frame_epoch != last_full_fill_epoch) || slot_layout_changed;
 
         if (full_fill)
         {
-            const auto& static_transforms = world->GetStaticTransforms();
+            const auto& static_transforms = world->Spatial().GetStaticTransforms();
 
             const uint32_t update_mask = ToChangeMask(TransformChange::LocalTRS) |
                                          ToChangeMask(TransformChange::Position) |
@@ -232,7 +232,7 @@ namespace hgl::ecs
 
             // 结构性遍历（内部跳空洞）——裸遍历会把空洞（INVALID_TRANSFORM_ID）
             // 交给 ShouldUpdateTransform ⇒ 以 (uint32)-1 索引行存储平行数组。
-            world->ForEachStaticTransform([&](TransformID id)
+            world->Spatial().ForEachStaticTransform([&](TransformID id)
             {
                 if (!has_dirty_static && ShouldUpdateTransform(id, update_mask))
                     has_dirty_static = true;
@@ -251,7 +251,7 @@ namespace hgl::ecs
                 // （O(N) 只在罕见事件上付，稳态每帧仍是早退）。
                 if (static_storage)
                 {
-                    world->ForEachStaticTransform([&](TransformID id)
+                    world->Spatial().ForEachStaticTransform([&](TransformID id)
                     {
                         static_storage->ArmWrite(id);
                     });
@@ -312,7 +312,7 @@ namespace hgl::ecs
                 // 槽位表（含空洞）⇒ 只把**活着的槽位**记为脏（空洞无人引用）
                 // 批 1.3 C6：统一走世界的 `ForEach*`（跳洞由世界侧保证，不再手写 `IsValidTransformID`）；
                 // 槽号由 slot_map 反查（`static_slot_map[handle] = slot`，见 RefreshHandleOrder）——与旧写法同值。
-                world->ForEachStaticTransform([&](TransformID id)
+                world->Spatial().ForEachStaticTransform([&](TransformID id)
                 {
                     const uint32_t *idx = static_slot_map.GetValuePointer(id);
 
@@ -322,7 +322,7 @@ namespace hgl::ecs
             }
             else
             {
-                world->ForEachStaticTransform([&](TransformID id)
+                world->Spatial().ForEachStaticTransform([&](TransformID id)
                 {
                     const uint32_t *idx = static_slot_map.GetValuePointer(id);
 
@@ -344,7 +344,7 @@ namespace hgl::ecs
             {
                 // 动态段每帧全量写本帧 ring 切片 ⇒ 活着的槽位全部记脏
                 // 批 1.3 C6：同上，走世界的 `ForEach*`（槽号由 slot_map 反查）。
-                world->ForEachMovableTransform([&](TransformID id)
+                world->Spatial().ForEachMovableTransform([&](TransformID id)
                 {
                     const uint32_t *idx = dynamic_slot_map.GetValuePointer(id);
 
@@ -354,7 +354,7 @@ namespace hgl::ecs
             }
             else
             {
-                world->ForEachMovableTransform([&](TransformID id)
+                world->Spatial().ForEachMovableTransform([&](TransformID id)
                 {
                     const uint32_t *idx = dynamic_slot_map.GetValuePointer(id);
 
@@ -374,7 +374,7 @@ namespace hgl::ecs
 
             if (static_dirty)
             {
-                world->ForEachStaticTransform([&](TransformID id)
+                world->Spatial().ForEachStaticTransform([&](TransformID id)
                 {
                     last_uploaded_version[id] = storage->GetVersion(id);
                 });
@@ -382,7 +382,7 @@ namespace hgl::ecs
 
             if (dynamic_force_full)
             {
-                world->ForEachMovableTransform([&](TransformID id)
+                world->Spatial().ForEachMovableTransform([&](TransformID id)
                 {
                     last_uploaded_version[id] = storage->GetVersion(id);
                 });
@@ -392,14 +392,14 @@ namespace hgl::ecs
             {
                 std::sort(dirty_static_indices.begin(), dirty_static_indices.end());
                 dirty_static_indices.erase(std::unique(dirty_static_indices.begin(), dirty_static_indices.end()), dirty_static_indices.end());
-                transform_buffer->WriteStaticDirtyIndices(*storage, world->GetStaticTransforms(), dirty_static_indices);
+                transform_buffer->WriteStaticDirtyIndices(*storage, world->Spatial().GetStaticTransforms(), dirty_static_indices);
             }
 
             if (!dirty_dynamic_indices.empty())
             {
                 std::sort(dirty_dynamic_indices.begin(), dirty_dynamic_indices.end());
                 dirty_dynamic_indices.erase(std::unique(dirty_dynamic_indices.begin(), dirty_dynamic_indices.end()), dirty_dynamic_indices.end());
-                transform_buffer->WriteDynamicDirtyIndices(*storage, world->GetMovableTransforms(), dirty_dynamic_indices);
+                transform_buffer->WriteDynamicDirtyIndices(*storage, world->Spatial().GetMovableTransforms(), dirty_dynamic_indices);
             }
 
             // T3c-2b（B1）：L2W 行号下发（值变才标脏 ⇒ 本函数被同帧多次调用时幂等）
@@ -411,8 +411,8 @@ namespace hgl::ecs
         last_static_count = static_count;
 
         // W5 记账：槽位表长度快照 + 本帧入口的全量填充标记
-        last_static_slot_count = static_cast<uint32_t>(world->GetStaticTransforms().size());
-        last_dynamic_slot_count = static_cast<uint32_t>(world->GetMovableTransforms().size());
+        last_static_slot_count = static_cast<uint32_t>(world->Spatial().GetStaticTransforms().size());
+        last_dynamic_slot_count = static_cast<uint32_t>(world->Spatial().GetMovableTransforms().size());
         if (full_fill && frame_epoch != 0u)
             last_full_fill_epoch = frame_epoch;
 
@@ -537,8 +537,8 @@ namespace hgl::ecs
         // B1b：世界的两个数组**就是槽位表**（下标 = 槽位，空洞 = INVALID）。
         // 这里只派生出"活着的 handle 列表"与 handle→槽位映射；槽位值跨帧稳定，
         // 不再像改前那样把"名单排名"当行号（那时删/加一个物体就会整体平移）。
-        const auto& static_slots = world->GetStaticTransforms();
-        const auto& movable_slots = world->GetMovableTransforms();
+        const auto& static_slots = world->Spatial().GetStaticTransforms();
+        const auto& movable_slots = world->Spatial().GetMovableTransforms();
 
         static_handles.reserve(static_slots.size());
         dynamic_handles.reserve(movable_slots.size());

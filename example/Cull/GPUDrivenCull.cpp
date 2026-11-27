@@ -207,8 +207,8 @@ public:
             const float x = float(i % GRID_DIM) * GRID_SPACING - offset;   // 纵深
             const float y = float(i / GRID_DIM) * GRID_SPACING - offset;   // 横向
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(CUBE_SCALE));

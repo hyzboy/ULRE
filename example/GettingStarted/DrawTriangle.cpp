@@ -124,7 +124,7 @@ private:
         // === 步骤3: 添加变换（Transform） ===
         // TransformAccessor管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
-        auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangle_entity->GetEntityID(), Mobility::Static));
+        auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(triangle_entity->GetEntityID(), Mobility::Static));
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

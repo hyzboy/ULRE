@@ -286,36 +286,6 @@ namespace hgl
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
 
-            /// 创建世界地址表（SSBO：HGL_FRAME_SLOT_TOTAL 槽 × kWorldAddressesSlotStride + 持久 BDA）。
-            /// 世界 In,itialize 时调用；失败 = fail-fast（地址缺失会让 shader 解引用 0 = UB）。
-            bool InitializeWorldAddressesTable();
-
-            /// T3c-2：把实体行表的**脏行**上传到设备镜像（`SyncWorldAddresses` 内调用）。
-            /// `frame_slot` = 本帧槽（T3c-3 起表按帧槽切份，每份一份世界私有 SSBO 区段）。
-            void UploadEntityGPUDirtyRows(uint32_t frame_slot);
-
-            /// T3d-3a：实体 4-ID 表脏行上传（与上面同批调用；同一条「值变才标脏」纪律）
-            void UploadEntityRenderIDDirtyRows();
-
-            /// **实体行表**（世界私有 SSBO：`EntityGPUTable::kCapacity × 128 B`）建表 + 取设备地址。
-            /// 地址缺失 = 消费者解引用 0 基址 = UB ⇒ fail-fast（与地址表同款判据）。
-            /// 建表时机：与地址表同批（同一个 BDA 前提 + 同一个"世界 GPU 表"生命周期）。
-            bool InitializeEntityGPUTable();
-
-            /// T3d-3a：实体 4-ID 表建表（与上面同批、同判据）
-            bool InitializeEntityRenderIDTable();
-
-            /// T6b：光源行表建表（与上面两表同批、同判据：`CreateSSBO` → `StructView` → 设备地址
-            /// fail-fast）。行 0 = 主方向光；地址经 `WorldAddresses.addr_lights` 按帧槽下发。
-            bool InitializeLightRowTable();
-
-            /// T6b：光源行表脏行上传（与实体两表同批调用；同一条「值变才标脏」纪律）
-            void UploadLightRowDirtyRows();
-
-            /// T6b/P4：影子数据建表（与光源行表同批、同判据：`CreateSSBO` → `StructView` → 设备地址
-            /// fail-fast）。世界私有 ⇒ 多世界同帧各写各的，不再经 env profile。
-            bool InitializeShadowInfoTable();
-
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return render_runner.GetFrameIndex(); }
             uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
@@ -573,24 +543,6 @@ namespace hgl
             // ── T2-c：组件挂载 / 卸载 / 收集（世界侧唯一入口；实体只持行号）──
             //   由基类 ECSCoreContext 统一提供。
 
-            /// 登记/迁移/注销一个变换（按 TransformID；由作者 API 与过渡期的组件外壳调用）
-            /// 登记：**返回是否成功**（段预算用尽 ⇒ false，调用方必须回收已分配的行 —— 批 1.1 B3）
-            bool RegisterTransform(TransformID id, bool isMovable);
-            /// 换段：**先取目标槽、成功后才交还旧槽**（失败即原状返回 false，原子拒绝 —— 批 1.1 B3）
-            bool MigrateTransform(TransformID id, bool toMovable);
-            void UnregisterTransform(TransformID id);
-
-            /// 槽位分配（B1b）：段预算内取一个**稳定槽位**（优先复用空洞）；预算用尽返回 INVALID_TRANSFORM_SLOT
-            uint32_t AcquireTransformSlot(bool movable);
-            /// 归还槽位：置空洞 + 入空闲表（不整体平移，别的物体行号不受影响）
-            void ReleaseTransformSlot(bool movable, uint32_t slot);
-            /// 该段的声明式预算（真源 = 变换存储）
-            uint32_t GetTransformSegmentBudget(bool movable) const;
-
-            /// 建/销毁一个变换（entity 级 API 的基础：分配存储行 + 登记 owner/移动性）
-            TransformID CreateTransform(EntityID owner, Mobility mobility);
-            void        DestroyTransform(TransformID id);
-
             /// 实体 → 材质授权记录 `MaterialData`（世界级旁表，非组件；无则 nullptr）。
             /// **stage B 会换成值类型句柄**（与 TransformAccessor / BoundingBoxAccessor 同构），
             /// 届时不再返回裸指针。
@@ -629,91 +581,11 @@ namespace hgl
             /// A5b：管线缓存不再挂在渲染组件上，改由每实例 slot 承载 ⇒ 本入口清 slot 字段。
             void InvalidateEntityRuntimePipeline(EntityID owner);
 
-            /// 实体 → 包围盒访问器（无则返回无效句柄）
-            BoundingBoxAccessor GetBoundingBoxByEntity(EntityID owner) const;
-
-            /// 实体 → 包围盒访问器（无则分配存储行 + 登记 owner）
-            BoundingBoxAccessor GetOrCreateBoundingBox(EntityID owner);
-
-            /// 销毁一行包围盒（按句柄；行属于世界，不挂在实体上）
-            void DestroyBoundingBox(BoundingBoxDataStorage::HandleID id);
-
             WorldSpatialState&       Spatial()       { return spatial_state; }
             const WorldSpatialState& Spatial() const { return spatial_state; }
 
             WorldEntityRenderState&       EntityRenderState()       { return entity_render_state; }
             const WorldEntityRenderState& EntityRenderState() const { return entity_render_state; }
-
-            /// 提交点（交换链帧 acquire 之后）把 CPU 权威的影子数据写进**本帧槽**的设备副本。
-            void CommitShadowInfo(const uint32_t frame_slot);
-
-            /// 设置实体可见性 —— **唯一真值落在这里**（不再有组件内的第二份 bool）。
-            /// **边界换算的唯一位置**：① 缺席集（负向）与 ② 实体行位（正向、**扁平**）都按
-            /// **传入值**落，**不重算**。两条错法显式禁止：① 用 `IsDirectlyInvisible` 冒充
-            /// `IsInvisible`（漏继承 ⇒ 后代被误判可见）；② 在这里「顺手传播」到后代
-            ///（只写自己 ⇒ 行位与含继承的权威失步）。权威链见 doc/visibility-authority-chain.md。
-            void SetEntityVisible(EntityID id, bool visible)
-            {
-                if (!GetEntity(id))
-                    return;
-
-                spatial_state.SetEntityVisible(id, visible);
-
-                // T3b：镜像到实体行（唯一真值仍是 VisibilityDataStorage；本表是派生视图）
-                entity_render_state.EntityGPU().SetVisible(id, visible);
-                entity_render_state.EntityGPU().VerifyAfterWrite(GetEntity(id), "ECSContext::SetEntityVisible");
-            }
-
-            /// 实体是否可见：O(1) 直查不可见集合 + 祖先链上溯（祖先不可见 ⇒ 后代不可见）
-            bool IsEntityVisible(EntityID id) const
-            {
-                return spatial_state.IsEntityVisible(id);
-            }
-
-            // ── 变换名单的**结构性遍历**（唯一正确方式）─────────────────────────
-            //   名单里存在**空洞**：销毁 / Mobility 换边会留下 `INVALID_TRANSFORM_ID`
-            //   （空洞记 INVALID_TRANSFORM_ID，注册优先复用空洞）。
-            //   裸遍历 `GetMovableTransforms()/GetStaticTransforms()` 会把空洞当成有效 id 传下去，
-            //   以 (uint32)-1 索引行存储的平行数组 ⇒ 越界崩溃（2026-10-02 实测）。因此：
-            //   **新增消费者一律用这两个入口**（内部自动跳洞，调用方不可能漏）。
-
-            template<typename Fn>
-            void ForEachMovableTransform(Fn &&fn) const
-            {
-                spatial_state.ForEachMovableTransform(std::forward<Fn>(fn));
-            }
-
-            template<typename Fn>
-            void ForEachStaticTransform(Fn &&fn) const
-            {
-                spatial_state.ForEachStaticTransform(std::forward<Fn>(fn));
-            }
-
-            /// 实体 → 变换行（无变换时返回 INVALID_TRANSFORM_ID）
-            TransformID GetTransformID(EntityID owner) const;
-
-            /// 变换访问器（薄句柄；读写直落本世界的存储）
-            TransformAccessor GetTransform(TransformID id);
-
-            const ValueArray<TransformID>& GetStaticTransforms() const { return spatial_state.GetStaticTransforms(); }
-            const ValueArray<TransformID>& GetMovableTransforms() const { return spatial_state.GetMovableTransforms(); }
-
-            /// 变换的**稳定槽位**（B1b）：命中返回 true 并写 `out_slot`。
-            /// 槽位是 L2W 行号的唯一来源（静态 `1+slot`、动态 `1+预算static + frame×预算dynamic + slot`），
-            /// 一旦分配就不再随名单顺序变动（空洞复用，不整体平移）。
-            bool TryGetTransformSlot(TransformID id, bool movable, uint32_t &out_slot) const;
-
-            /// 该段**活着的**变换数（≠ 槽位表长度：表里有空洞）
-            uint32_t GetLiveTransformCount(bool movable) const;
-
-            /// Mobility 换边计数（每次换段 = 旧行号作废 ⇒ 计数增；可观测/契约用）
-            uint32_t GetTransformRowMoveCount() const { return spatial_state.GetTransformRowMoveCount(); }
-
-            /// 实体 → 变换访问器（无变换时返回无效 accessor）
-            TransformAccessor GetTransformByEntity(EntityID owner)
-            {
-                return GetTransform(GetTransformID(owner));
-            }
 
             WorldRenderData&       RenderData()       { return render_data; }
             const WorldRenderData& RenderData() const { return render_data; }
@@ -748,13 +620,6 @@ namespace hgl
             {
                 return owner ? render_data.GetMaterialRuntimeSlot(owner->GetEntityID()) : nullptr;
             }
-
-            /// 世界地址表基址（**本帧槽**）：写入 pc_root.addr_world_addresses（0 = 尚未创建）
-            uint64_t GetWorldAddressesAddress(uint32_t frame_slot) const;
-
-            /// 把本世界的 world 私有地址（相机行表 / 实体 4-ID 表等）同步进**当前帧槽**的世界表。
-            /// 槽 = 当前 RT 的帧槽（主帧 [0,4) / 离屏 [4,8)），由 SetFrameIndex 触发。
-            bool SyncWorldAddresses();
 
             /// 本世界的 EnvironmentManager（经 RenderContext/GraphicsContext 解析；不可用时 nullptr）
             hgl::graph::EnvironmentManager *ResolveEnvManager() const;

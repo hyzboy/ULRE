@@ -52,7 +52,7 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        if (!world.IsEntityVisible(id))                         // 默认可见
+        if (!world.Spatial().IsEntityVisible(id))                         // 默认可见
         {
             GLogError(u8"Test 1 Failed: 新实体默认应可见");
             return 10;
@@ -67,14 +67,14 @@ int main(int argc, char** argv)
         const auto initial_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
         const auto initial_shadow_revision = world.GetStaticSceneRevision();
         world.Spatial().SetEntityVisible(id,false);
-        if (world.IsEntityVisible(id) || !world.Spatial().Visibility()->IsDirectlyInvisible(id))
+        if (world.Spatial().IsEntityVisible(id) || !world.Spatial().Visibility()->IsDirectlyInvisible(id))
         {
             GLogError(u8"Test 1 Failed: 置隐后查询结果不对");
             return 10;
         }
 
         const auto hidden_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
-        world.SetEntityVisible(id,false);
+        world.Spatial().SetEntityVisible(id,false);
         if (hidden_revision != initial_revision + 1
             || world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != hidden_revision
             || world.GetStaticSceneRevision() != initial_shadow_revision + 1)
@@ -86,8 +86,8 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        world.SetEntityVisible(id,true);
-        if (!world.IsEntityVisible(id) || world.Spatial().Visibility()->GetInvisibleCount() != 0)
+        world.Spatial().SetEntityVisible(id,true);
+        if (!world.Spatial().IsEntityVisible(id) || world.Spatial().Visibility()->GetInvisibleCount() != 0)
         {
             GLogError(u8"Test 1 Failed: 恢复可见后状态不对");
             return 10;
@@ -115,8 +115,8 @@ int main(int argc, char** argv)
 
         // 建立父子关系（可见性上溯走的是变换父链 ⇒ 必须有变换行）
         const auto topology_before_transform = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
-        const TransformID parent_transform = world.CreateTransform(parent_id,Mobility::Static);
-        const TransformID child_transform  = world.CreateTransform(child_id,Mobility::Movable);
+        const TransformID parent_transform = world.Spatial().CreateTransform(parent_id,Mobility::Static);
+        const TransformID child_transform  = world.Spatial().CreateTransform(child_id,Mobility::Movable);
 
         if (!IsValidTransformID(parent_transform) || !IsValidTransformID(child_transform)
             || world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_transform + 2)
@@ -126,25 +126,25 @@ int main(int argc, char** argv)
         }
 
         const auto parent_revision = world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility);
-        world.GetTransform(child_transform).SetParent(parent_transform);
+        world.Spatial().GetTransform(child_transform).SetParent(parent_transform);
         if (world.GetPrimitiveTopologyLedger().GetDynamicFactRevision(DynamicFactChange::Visibility) != parent_revision + 1)
             return 11;
 
-        if (!world.IsEntityVisible(child_id))
+        if (!world.Spatial().IsEntityVisible(child_id))
         {
             GLogError(u8"Test 2 Failed: 初始应可见");
             return 11;
         }
 
-        world.SetEntityVisible(parent_id,false);                // 父不可见
+        world.Spatial().SetEntityVisible(parent_id,false);                // 父不可见
 
-        if (world.IsEntityVisible(parent_id))
+        if (world.Spatial().IsEntityVisible(parent_id))
         {
             GLogError(u8"Test 2 Failed: 父自身置隐后仍报可见");
             return 11;
         }
 
-        if (world.IsEntityVisible(child_id))
+        if (world.Spatial().IsEntityVisible(child_id))
         {
             GLogError(u8"Test 2 Failed: 祖先不可见未传导到后代");
             return 11;
@@ -156,9 +156,9 @@ int main(int argc, char** argv)
             return 11;
         }
 
-        world.SetEntityVisible(parent_id,true);                 // 恢复父
+        world.Spatial().SetEntityVisible(parent_id,true);                 // 恢复父
 
-        if (!world.IsEntityVisible(child_id))
+        if (!world.Spatial().IsEntityVisible(child_id))
         {
             GLogError(u8"Test 2 Failed: 恢复祖先后后代仍不可见");
             return 11;
@@ -167,8 +167,8 @@ int main(int argc, char** argv)
         GLogInfo(u8"Test 2 Passed: 祖先不可见 ⇒ 后代不可见（后代自身非“直接”不可见）。");
 
         const auto topology_before_destroy = world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure);
-        world.DestroyTransform(child_transform);
-        world.DestroyTransform(child_transform);
+        world.Spatial().DestroyTransform(child_transform);
+        world.Spatial().DestroyTransform(child_transform);
         if (world.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::EntityStructure) != topology_before_destroy + 1)
         {
             GLogError(u8"Test 2 Failed: 变换销毁未正确通知拓扑变化");
@@ -191,7 +191,7 @@ int main(int argc, char** argv)
 
         const EntityID id = entity->GetEntityID();
 
-        world.SetEntityVisible(id,false);
+        world.Spatial().SetEntityVisible(id,false);
 
         if (world.Spatial().Visibility()->GetInvisibleCount() != 1)
         {
@@ -211,9 +211,9 @@ int main(int argc, char** argv)
         if (!replacement)
             return 12;
         const EntityID replacement_id = replacement->GetEntityID();
-        world.SetEntityVisible(id, false);
         world.Spatial().SetEntityVisible(id, false);
-        if (!world.IsEntityVisible(replacement_id)
+        world.Spatial().SetEntityVisible(id, false);
+        if (!world.Spatial().IsEntityVisible(replacement_id)
             || !EntityGPUTable::IsActive(*world.EntityRenderState().EntityGPU().Row(replacement_id))
             || !(world.EntityRenderState().EntityGPU().Row(replacement_id)->flags & uint32_t(EntityGPUFlags::Visible))
             || world.Spatial().Visibility()->GetInvisibleCount() != 0)

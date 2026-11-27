@@ -113,7 +113,7 @@ private:
         ecs_context->ForEachAliveEntity([&](const hgl::ecs::Entity *entity)
         {
             if (!entity || strncmp(entity->GetName().c_str(), "GizmoAssetMove_", 15) != 0
-             || !ecs_context->IsEntityVisible(entity->GetEntityID()))
+             || !ecs_context->Spatial().IsEntityVisible(entity->GetEntityID()))
                 return;
             const auto *material = ecs_context->GetMaterialData(entity->GetEntityID());
             if (material && material->HasDataResource()
@@ -221,7 +221,7 @@ private:
         if(!plane_entity)
             return false;
 
-        auto plane_transform = ecs_context->GetTransform(ecs_context->CreateTransform(plane_entity->GetEntityID(), hgl::ecs::Mobility::Static));
+        auto plane_transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(plane_entity->GetEntityID(), hgl::ecs::Mobility::Static));
         plane_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 
         auto plane_primitive_comp = plane_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(plane_entity);
@@ -236,7 +236,7 @@ private:
         if(!cube_entity)
             return false;
 
-        auto cube_transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+        auto cube_transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(cube_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         cube_transform.SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
 
         auto cube_primitive_comp = cube_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube_entity);
@@ -437,7 +437,7 @@ public:
                     entities.Add(entity->GetEntityID());
             });
             for (const auto id : entities)
-                ecs_context->SetEntityVisible(id, false);
+                ecs_context->Spatial().SetEntityVisible(id, false);
             gizmo_hidden = true;
             hide_frame = frame_count;
         }

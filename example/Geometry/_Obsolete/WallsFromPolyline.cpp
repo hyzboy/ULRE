@@ -101,7 +101,7 @@ public:
         for(size_t i = 0; i < wall_meshes.size(); ++i)
         {
             auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
-            auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+            auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(entity->GetEntityID(), hgl::ecs::Mobility::Movable));
             auto prim_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity);
             hgl::ecs::MaterialData *material_data_comp = entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(entity);
 

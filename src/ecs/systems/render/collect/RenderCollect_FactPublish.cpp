@@ -139,7 +139,7 @@ namespace hgl::ecs
                 // 闸门**先于**任何昂贵计算（契约档 §5「问题 3 的 ②」裁定）。
                 // 成本：值已在本帧别处算过同类查询（O(1)+上溯）；`SetVisible` 是**值变才标脏**
                 // ⇒ 静态实体不产生脏行（否则整表每帧上传）。
-                world->EntityRenderState().EntityGPU().SetVisible(entity_id, world->IsEntityVisible(entity_id));
+                world->EntityRenderState().EntityGPU().SetVisible(entity_id, world->Spatial().IsEntityVisible(entity_id));
 
                 // ── T3.1 / T3.2：模型模板事实上行（GPU 展开分支的**唯一入口**）──
                 // 同一判据点、同一纪律：本实体已进批 ⇒ 行值当帧有效。`template_id != 0`
@@ -166,7 +166,7 @@ namespace hgl::ecs
                 // 写后一致断言（debug 面）：这条**本该恒成立**（刚写的就是权威）⇒ 一旦点名即
                 // 行缺失/溢出/有第二写者。取数：EntityGPUTable::GetVisibleMirrorCount()（应恒 0）。
                 world->EntityRenderState().EntityGPU().VerifyVisibleMirror(
-                    shadow_owner, world->IsEntityVisible(entity_id),
+                    shadow_owner, world->Spatial().IsEntityVisible(entity_id),
                     "RenderCollectSystem#publish");
 #endif//ULRE_ECS_DEBUG_API
             }

@@ -323,7 +323,7 @@ public:
 
         auto *world = offscreen->GetWorld();
         sphere_entity = world->CreateEntity<Entity>("OffscreenSphere");
-        auto transform = world->GetTransform(world->CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
+        auto transform = world->Spatial().GetTransform(world->Spatial().CreateTransform(sphere_entity->GetEntityID(), Mobility::Static));
         auto prim_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sphere_entity);
         hgl::ecs::MaterialData *material_data_comp = sphere_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(sphere_entity);
 
@@ -619,7 +619,7 @@ private:
             return LogStageFail("App::CreateDisplayCube", "create cube primitive asset failed");
 
         cube.entity = ecs_context->CreateEntity<Entity>(cube.name);
-        cube.transform = ecs_context->GetTransform(ecs_context->CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
+        cube.transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(cube.entity->GetEntityID(), Mobility::Static));
         auto prim_comp = cube.entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(cube.entity);
         hgl::ecs::MaterialData *material_data_comp = cube.entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateMaterialData(cube.entity);
 

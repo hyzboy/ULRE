@@ -147,7 +147,7 @@ namespace hgl
 
             // 世界地址表（WorldAddresses，SSBO + 持久 BDA）：表内是本世界的 world 私有地址，
             // 基址经 pc_root.addr_world_addresses 下发 —— 多世界渲染只换这一个指针。
-            if (!InitializeWorldAddressesTable())
+            if (!gpu_resources.InitializeWorldAddressesTable())
             {
                 LogError("[ECSContext::Initialize] 世界地址表（WorldAddresses）创建失败");
                 return false;
@@ -422,7 +422,7 @@ namespace hgl
 
             // 帧槽变了 ⇒ 本世界的地址表换到本槽（表内各列随世界，
             // 每个 pass 各写自己的槽，不与在途帧/其它世界互踩）。
-            SyncWorldAddresses();
+            gpu_resources.SyncWorldAddresses(GetFrameIndex());
         }
 
         uint32_t ECSContext::GetActiveCameraRow() const
@@ -657,6 +657,8 @@ namespace hgl
         void ECSContext::OnEntityVisibilityChanged(EntityID id, bool visible)
         {
             entity_render_state.EntityGPU().SetVisible(id, visible);
+            if (Entity *entity = GetEntity(id))
+                entity_render_state.EntityGPU().VerifyAfterWrite(entity, "ECSContext::OnEntityVisibilityChanged");
             MarkDynamicFactChanged(DynamicFactChange::Visibility);
             BumpStaticSceneRevision();
         }
@@ -672,76 +674,6 @@ namespace hgl
                 MarkDynamicFactChanged(DynamicFactChange::Visibility);
             if (change_mask & ToChangeMask(TransformChange::Mobility))
                 MarkTopologyChanged(TopologyChange::EntityStructure);
-        }
-
-        uint32_t ECSContext::GetTransformSegmentBudget(const bool movable) const
-        {
-            return spatial_state.GetTransformSegmentBudget(movable);
-        }
-
-        uint32_t ECSContext::AcquireTransformSlot(const bool movable)
-        {
-            return spatial_state.AcquireTransformSlot(movable);
-        }
-
-        void ECSContext::ReleaseTransformSlot(const bool movable,const uint32_t slot)
-        {
-            spatial_state.ReleaseTransformSlot(movable, slot);
-        }
-
-        bool ECSContext::TryGetTransformSlot(TransformID id,bool movable,uint32_t &out_slot) const
-        {
-            return spatial_state.TryGetTransformSlot(id, movable, out_slot);
-        }
-
-        uint32_t ECSContext::GetLiveTransformCount(const bool movable) const
-        {
-            return spatial_state.GetLiveTransformCount(movable);
-        }
-
-        bool ECSContext::RegisterTransform(TransformID id,bool isMovable)
-        {
-            return spatial_state.RegisterTransform(id, isMovable);
-        }
-
-        bool ECSContext::MigrateTransform(TransformID id,bool toMovable)
-        {
-            return spatial_state.MigrateTransform(id, toMovable);
-        }
-
-        void ECSContext::UnregisterTransform(TransformID id)
-        {
-            spatial_state.UnregisterTransform(id);
-        }
-
-        TransformID ECSContext::CreateTransform(EntityID owner,Mobility mobility)
-        {
-            return spatial_state.CreateTransform(owner, mobility);
-        }
-
-        void ECSContext::DestroyTransform(TransformID id)
-        {
-            spatial_state.DestroyTransform(id);
-        }
-
-        TransformID ECSContext::GetTransformID(EntityID owner) const
-        {
-            return spatial_state.GetTransformID(owner);
-        }
-
-        TransformAccessor ECSContext::GetTransform(TransformID id)
-        {
-            return spatial_state.GetTransform(id);
-        }
-
-        BoundingBoxAccessor ECSContext::GetBoundingBoxByEntity(EntityID owner) const
-        {
-            return spatial_state.GetBoundingBoxByEntity(owner);
-        }
-
-        BoundingBoxAccessor ECSContext::GetOrCreateBoundingBox(EntityID owner)
-        {
-            return spatial_state.GetOrCreateBoundingBox(owner);
         }
 
         MaterialData* ECSContext::GetMaterialData(EntityID owner)
@@ -813,9 +745,5 @@ namespace hgl
             MarkTopologyChanged(TopologyChange::MaterialBinding);
         }
 
-        void ECSContext::DestroyBoundingBox(BoundingBoxDataStorage::HandleID id)
-        {
-            spatial_state.DestroyBoundingBox(id);
-        }
     }//namespace ecs
 }//namespace hgl

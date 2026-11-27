@@ -258,7 +258,7 @@ private:
         {
             row_entities[row] = ecs_world->CreateEntity<Entity>("MipLevelRow_" + std::to_string(row));
 
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(row_entities[row]->GetEntityID(), Mobility::Static));
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(row_entities[row]->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

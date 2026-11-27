@@ -87,7 +87,7 @@ bool TransformGizmoSystem::EnsureGizmo()
     math::Vector3f create_pos = initial_position;
     if (target_entity)
     {
-        auto target_transform = context->GetTransformByEntity(target_entity->GetEntityID());
+        auto target_transform = context->Spatial().GetTransformByEntity(target_entity->GetEntityID());
         if (target_transform.IsValid())
             create_pos = target_transform.GetLocalPosition();
     }

@@ -28,7 +28,7 @@ static void UpdateRotateViewRingFacingToCamera(GizmoECS *gizmo, const CameraInfo
     glm::quat parent_world_rot(1.0f, 0.0f, 0.0f, 0.0f);
     if (gizmo->rotate_mode.entity)
     {
-        auto rotate_entity_transform = gizmo->world->GetTransformByEntity(gizmo->rotate_mode.entity->GetEntityID());
+        auto rotate_entity_transform = gizmo->world->Spatial().GetTransformByEntity(gizmo->rotate_mode.entity->GetEntityID());
         if (rotate_entity_transform.IsValid())
         {
             rotate_entity_transform.UpdateIfDirty();
@@ -99,7 +99,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo, const GizmoFrameInput &input)
 
     hgl::ecs::TransformAccessor target_transform;
     if (gizmo->target_entity)
-        target_transform = gizmo->world->GetTransformByEntity(gizmo->target_entity->GetEntityID());
+        target_transform = gizmo->world->Spatial().GetTransformByEntity(gizmo->target_entity->GetEntityID());
 
     const bool has_view = (input.camera_info && input.viewport_info);
 

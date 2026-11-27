@@ -56,17 +56,17 @@ namespace hgl::ecs
         }
 
         const TransformID transform_id =
-            world->CreateTransform(entity->GetEntityID(), mobility);
+            world->Spatial().CreateTransform(entity->GetEntityID(), mobility);
         if (!IsValidTransformID(transform_id))
         {
             Fail("CreateTransform");
             return *this;
         }
 
-        const TransformAccessor transform = world->GetTransform(transform_id);
+        const TransformAccessor transform = world->Spatial().GetTransform(transform_id);
         if (!transform.IsValid())
         {
-            world->DestroyTransform(transform_id);
+            world->Spatial().DestroyTransform(transform_id);
             Fail("GetTransform");
             return *this;
         }

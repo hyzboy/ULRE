@@ -84,7 +84,7 @@ private:
             return false;
 
         sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
-        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sky_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
+        auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(sky_entity->GetEntityID(), hgl::ecs::Mobility::Movable));
         auto prim_comp = sky_entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(sky_entity);
 
         transform.SetLocalPosition(glm::vec3(0.0f));

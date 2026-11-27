@@ -178,7 +178,7 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 添加变换（Transform）
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(plane_grid_entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(plane_grid_entity->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -199,7 +199,7 @@ private:
             prim_line_vab = geom_line ? geom_line->GetVAB(VAN::Position) : nullptr;
 
             // 添加变换（Transform）
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(ray_line_entity->GetEntityID(), Mobility::Static));//线段虽然会动，但我们改的是VAB不是Transform
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(ray_line_entity->GetEntityID(), Mobility::Static));//线段虽然会动，但我们改的是VAB不是Transform
             transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

@@ -275,8 +275,8 @@ private:
                 const float z = float(MODE_ROWS - 1 - row) * ROW_SPACING
                               - float(MODE_ROWS - 1) * 0.5f * ROW_SPACING;
 
-                auto transform = ecs_world->GetTransform(
-                    ecs_world->CreateTransform(e->GetEntityID(), Mobility::Static));
+                auto transform = ecs_world->Spatial().GetTransform(
+                    ecs_world->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
                 transform.SetLocalPosition(glm::vec3(0.0f, y, z));
                 transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                 transform.SetLocalScale(glm::vec3(CUBE_SCALE, CUBE_SCALE, CUBE_SCALE));

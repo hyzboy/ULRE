@@ -379,7 +379,7 @@ private:
                     return false;
                 sphere_entities[row][col] = e;
                 sphere_transforms[row][col] =
-                    ecs_world->GetTransformByEntity(e->GetEntityID());
+                    ecs_world->Spatial().GetTransformByEntity(e->GetEntityID());
 
                 // T3h 判据实体（PBR_SHADOW_FACTS=1 才挂）：两个**非默认阴影事实**
                 // 实体——(2,3) 不接收、(7,4) bias=2.0。本示例无投影光 ⇒ 像素看不出

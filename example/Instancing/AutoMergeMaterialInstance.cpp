@@ -158,7 +158,7 @@ private:
 
             // === 步骤3: 添加变换（Transform） ===
             // 每个三角形有不同的旋转角度
-            auto transform = ecs_world->GetTransform(ecs_world->CreateTransform(triangles[i].entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_world->Spatial().GetTransform(ecs_world->Spatial().CreateTransform(triangles[i].entity->GetEntityID(), Mobility::Static));
 
             // 计算旋转角度
             double rad = deg2rad(TRI_ROTATE_ANGLE * i);

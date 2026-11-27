@@ -409,20 +409,20 @@ namespace hgl::graph
 
                 runtime->entity_id = entity->GetEntityID();
                 ecs::TransformAccessor wrapper_transform =
-                    world->GetTransformByEntity(runtime->entity_id);
+                    world->Spatial().GetTransformByEntity(runtime->entity_id);
                 if (wrapper_transform.IsValid())
                 {
                     for (size_t root_index = 0; root_index < model_roots.size(); ++root_index)
                     {
                         ecs::TransformAccessor root_transform =
-                            world->GetTransformByEntity(
+                            world->Spatial().GetTransformByEntity(
                                 runtime->model_instance.GetNodeEntity(model_roots[root_index]));
                         if (root_transform.IsValid())
                             root_transform.SetParent(wrapper_transform.GetID());
                     }
                 }
 
-                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                world->Spatial().SetEntityVisible(runtime->entity_id, node_spec.visible);
                 continue;
             }
 
@@ -501,7 +501,7 @@ namespace hgl::graph
                 }
 
                 runtime->entity_id = entity->GetEntityID();
-                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                world->Spatial().SetEntityVisible(runtime->entity_id, node_spec.visible);
             }
             else
             {
@@ -526,7 +526,7 @@ namespace hgl::graph
                 }
 
                 runtime->entity_id = entity->GetEntityID();
-                world->SetEntityVisible(runtime->entity_id, node_spec.visible);
+                world->Spatial().SetEntityVisible(runtime->entity_id, node_spec.visible);
                 continue;
             }
         }
@@ -547,9 +547,9 @@ namespace hgl::graph
             }
 
             ecs::TransformAccessor child_transform =
-                world->GetTransformByEntity(child->entity_id);
+                world->Spatial().GetTransformByEntity(child->entity_id);
             ecs::TransformAccessor parent_transform =
-                world->GetTransformByEntity(parent->entity_id);
+                world->Spatial().GetTransformByEntity(parent->entity_id);
             if (!child_transform.IsValid() || !parent_transform.IsValid())
             {
                 MLogError(LevelLoader, "Instantiate: parent transform is unavailable");

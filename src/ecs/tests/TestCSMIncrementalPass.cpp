@@ -1587,7 +1587,7 @@ int main(int argc, char** argv)
                 const uint64_t revision_base = ctx.GetStaticSceneRevision();
 
                 auto e_static = ctx.CreateEntity<Entity>("TestStaticMover");
-                auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
+                auto tf_static = ctx.Spatial().GetTransform(ctx.Spatial().CreateTransform(e_static->GetEntityID(), Mobility::Static));
                 tf_static.SetLocalPosition(math::Vector3f(5.0f, 6.0f, 7.0f));
 
                 // 批 1.1 B4：必须走**正常帧序**（先 Update —— 它会清 matrixDirty，再 Submit）。
@@ -1804,7 +1804,7 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            auto tf_static = ctx.GetTransform(ctx.CreateTransform(e_static->GetEntityID(), Mobility::Static));
+            auto tf_static = ctx.Spatial().GetTransform(ctx.Spatial().CreateTransform(e_static->GetEntityID(), Mobility::Static));
             if (!tf_static.IsValid())
             {
                 GLogError(u8"Test 15 Failed: 无法创建 Static 变换行");
@@ -1860,7 +1860,7 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            auto tf_movable = ctx.GetTransform(ctx.CreateTransform(e_movable->GetEntityID(), Mobility::Movable));
+            auto tf_movable = ctx.Spatial().GetTransform(ctx.Spatial().CreateTransform(e_movable->GetEntityID(), Mobility::Movable));
             if (!tf_movable.IsValid())
             {
                 GLogError(u8"Test 15 Failed: 无法创建 Movable 变换行");
@@ -1883,7 +1883,7 @@ int main(int argc, char** argv)
                 return 15;
             }
 
-            auto tf_migrate = ctx.GetTransform(ctx.CreateTransform(e_migrate->GetEntityID(), Mobility::Static));
+            auto tf_migrate = ctx.Spatial().GetTransform(ctx.Spatial().CreateTransform(e_migrate->GetEntityID(), Mobility::Static));
             if (!tf_migrate.IsValid())
             {
                 GLogError(u8"Test 15 Failed: 无法创建待迁移变换行");
@@ -4535,7 +4535,7 @@ int main(int argc, char** argv)
               "图元枚举不再按 GeometryData（渲染组件删除后无枚举源）" },
             { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "->IsVisible()",
-              "收集链又读组件级可见性（应改走 world->IsEntityVisible）",
+              "收集链又读组件级可见性（应改走 world->Spatial().IsEntityVisible）",
               true },
             { "PrimitiveState.h", OS_TEXT("inc/hgl/ecs/support/pipeline/PrimitiveState.h"),
               "bool CanRender(",
@@ -4613,7 +4613,7 @@ int main(int argc, char** argv)
               "if (!CanRender(",
               "驱动侧又出现手写可渲染判据（表不再是唯一判据）", true },
             { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
-              "if (!world->IsEntityVisible(",
+              "if (!world->Spatial().IsEntityVisible(",
               "驱动侧又出现手写可见性判据（表不再是唯一判据）", true },
             { "RenderCollectSystem.cpp", OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
               "if (!CanCastShadow(",
@@ -5716,17 +5716,17 @@ int main(int argc, char** argv)
         const SourceContract kHoleContracts[] =
         {
             // ① 结构性入口在位
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldSpatialState.h", OS_TEXT("inc/hgl/ecs/support/spatial/WorldSpatialState.h"),
               "void ForEachMovableTransform(Fn &&fn) const",
               "缺 movable 名单的结构性遍历入口" },
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldSpatialState.h", OS_TEXT("inc/hgl/ecs/support/spatial/WorldSpatialState.h"),
               "void ForEachStaticTransform(Fn &&fn) const",
               "缺 static 名单的结构性遍历入口" },
             { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
-              "world->ForEachMovableTransform(",
+              "world->Spatial().ForEachMovableTransform(",
               "Update 未走结构性遍历（裸遍历会让空洞越界）" },
             { "TransformSystem.cpp", OS_TEXT("src/ecs/systems/tick/TransformSystem.cpp"),
-              "world->ForEachStaticTransform(",
+              "world->Spatial().ForEachStaticTransform(",
               "静态侧未走结构性遍历（裸遍历会让空洞越界）" },
             { "TransformDataStorage.h", OS_TEXT("inc/hgl/ecs/support/transform/TransformDataStorage.h"),
               "IsDirty 收到无效句柄",
@@ -6831,12 +6831,12 @@ int main(int argc, char** argv)
               "graph::StructView<graph::ShadowInfo> *shadow_info_view = nullptr;",
               "T6b/P4：影子数据设备镜像不在世界（退回 profile ⇒ 两世界互踩）" },
 
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
+            { "WorldGPUResources.h", OS_TEXT("inc/hgl/ecs/support/render/WorldGPUResources.h"),
               "void CommitShadowInfo(const uint32_t frame_slot);",
-              "T6b/P4：世界缺少影子数据提交口（写者/时序无单源）" },
+              "T6b/P4：GPUResources 缺少影子数据提交口（写者/时序无单源）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "bool ECSContext::InitializeShadowInfoTable()",
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
+              "bool WorldGPUResources::InitializeShadowInfoTable()",
               "T6b/P4：影子数据表的建表入口丢失" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
@@ -6857,7 +6857,7 @@ int main(int argc, char** argv)
 
             // ② 提交时序 + 写者
             { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp"),
-              "context->CommitShadowInfo(rt->GetCurrentFrameIndex());",
+              "context->GPUResources().CommitShadowInfo(rt->GetCurrentFrameIndex());",
               "T6b/P4：影子数据提交点丢失（或不再按交换链帧的当前槽提交）" },
 
             { "MainLightShadowSystem.cpp", OS_TEXT("src/ecs/systems/render/light_shadow/MainLightShadowSystem.cpp"),
@@ -7259,8 +7259,8 @@ int main(int argc, char** argv)
               "权威链",
               "问题 2(b)：四份副本的权威顺序与刷新时机必须写进头注（防下次把 type[16] 当冗余删）" },
 
-            { "Context.h", OS_TEXT("inc/hgl/ecs/core/Context.h"),
-              "VerifyAfterWrite(GetEntity(id)",
+            { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
+              "VerifyAfterWrite(entity",
               "问题 2(a)：可见性写入点必须对拍（SetVisible 是三个刷新点之一）" },
 
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),

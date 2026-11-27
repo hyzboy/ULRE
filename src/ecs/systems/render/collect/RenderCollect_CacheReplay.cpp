@@ -115,7 +115,7 @@ namespace hgl::ecs
 
                 // P3 不再要求实体挂载 GeometryData；draw_geometry_id 已是快照权威绘制键。
 
-                const TransformAccessor transform = world->GetTransformByEntity(entity_id);
+                const TransformAccessor transform = world->Spatial().GetTransformByEntity(entity_id);
 
                 if (!transform.IsValid())
                 {

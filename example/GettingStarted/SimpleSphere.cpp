@@ -105,7 +105,7 @@ private:
 
         sphere_entity = ecs_context->CreateEntity<Entity>("SphereEntity");
 
-        auto transform = ecs_context->GetTransform(ecs_context->CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
+        auto transform = ecs_context->Spatial().GetTransform(ecs_context->Spatial().CreateTransform(sphere_entity->GetEntityID(), Mobility::Movable));
         transform.SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform.SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

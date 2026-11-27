@@ -310,8 +310,8 @@ private:
 
             const bool movable = (i % MOVER_STRIDE) == 2;
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(e->GetEntityID(),
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(e->GetEntityID(),
                                              movable ? Mobility::Movable : Mobility::Static));
             transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -444,7 +444,7 @@ public:
 
             for (const Mover & m : movers)
             {
-                auto transform = ecs_context->GetTransform(m.tid);
+                auto transform = ecs_context->Spatial().GetTransform(m.tid);
                 transform.SetLocalPosition(glm::vec3(m.x, m.y,
                                                      m.base_z + MOVER_AMP *
                                                          float(std::sin(time * MOVER_SPEED + m.phase))));

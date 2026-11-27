@@ -161,14 +161,14 @@ int main(int argc, char** argv)
     }
 
     auto ent1 = context.CreateEntity<Entity>("RootEnt");
-    context.CreateTransform(ent1->GetEntityID(), Mobility::Static);
-    auto tc1 = context.GetTransformByEntity(ent1->GetEntityID());
+    context.Spatial().CreateTransform(ent1->GetEntityID(), Mobility::Static);
+    auto tc1 = context.Spatial().GetTransformByEntity(ent1->GetEntityID());
     tc1.SetLocalPosition(glm::vec3(1.0f, 2.0f, 3.0f));
 
     auto ent2 = context.CreateEntity<Entity>("ChildEnt");
-    context.CreateTransform(ent2->GetEntityID(), Mobility::Static);
-    auto tc2 = context.GetTransformByEntity(ent2->GetEntityID());
-    tc2.SetParent(context.GetTransformID(ent1->GetEntityID()));
+    context.Spatial().CreateTransform(ent2->GetEntityID(), Mobility::Static);
+    auto tc2 = context.Spatial().GetTransformByEntity(ent2->GetEntityID());
+    tc2.SetParent(context.Spatial().GetTransformID(ent1->GetEntityID()));
     tc2.SetLocalPosition(glm::vec3(0.0f, 10.0f, 0.0f));
 
     glm::vec3 child_world_pos = tc2.GetWorldPosition();
@@ -207,24 +207,24 @@ int main(int argc, char** argv)
 
         // (a) 以 Static 建行，再迁到 Movable
         auto ent_a = context.CreateEntity<Entity>("MigrateProbe");
-        const TransformID id_a = context.CreateTransform(ent_a->GetEntityID(), Mobility::Static);
+        const TransformID id_a = context.Spatial().CreateTransform(ent_a->GetEntityID(), Mobility::Static);
 
-        if (!contains(context.GetStaticTransforms(), id_a))
+        if (!contains(context.Spatial().GetStaticTransforms(), id_a))
         {
             GLogError(u8"Test 8 Failed: 以 Static 建行后未进静态列表");
             return 10;
         }
 
-        context.GetTransform(id_a).SetMobility(Mobility::Movable);
+        context.Spatial().GetTransform(id_a).SetMobility(Mobility::Movable);
 
-        if (!contains(context.GetMovableTransforms(), id_a))
+        if (!contains(context.Spatial().GetMovableTransforms(), id_a))
         {
             GLogError(u8"Test 8 Failed: SetMobility(Movable) 后该行未进可动列表"
                       u8"（渲染侧会取不到它的行 ⇒ 实例画在原点、且永不更新）");
             return 10;
         }
 
-        if (contains(context.GetStaticTransforms(), id_a))
+        if (contains(context.Spatial().GetStaticTransforms(), id_a))
         {
             GLogError(u8"Test 8 Failed: 迁移后旧列表仍留着该行（同一行被两路都算）");
             return 10;
@@ -233,10 +233,10 @@ int main(int argc, char** argv)
         // (b) SetParent 维护子表 + 解除关系后清理
         auto ent_p = context.CreateEntity<Entity>("ParentProbe");
         auto ent_c = context.CreateEntity<Entity>("ChildProbe");
-        const TransformID id_p = context.CreateTransform(ent_p->GetEntityID(), Mobility::Static);
-        const TransformID id_c = context.CreateTransform(ent_c->GetEntityID(), Mobility::Static);
+        const TransformID id_p = context.Spatial().CreateTransform(ent_p->GetEntityID(), Mobility::Static);
+        const TransformID id_c = context.Spatial().CreateTransform(ent_c->GetEntityID(), Mobility::Static);
 
-        context.GetTransform(id_c).SetParent(id_p);
+        context.Spatial().GetTransform(id_c).SetParent(id_p);
 
         if (!storage->HasChild(id_p, id_c))
         {
@@ -244,7 +244,7 @@ int main(int argc, char** argv)
             return 10;
         }
 
-        context.GetTransform(id_c).SetParent(INVALID_TRANSFORM_ID);
+        context.Spatial().GetTransform(id_c).SetParent(INVALID_TRANSFORM_ID);
 
         if (storage->HasChild(id_p, id_c))
         {
@@ -256,7 +256,7 @@ int main(int argc, char** argv)
         const EntityID child_entity_id = ent_c->GetEntityID();
         context.DestroyEntity(child_entity_id);
 
-        if (IsValidTransformID(context.GetTransformID(child_entity_id)))
+        if (IsValidTransformID(context.Spatial().GetTransformID(child_entity_id)))
         {
             GLogError(u8"Test 8 Failed: 实体销毁后其变换行未注销（残行会把索引映射串位）");
             return 10;
@@ -265,10 +265,10 @@ int main(int argc, char** argv)
         // (d) 销毁子行必须在父的子表里也清掉（否则父的子表留残条目，遍历到已释放的行）
         auto ent_p2 = context.CreateEntity<Entity>("ParentProbe2");
         auto ent_c2 = context.CreateEntity<Entity>("ChildProbe2");
-        const TransformID id_p2 = context.CreateTransform(ent_p2->GetEntityID(), Mobility::Static);
-        const TransformID id_c2 = context.CreateTransform(ent_c2->GetEntityID(), Mobility::Static);
+        const TransformID id_p2 = context.Spatial().CreateTransform(ent_p2->GetEntityID(), Mobility::Static);
+        const TransformID id_c2 = context.Spatial().CreateTransform(ent_c2->GetEntityID(), Mobility::Static);
 
-        context.GetTransform(id_c2).SetParent(id_p2);
+        context.Spatial().GetTransform(id_c2).SetParent(id_p2);
 
         if (!storage->HasChild(id_p2, id_c2))
         {
@@ -338,8 +338,8 @@ int main(int argc, char** argv)
         }
 
         auto ent_live = context.CreateEntity<Entity>("HandleLiveProbe");
-        const TransformID id_live = context.CreateTransform(ent_live->GetEntityID(), Mobility::Static);
-        auto live = context.GetTransform(id_live);
+        const TransformID id_live = context.Spatial().CreateTransform(ent_live->GetEntityID(), Mobility::Static);
+        auto live = context.Spatial().GetTransform(id_live);
 
         if (!live.IsValid())
         {
@@ -365,16 +365,16 @@ int main(int argc, char** argv)
         }
 
         // 死行上的**新**句柄同样必须无效（否则"拿到已释放行"这条路会静默生效）
-        if (context.GetTransform(id_live).IsValid())
+        if (context.Spatial().GetTransform(id_live).IsValid())
         {
             GLogError(u8"Test 10 Failed: 死行上的新句柄被判定为有效（世代 0 未生效）");
             return 12;
         }
 
         auto ent_new = context.CreateEntity<Entity>("HandleNewProbe");
-        const TransformID id_new = context.CreateTransform(ent_new->GetEntityID(), Mobility::Static);
+        const TransformID id_new = context.Spatial().CreateTransform(ent_new->GetEntityID(), Mobility::Static);
 
-        if (!context.GetTransform(id_new).IsValid())
+        if (!context.Spatial().GetTransform(id_new).IsValid())
         {
             GLogError(u8"Test 10 Failed: 新行的句柄无效");
             return 12;
@@ -503,7 +503,7 @@ int main(int argc, char** argv)
             { "inc/hgl/ecs/systems/tick/TransformSystem.h", "TryGetTransformGroupIndex", 0, "同上（声明）" },
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_index_map",          0, "排名映射复活（应为 static_slot_map）" },
             { "src/ecs/systems/tick/TransformSystem.cpp", "dynamic_index_map",         0, "同上（动态段）" },
-            { "inc/hgl/ecs/core/Context.h",               "TryGetTransformSlot",       1, "稳定槽位查询缺失" },
+            { "inc/hgl/ecs/support/spatial/WorldSpatialState.h", "TryGetTransformSlot", 1, "稳定槽位查询缺失（应由 Spatial 领域提供）" },
             // 批 1.3 C6：遍历统一走 `ForEach*Transform` 后，槽号改由 slot_map 反查（2 处遍历）
             // ⇒ 该符号用点由 4 涨到 6；针的意图（每帧派生自世界槽位表、不许退化成排名映射）不变。
             { "src/ecs/systems/tick/TransformSystem.cpp", "static_slot_map",           6, "槽位映射缺失（每帧派生自世界槽位表）" },
@@ -565,18 +565,18 @@ int main(int argc, char** argv)
         auto ent_b = context.CreateEntity<Entity>("SlotB");
         auto ent_c = context.CreateEntity<Entity>("SlotC");
 
-        const TransformID id_a = context.CreateTransform(ent_a->GetEntityID(), Mobility::Static);
-        const TransformID id_b = context.CreateTransform(ent_b->GetEntityID(), Mobility::Static);
-        const TransformID id_c = context.CreateTransform(ent_c->GetEntityID(), Mobility::Static);
+        const TransformID id_a = context.Spatial().CreateTransform(ent_a->GetEntityID(), Mobility::Static);
+        const TransformID id_b = context.Spatial().CreateTransform(ent_b->GetEntityID(), Mobility::Static);
+        const TransformID id_c = context.Spatial().CreateTransform(ent_c->GetEntityID(), Mobility::Static);
 
         uint32_t slot_a = 0;
         uint32_t slot_b = 0;
         uint32_t slot_c = 0;
 
         if (!IsValidTransformID(id_a) || !IsValidTransformID(id_b) || !IsValidTransformID(id_c) ||
-            !context.TryGetTransformSlot(id_a,false,slot_a) ||
-            !context.TryGetTransformSlot(id_b,false,slot_b) ||
-            !context.TryGetTransformSlot(id_c,false,slot_c))
+            !context.Spatial().TryGetTransformSlot(id_a,false,slot_a) ||
+            !context.Spatial().TryGetTransformSlot(id_b,false,slot_b) ||
+            !context.Spatial().TryGetTransformSlot(id_c,false,slot_c))
         {
             GLogError(u8"Test 13 Failed: 三个静态变换的槽位分配/查询失败");
             return 15;
@@ -594,8 +594,8 @@ int main(int argc, char** argv)
         uint32_t slot_a_after = 0;
         uint32_t slot_c_after = 0;
 
-        if (!context.TryGetTransformSlot(id_a,false,slot_a_after) || slot_a_after != slot_a ||
-            !context.TryGetTransformSlot(id_c,false,slot_c_after) || slot_c_after != slot_c)
+        if (!context.Spatial().TryGetTransformSlot(id_a,false,slot_a_after) || slot_a_after != slot_a ||
+            !context.Spatial().TryGetTransformSlot(id_c,false,slot_c_after) || slot_c_after != slot_c)
         {
             GLogError(u8"Test 13 Failed: 销毁中间物体后其它物体槽位漂移（A %u→%u / C %u→%u）"
                       u8"—— 行号必须由稳定槽位决定，不得按名单顺序重排",
@@ -605,30 +605,30 @@ int main(int argc, char** argv)
 
         // 新物体复用空洞 ⇒ 拿回被释放的槽位
         auto ent_d = context.CreateEntity<Entity>("SlotD");
-        const TransformID id_d = context.CreateTransform(ent_d->GetEntityID(), Mobility::Static);
+        const TransformID id_d = context.Spatial().CreateTransform(ent_d->GetEntityID(), Mobility::Static);
         uint32_t slot_d = 0;
 
-        if (!IsValidTransformID(id_d) || !context.TryGetTransformSlot(id_d,false,slot_d) || slot_d != slot_b)
+        if (!IsValidTransformID(id_d) || !context.Spatial().TryGetTransformSlot(id_d,false,slot_d) || slot_d != slot_b)
         {
             GLogError(u8"Test 13 Failed: 新物体未复用被释放的槽位（期望 %u，实际 %u）", slot_b, slot_d);
             return 15;
         }
 
         // Mobility 换边 ⇒ 换段（旧段查询失败 + 新段拿到槽位）+ 计数增
-        const uint32_t move_before = context.GetTransformRowMoveCount();
-        context.MigrateTransform(id_a,true);
+        const uint32_t move_before = context.Spatial().GetTransformRowMoveCount();
+        context.Spatial().MigrateTransform(id_a,true);
 
         uint32_t slot_a_movable = 0;
         uint32_t slot_a_static_dummy = 0;
 
-        if (context.TryGetTransformSlot(id_a,false,slot_a_static_dummy) ||
-            !context.TryGetTransformSlot(id_a,true,slot_a_movable) ||
-            context.GetTransformRowMoveCount() != move_before + 1)
+        if (context.Spatial().TryGetTransformSlot(id_a,false,slot_a_static_dummy) ||
+            !context.Spatial().TryGetTransformSlot(id_a,true,slot_a_movable) ||
+            context.Spatial().GetTransformRowMoveCount() != move_before + 1)
         {
             GLogError(u8"Test 13 Failed: Mobility 换边未换段（static 命中=%d movable 命中=%d 计数 %u→%u）",
-                      context.TryGetTransformSlot(id_a,false,slot_a_static_dummy) ? 1 : 0,
-                      context.TryGetTransformSlot(id_a,true,slot_a_movable) ? 1 : 0,
-                      move_before, context.GetTransformRowMoveCount());
+                      context.Spatial().TryGetTransformSlot(id_a,false,slot_a_static_dummy) ? 1 : 0,
+                      context.Spatial().TryGetTransformSlot(id_a,true,slot_a_movable) ? 1 : 0,
+                      move_before, context.Spatial().GetTransformRowMoveCount());
             return 15;
         }
 
@@ -636,13 +636,13 @@ int main(int argc, char** argv)
         storage->Initialize(2,2);
 
         auto ent_over = context.CreateEntity<Entity>("SlotOverBudget");
-        const uint32_t live_before = context.GetLiveTransformCount(false);
-        const TransformID id_over = context.CreateTransform(ent_over->GetEntityID(), Mobility::Static);
+        const uint32_t live_before = context.Spatial().GetLiveTransformCount(false);
+        const TransformID id_over = context.Spatial().CreateTransform(ent_over->GetEntityID(), Mobility::Static);
 
-        if (IsValidTransformID(id_over) || context.GetLiveTransformCount(false) != live_before)
+        if (IsValidTransformID(id_over) || context.Spatial().GetLiveTransformCount(false) != live_before)
         {
             GLogError(u8"Test 13 Failed: 段预算用尽仍在分配（id 有效=%d 活槽 %u→%u）",
-                      IsValidTransformID(id_over) ? 1 : 0, live_before, context.GetLiveTransformCount(false));
+                      IsValidTransformID(id_over) ? 1 : 0, live_before, context.Spatial().GetLiveTransformCount(false));
             return 15;
         }
 
@@ -670,11 +670,11 @@ int main(int argc, char** argv)
         auto ent_fp = context.CreateEntity<Entity>("FixedPixelProbe");
         auto ent_plain = context.CreateEntity<Entity>("PlainProbe");
 
-        const TransformID fp_id = context.CreateTransform(ent_fp->GetEntityID(), Mobility::Static);
-        const TransformID plain_id = context.CreateTransform(ent_plain->GetEntityID(), Mobility::Static);
+        const TransformID fp_id = context.Spatial().CreateTransform(ent_fp->GetEntityID(), Mobility::Static);
+        const TransformID plain_id = context.Spatial().CreateTransform(ent_plain->GetEntityID(), Mobility::Static);
 
-        auto fp = context.GetTransform(fp_id);
-        auto plain = context.GetTransform(plain_id);
+        auto fp = context.Spatial().GetTransform(fp_id);
+        auto plain = context.Spatial().GetTransform(plain_id);
 
         if (fp.IsFixedPixelSizingEnabled() || plain.IsFixedPixelSizingEnabled())
         {
@@ -698,8 +698,8 @@ int main(int argc, char** argv)
         }
 
         // 子表 CSR 往返：Add → 读回 → 查找 → Remove
-        const TransformID csr_child_a = context.CreateTransform(context.CreateEntity<Entity>("CsrChildA")->GetEntityID(), Mobility::Static);
-        const TransformID csr_child_b = context.CreateTransform(context.CreateEntity<Entity>("CsrChildB")->GetEntityID(), Mobility::Static);
+        const TransformID csr_child_a = context.Spatial().CreateTransform(context.CreateEntity<Entity>("CsrChildA")->GetEntityID(), Mobility::Static);
+        const TransformID csr_child_b = context.Spatial().CreateTransform(context.CreateEntity<Entity>("CsrChildB")->GetEntityID(), Mobility::Static);
 
         storage->AddChild(fp_id,csr_child_a);
         storage->AddChild(fp_id,csr_child_b);
@@ -773,7 +773,7 @@ int main(int argc, char** argv)
 
         // 制造空洞：movable 变换随实体销毁 ⇒ 名单留下 INVALID_TRANSFORM_ID
         auto *hole_ent = context.CreateEntity<Entity>("HoleProbe");
-        const TransformID hole_id = context.CreateTransform(hole_ent->GetEntityID(), Mobility::Movable);
+        const TransformID hole_id = context.Spatial().CreateTransform(hole_ent->GetEntityID(), Mobility::Movable);
 
         if (!IsValidTransformID(hole_id))
         {
@@ -784,7 +784,7 @@ int main(int argc, char** argv)
         context.DestroyEntity(hole_ent->GetEntityID());
 
         bool has_hole = false;
-        for (const TransformID id : context.GetMovableTransforms())
+        for (const TransformID id : context.Spatial().GetMovableTransforms())
             if (!IsValidTransformID(id))
                 has_hole = true;
 
@@ -798,7 +798,7 @@ int main(int argc, char** argv)
         uint32_t iterated = 0;
         uint32_t invalid_seen = 0;
 
-        context.ForEachMovableTransform([&](TransformID id)
+        context.Spatial().ForEachMovableTransform([&](TransformID id)
         {
             ++iterated;
 
@@ -812,16 +812,16 @@ int main(int argc, char** argv)
             return 17;
         }
 
-        if (iterated != context.GetLiveTransformCount(true))
+        if (iterated != context.Spatial().GetLiveTransformCount(true))
         {
             GLogError(u8"Test 15 Failed: ForEach 计数 %u ≠ 活槽数 %u",
-                      iterated, context.GetLiveTransformCount(true));
+                      iterated, context.Spatial().GetLiveTransformCount(true));
             return 17;
         }
 
         GLogInfo(u8"Test 15 Passed: 名单空洞安全契约成立（IsDirty(INVALID_HANDLE) 安全返回 false 不崩；"
                  u8"ForEachMovableTransform 跳过空洞且计数 %u == 活槽数 %u）。",
-                 iterated, context.GetLiveTransformCount(true));
+                 iterated, context.Spatial().GetLiveTransformCount(true));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -892,9 +892,9 @@ int main(int argc, char** argv)
         auto ent_x = context.CreateEntity<Entity>("CycleX");
         auto ent_y = context.CreateEntity<Entity>("CycleY");
 
-        const TransformID id_w = context.CreateTransform(ent_w->GetEntityID(), Mobility::Static);
-        const TransformID id_x = context.CreateTransform(ent_x->GetEntityID(), Mobility::Static);
-        const TransformID id_y = context.CreateTransform(ent_y->GetEntityID(), Mobility::Static);
+        const TransformID id_w = context.Spatial().CreateTransform(ent_w->GetEntityID(), Mobility::Static);
+        const TransformID id_x = context.Spatial().CreateTransform(ent_x->GetEntityID(), Mobility::Static);
+        const TransformID id_y = context.Spatial().CreateTransform(ent_y->GetEntityID(), Mobility::Static);
 
         if (!IsValidTransformID(id_w) || !IsValidTransformID(id_x) || !IsValidTransformID(id_y))
         {
@@ -902,9 +902,9 @@ int main(int argc, char** argv)
             return 19;
         }
 
-        auto tw = context.GetTransform(id_w);
-        auto tx = context.GetTransform(id_x);
-        auto ty = context.GetTransform(id_y);
+        auto tw = context.Spatial().GetTransform(id_w);
+        auto tx = context.Spatial().GetTransform(id_x);
+        auto ty = context.Spatial().GetTransform(id_y);
 
         tw.SetParent(id_x);                       // X → W
         tx.SetParent(id_y);                       // Y → X → W
@@ -985,8 +985,8 @@ int main(int argc, char** argv)
             auto e_s = ctx_full.CreateEntity<Entity>("SegStatic");
             auto e_d = ctx_full.CreateEntity<Entity>("SegDynamic");
 
-            const TransformID id_s = ctx_full.CreateTransform(e_s->GetEntityID(), Mobility::Static);
-            const TransformID id_d = ctx_full.CreateTransform(e_d->GetEntityID(), Mobility::Movable);
+            const TransformID id_s = ctx_full.Spatial().CreateTransform(e_s->GetEntityID(), Mobility::Static);
+            const TransformID id_d = ctx_full.Spatial().CreateTransform(e_d->GetEntityID(), Mobility::Movable);
 
             if (!IsValidTransformID(id_s) || !IsValidTransformID(id_d))
             {
@@ -995,21 +995,21 @@ int main(int argc, char** argv)
                 return 20;
             }
 
-            const uint32_t moves_before = ctx_full.GetTransformRowMoveCount();
-            const uint32_t live_static_before = ctx_full.GetLiveTransformCount(false);
+            const uint32_t moves_before = ctx_full.Spatial().GetTransformRowMoveCount();
+            const uint32_t live_static_before = ctx_full.Spatial().GetLiveTransformCount(false);
 
-            ctx_full.GetTransform(id_s).SetMobility(Mobility::Movable);   // 目标段已满 ⇒ 必须整体拒绝
+            ctx_full.Spatial().GetTransform(id_s).SetMobility(Mobility::Movable);   // 目标段已满 ⇒ 必须整体拒绝
 
             uint32_t slot_probe = 0;
 
-            if (!ctx_full.TryGetTransformSlot(id_s, false, slot_probe))
+            if (!ctx_full.Spatial().TryGetTransformSlot(id_s, false, slot_probe))
             {
                 GLogError(u8"Test 18 Failed: 被拒的换边把该行从源段摘掉了（源段查不到 id=%u）",
                           static_cast<uint32_t>(id_s));
                 return 20;
             }
 
-            if (ctx_full.TryGetTransformSlot(id_s, true, slot_probe))
+            if (ctx_full.Spatial().TryGetTransformSlot(id_s, true, slot_probe))
             {
                 GLogError(u8"Test 18 Failed: 目标段满却仍完成了换边（id=%u 出现在动态段）",
                           static_cast<uint32_t>(id_s));
@@ -1018,28 +1018,28 @@ int main(int argc, char** argv)
 
             uint32_t slot_d_after = 99;
 
-            if (!ctx_full.TryGetTransformSlot(id_d, true, slot_d_after) || slot_d_after != 0)
+            if (!ctx_full.Spatial().TryGetTransformSlot(id_d, true, slot_d_after) || slot_d_after != 0)
             {
                 GLogError(u8"Test 18 Failed: 目标段原有行的槽位被被拒的换边挤掉（动态槽=%u，期望 0）",
                           slot_d_after);
                 return 20;
             }
 
-            if (ctx_full.GetTransformRowMoveCount() != moves_before)
+            if (ctx_full.Spatial().GetTransformRowMoveCount() != moves_before)
             {
                 GLogError(u8"Test 18 Failed: 被拒的换边仍计入换边次数（%u → %u）",
-                          moves_before, ctx_full.GetTransformRowMoveCount());
+                          moves_before, ctx_full.Spatial().GetTransformRowMoveCount());
                 return 20;
             }
 
-            if (ctx_full.GetLiveTransformCount(false) != live_static_before)
+            if (ctx_full.Spatial().GetLiveTransformCount(false) != live_static_before)
             {
                 GLogError(u8"Test 18 Failed: 被拒的换边改了段名单（静态活行 %u → %u）",
-                          live_static_before, ctx_full.GetLiveTransformCount(false));
+                          live_static_before, ctx_full.Spatial().GetLiveTransformCount(false));
                 return 20;
             }
 
-            if (ctx_full.GetTransform(id_s).IsMovable())
+            if (ctx_full.Spatial().GetTransform(id_s).IsMovable())
             {
                 GLogError(u8"Test 18 Failed: 被拒的换边改了 storage 的 mobility 真源（应为静态）");
                 return 20;
@@ -1060,7 +1060,7 @@ int main(int argc, char** argv)
 
             auto e_s2 = ctx_segfull.CreateEntity<Entity>("SegFullStatic");
 
-            if (!IsValidTransformID(ctx_segfull.CreateTransform(e_s2->GetEntityID(), Mobility::Static)))
+            if (!IsValidTransformID(ctx_segfull.Spatial().CreateTransform(e_s2->GetEntityID(), Mobility::Static)))
             {
                 GLogError(u8"Test 18 Failed: 静态段首个变换创建失败");
                 return 20;
@@ -1069,7 +1069,7 @@ int main(int argc, char** argv)
             const int rows_before = st_seg->GetCount();
 
             auto e_over = ctx_segfull.CreateEntity<Entity>("SegOverflow");
-            const TransformID id_over = ctx_segfull.CreateTransform(e_over->GetEntityID(), Mobility::Static);
+            const TransformID id_over = ctx_segfull.Spatial().CreateTransform(e_over->GetEntityID(), Mobility::Static);
 
             if (IsValidTransformID(id_over))
             {
@@ -1091,12 +1091,12 @@ int main(int argc, char** argv)
 
             // 失败不得留下"占了槽却查不到"的账：动态段随后必须能正常建行
             auto e_dyn = ctx_segfull.CreateEntity<Entity>("SegAfterFail");
-            const TransformID id_dyn = ctx_segfull.CreateTransform(e_dyn->GetEntityID(), Mobility::Movable);
+            const TransformID id_dyn = ctx_segfull.Spatial().CreateTransform(e_dyn->GetEntityID(), Mobility::Movable);
 
-            if (!IsValidTransformID(id_dyn) || ctx_segfull.GetLiveTransformCount(true) != 1)
+            if (!IsValidTransformID(id_dyn) || ctx_segfull.Spatial().GetLiveTransformCount(true) != 1)
             {
                 GLogError(u8"Test 18 Failed: 失败路径污染了段账目（动态建行=%u，动态活行=%u）",
-                          static_cast<uint32_t>(id_dyn), ctx_segfull.GetLiveTransformCount(true));
+                          static_cast<uint32_t>(id_dyn), ctx_segfull.Spatial().GetLiveTransformCount(true));
                 return 20;
             }
 
@@ -1115,7 +1115,7 @@ int main(int argc, char** argv)
 
         auto e1 = ctx_reset.CreateEntity<Entity>("ResetOwner1");
 
-        const TransformID id1 = ctx_reset.CreateTransform(e1->GetEntityID(), Mobility::Static);
+        const TransformID id1 = ctx_reset.Spatial().CreateTransform(e1->GetEntityID(), Mobility::Static);
 
         auto *st_reset = ctx_reset.Spatial().Transforms();
 
@@ -1128,7 +1128,7 @@ int main(int argc, char** argv)
 
         const uint32_t gen1 = st_reset->GetGeneration(static_cast<TransformDataStorage::HandleID>(id1));
 
-        const TransformAccessor acc_old = ctx_reset.GetTransform(id1);      // 建柄时捕获 gen1
+        const TransformAccessor acc_old = ctx_reset.Spatial().GetTransform(id1);      // 建柄时捕获 gen1
 
         if (!acc_old.IsValid())
         {
@@ -1140,7 +1140,7 @@ int main(int argc, char** argv)
 
         auto e2 = ctx_reset.CreateEntity<Entity>("ResetOwner2");
 
-        const TransformID id2 = ctx_reset.CreateTransform(e2->GetEntityID(), Mobility::Static);
+        const TransformID id2 = ctx_reset.Spatial().CreateTransform(e2->GetEntityID(), Mobility::Static);
 
         if (!IsValidTransformID(id2))
         {
@@ -1167,16 +1167,16 @@ int main(int argc, char** argv)
 
         auto e3 = ctx_shutdown.CreateEntity<Entity>("ShutdownOwner");
 
-        const TransformID shutdown_id = ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Movable);
-        const TransformID shutdown_static = ctx_shutdown.CreateTransform(e3->GetEntityID(), Mobility::Static);
+        const TransformID shutdown_id = ctx_shutdown.Spatial().CreateTransform(e3->GetEntityID(), Mobility::Movable);
+        const TransformID shutdown_static = ctx_shutdown.Spatial().CreateTransform(e3->GetEntityID(), Mobility::Static);
         if (!IsValidTransformID(shutdown_id) || !IsValidTransformID(shutdown_static))
         {
             GLogError(u8"Test 19 Failed: Shutdown 前置创建失败");
             return 21;
         }
 
-        ctx_shutdown.DestroyTransform(shutdown_id);
-        ctx_shutdown.DestroyTransform(shutdown_static);
+        ctx_shutdown.Spatial().DestroyTransform(shutdown_id);
+        ctx_shutdown.Spatial().DestroyTransform(shutdown_static);
         ctx_shutdown.Shutdown();
 
         if (auto *st_after = ctx_shutdown.Spatial().Transforms())
@@ -1194,14 +1194,14 @@ int main(int argc, char** argv)
         }
 
         auto e4 = ctx_shutdown.CreateEntity<Entity>("AfterShutdown");
-        const TransformID after_shutdown = ctx_shutdown.CreateTransform(e4->GetEntityID(), Mobility::Movable);
-        const TransformID after_static = ctx_shutdown.CreateTransform(e4->GetEntityID(), Mobility::Static);
+        const TransformID after_shutdown = ctx_shutdown.Spatial().CreateTransform(e4->GetEntityID(), Mobility::Movable);
+        const TransformID after_static = ctx_shutdown.Spatial().CreateTransform(e4->GetEntityID(), Mobility::Static);
         uint32_t after_slot = INVALID_TRANSFORM_SLOT;
         uint32_t static_slot = INVALID_TRANSFORM_SLOT;
         if (!IsValidTransformID(after_shutdown)
             || !IsValidTransformID(after_static)
-            || !ctx_shutdown.TryGetTransformSlot(after_shutdown, true, after_slot)
-            || !ctx_shutdown.TryGetTransformSlot(after_static, false, static_slot)
+            || !ctx_shutdown.Spatial().TryGetTransformSlot(after_shutdown, true, after_slot)
+            || !ctx_shutdown.Spatial().TryGetTransformSlot(after_static, false, static_slot)
             || after_slot != 0 || static_slot != 0)
         {
             GLogError(u8"Test 19 Failed: Shutdown must clear freed transform slots before reuse");

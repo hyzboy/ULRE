@@ -517,8 +517,8 @@ private:
             const float x = float(col) * kCellSpacing - grid_offset_x;
             const float y = float(row) * kCellSpacing - grid_offset_y;
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(e->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(e->GetEntityID(), Mobility::Static));
             transform.SetLocalPosition(glm::vec3(x, y, 0.0f));
             transform.SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform.SetLocalScale(glm::vec3(1.0f));
@@ -569,8 +569,8 @@ private:
 
             const bool movable = !static_scene;
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(e->GetEntityID(),
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(e->GetEntityID(),
                                              movable ? Mobility::Movable : Mobility::Static));
             transform.SetLocalPosition(pos);
             transform.SetLocalRotation(rot);

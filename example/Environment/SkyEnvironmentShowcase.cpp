@@ -245,8 +245,8 @@ private:
             if (!entity)
                 return false;
 
-            auto transform = ecs_context->GetTransform(
-                ecs_context->CreateTransform(entity->GetEntityID(), Mobility::Static));
+            auto transform = ecs_context->Spatial().GetTransform(
+                ecs_context->Spatial().CreateTransform(entity->GetEntityID(), Mobility::Static));
 
             const float angle = glm::radians(360.0f * float(i) / float(kMeshCount));
             const glm::vec3 pos = glm::vec3(ring_radius * glm::cos(angle),

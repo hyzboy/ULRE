@@ -88,56 +88,6 @@ namespace hgl::ecs
             return 0;
         }
 
-        bool ECSContext::InitializeWorldAddressesTable()
-        {
-            return gpu_resources.InitializeWorldAddressesTable();
-        }
-
-        void ECSContext::UploadEntityGPUDirtyRows(const uint32_t frame_slot)
-        {
-            gpu_resources.UploadEntityGPUDirtyRows(frame_slot);
-        }
-
-        void ECSContext::UploadEntityRenderIDDirtyRows()
-        {
-            gpu_resources.UploadEntityRenderIDDirtyRows();
-        }
-
-        void ECSContext::UploadLightRowDirtyRows()
-        {
-            gpu_resources.UploadLightRowDirtyRows();
-        }
-
-        bool ECSContext::InitializeEntityRenderIDTable()
-        {
-            return gpu_resources.InitializeEntityRenderIDTable();
-        }
-
-        bool ECSContext::InitializeEntityGPUTable()
-        {
-            return gpu_resources.InitializeEntityGPUTable();
-        }
-
-        bool ECSContext::InitializeLightRowTable()
-        {
-            return gpu_resources.InitializeLightRowTable();
-        }
-
-        bool ECSContext::InitializeShadowInfoTable()
-        {
-            return gpu_resources.InitializeShadowInfoTable();
-        }
-
-        void ECSContext::CommitShadowInfo(const uint32_t frame_slot)
-        {
-            gpu_resources.CommitShadowInfo(frame_slot);
-        }
-
-        uint64_t ECSContext::GetWorldAddressesAddress(const uint32_t frame_slot) const
-        {
-            return gpu_resources.GetWorldAddressesAddress(frame_slot);
-        }
-
         graph::EnvProfileID ECSContext::GetEnvProfileID() const
         {
             if (env_profile_explicit)
@@ -163,7 +113,7 @@ namespace hgl::ecs
             env_profile_owned = take_ownership;
 
             // 立刻重算本世界表的 sky / shadow 地址（不等到下一帧）：换 profile 的那一帧就生效
-            SyncWorldAddresses();
+            gpu_resources.SyncWorldAddresses(GetFrameIndex());
         }
 
         graph::EnvProfileID ECSContext::CreateEnvProfile(const AnsiString &name,
@@ -203,8 +153,4 @@ namespace hgl::ecs
             return gc ? gc->GetEnvironmentManager() : nullptr;
         }
 
-        bool ECSContext::SyncWorldAddresses()
-        {
-            return gpu_resources.SyncWorldAddresses(GetFrameIndex());
-        }
 } // namespace hgl::ecs

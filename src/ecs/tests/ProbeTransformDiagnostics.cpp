@@ -170,7 +170,7 @@ static void SectionAllocation()
         for(int i=0;i<8;++i)
         {
             auto *e=context.CreateEntity<Entity>("Warmup");
-            auto  t=context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            auto  t=context.Spatial().GetTransform(context.Spatial().CreateTransform(e->GetEntityID(),Mobility::Static));
             t.SetLocalPosition(glm::vec3(0.0f));
         }
 
@@ -180,7 +180,7 @@ static void SectionAllocation()
         for(uint32_t i=0;i<n;++i)
         {
             auto *e=context.CreateEntity<Entity>("T");
-            auto  t=context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            auto  t=context.Spatial().GetTransform(context.Spatial().CreateTransform(e->GetEntityID(),Mobility::Static));
             t.SetLocalPosition(glm::vec3(static_cast<float>(i),0.0f,0.0f));
             entities.push_back(e);
 
@@ -235,7 +235,7 @@ static void SectionAllocation()
         {
             auto *e=context.CreateEntity<Entity>("T3bProbe");
 
-            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            context.Spatial().GetTransform(context.Spatial().CreateTransform(e->GetEntityID(),Mobility::Static));
             e->AddComponent<GeometryData>();
             entities.push_back(e);
         }
@@ -294,7 +294,7 @@ static void SectionAllocation()
         mut_table.GetDirtySet().CollectDirtyRows(plan);
         const size_t plan_clean=plan.size();
 
-        context.SetEntityVisible(entities[1]->GetEntityID(),false);
+        context.Spatial().SetEntityVisible(entities[1]->GetEntityID(),false);
         mut_table.GetDirtySet().CollectDirtyRows(plan);
         const size_t plan_one=plan.size();
         const bool plan_one_ok=(plan_one==1 && !plan.empty() && plan[0]==entities[1]->GetEntityID().index);
@@ -350,7 +350,7 @@ static void SectionAllocation()
         for(int i=0;i<8;++i)                        // 预热（同 [T0]，排除一次性惰性分配）
         {
             auto *e=context.CreateEntity<Entity>("WarmupG");
-            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            context.Spatial().GetTransform(context.Spatial().CreateTransform(e->GetEntityID(),Mobility::Static));
             e->AddComponent<GeometryData>();
         }
 
@@ -360,7 +360,7 @@ static void SectionAllocation()
         for(uint32_t i=0;i<n;++i)
         {
             auto *e=context.CreateEntity<Entity>("TG");
-            context.GetTransform(context.CreateTransform(e->GetEntityID(),Mobility::Static));
+            context.Spatial().GetTransform(context.Spatial().CreateTransform(e->GetEntityID(),Mobility::Static));
             e->AddComponent<GeometryData>();
         }
 
