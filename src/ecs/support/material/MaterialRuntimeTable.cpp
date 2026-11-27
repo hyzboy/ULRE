@@ -1,7 +1,7 @@
 ﻿#include<hgl/common/RenderOptions.h>   // 编译期开关台帐（§2：对拍挂在 ULRE_ECS_DEBUG_API 下）
 #include<hgl/ecs/support/material/MaterialRuntimeTable.h>
 #include<hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/render/WorldRenderData.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SSBOBufferRegistry.h>
 #include<hgl/log/Log.h>
@@ -45,7 +45,7 @@ namespace hgl::ecs
 
         // GPU 侧绑定随行存亡：行归零回收（或就地重置物化绑定）时把池行退休。
         // 世界不存在（单元测试）/注册表不可用时跳过 —— 此时本表也不持有真实 GPU 资源。
-        auto *graphics_context = context ? context->GetGraphicsContext() : nullptr;
+        auto *graphics_context = render_data ? render_data->GetGraphicsContext() : nullptr;
         auto *registry = graphics_context
             ? graphics_context->GetSSBOBufferRegistry()
             : nullptr;
@@ -56,7 +56,7 @@ namespace hgl::ecs
         {
             registry->RetireMaterialTextureConfiguration(
                 row.material_texture_configuration,
-                static_cast<uint64_t>(context->GetRenderSubmissionSerial())
+                render_data->GetRenderSubmissionSerial()
                     + graph::MaterialTextureConfigurationRetireEpochDelay);
         }
 
@@ -301,8 +301,8 @@ namespace hgl::ecs
 
 
         // B5-b：该实例的每 pass 管线缓存也要摘除（与 slot 同生命周期）
-        if (context)
-            context->GetMaterialRuntimePipelineTable().Clear(owner);
+        if (render_data)
+            render_data->GetMaterialRuntimePipelineTable().Clear(owner);
 
         slots.erase(it);
         return true;

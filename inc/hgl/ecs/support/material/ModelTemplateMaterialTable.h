@@ -13,7 +13,7 @@ namespace hgl::graph { class GeometryVertexFormat; }
 
 namespace hgl::ecs
 {
-    class ECSContext;
+    class WorldRenderData;
 
     /**
      * 单图元模型模板缓存键
@@ -80,7 +80,7 @@ namespace hgl::ecs
     class ModelTemplateMaterialTable
     {
     private:
-        ECSContext *context = nullptr;
+        WorldRenderData *render_data = nullptr;
         ManagedArray<TemplateRenderBinding> binding_storage;
         ValueArray<TemplateRenderBinding *> retired_bindings;
         UnorderedMap<uint32_t, TemplateRenderBinding *> bindings;
@@ -91,13 +91,13 @@ namespace hgl::ecs
         bool IsGPUQuiescent() const;
 
     public:
-        explicit ModelTemplateMaterialTable(ECSContext *ctx = nullptr) : context(ctx) {}
+        explicit ModelTemplateMaterialTable(WorldRenderData *data = nullptr) : render_data(data) {}
         ~ModelTemplateMaterialTable();
 
         ModelTemplateMaterialTable(const ModelTemplateMaterialTable &) = delete;
         ModelTemplateMaterialTable &operator=(const ModelTemplateMaterialTable &) = delete;
 
-        void SetContext(ECSContext *ctx) { context = ctx; }
+        void SetWorldRenderData(WorldRenderData *data) { render_data = data; }
 
         bool RegisterBinding(const TemplateRenderBinding &binding);
         bool UnregisterBinding(uint32_t template_id);

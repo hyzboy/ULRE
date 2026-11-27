@@ -42,8 +42,7 @@
  *     无界增长，正是 v2 §9.3 要避免的形态）。
  *   · **键必须静态且有界**：三个维度都只由"材质授权态 + 图元/设备静态属性"决定。
  *
- * 归属：表由 `ECSContext` 持有（与 `VisibilityDataStorage` / `MaterialVariantTable` 同范式，
- *       见 `Context.h::GetMaterialRuntimeTable()`）——行里的绑定指向本世界 GraphicsContext
+ * 归属：表由 `WorldRenderData` 持有（每世界一份）——行里的绑定指向本世界 GraphicsContext
  *       的资源，表随世界存亡，不会跨 GraphicsContext 混用。
  *
  * 预算制：容量上限 `kMaterialRuntimeCapacityLimit`，超限 **fail-fast**（`Intern` 返回
@@ -77,7 +76,7 @@ namespace hgl
 
 namespace hgl::ecs
 {
-    class ECSContext;
+    class WorldRenderData;
 
     /// 共享行句柄：行下标；`INVALID_MATERIAL_RUNTIME_ROW_ID` = 未登记/已回收。
     using MaterialRuntimeRowID = uint32_t;
@@ -305,8 +304,8 @@ namespace hgl::ecs
         /// 每实例 slot（按实体稀疏存放）。std::unordered_map 保证元素**引用稳定**。
         std::unordered_map<EntityID, MaterialRuntimeSlot> slots;
 
-        /// 所属世界（退休 GPU 侧绑定用；单测里为 nullptr ⇒ 跳过 GPU 动作）
-        ECSContext *context = nullptr;
+        /// 所属渲染数据域（退休 GPU 侧绑定用；单测里为 nullptr ⇒ 跳过 GPU 动作）
+        WorldRenderData *render_data = nullptr;
 
         uint32_t live_row_count = 0;
 
@@ -331,8 +330,8 @@ namespace hgl::ecs
         MaterialRuntimeTable(const MaterialRuntimeTable &) = delete;
         MaterialRuntimeTable &operator=(const MaterialRuntimeTable &) = delete;
 
-        /// 绑定所属世界（世界 ctor 里调用，同 `VisibilityDataStorage::SetContext`）。
-        void SetContext(ECSContext *ctx) { context = ctx; }
+        /// 绑定所属渲染数据域。
+        void SetWorldRenderData(WorldRenderData *data) { render_data = data; }
 
         // ── 共享行：intern / refcount ──
 

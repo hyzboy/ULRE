@@ -39,7 +39,7 @@ namespace hgl
 
 namespace hgl::ecs
 {
-    class ECSContext;
+    class WorldRenderData;
     /// 具名纹理资源的**选择器**类型（B4-iii-b：原为 `MaterialData` 的嵌套枚举，随重类型移出）。
     /// 在 `hgl::ecs` 域内保持同名 ⇒ 组件与调用点的不限定写法零改动。
     enum class MaterialTextureResourceKind : uint8_t
@@ -127,7 +127,7 @@ namespace hgl::ecs
      *
      * 存储形态：本记录是**纯授权数据**——不继承 `ComponentRow`、不占 ComponentType
      * 槽位，直接住在世界级 `MaterialAuthoringSideTable`（键 = `EntityID`）里；
-     * `entity_id`/`context` 由旁表在建记录时写入。从未授权 ⇒ 旁表里根本没有这条记录
+     * `entity_id`/`render_data` 由旁表在建记录时写入。从未授权 ⇒ 旁表里根本没有这条记录
      * （`GetMaterialData` 返回 nullptr），普通实体零材质内存。
      */
     class MaterialData
@@ -197,8 +197,8 @@ namespace hgl::ecs
 
         /// 记录所属实体（建记录时由旁表写入；默认构造 = 无效 id）
         EntityID GetEntityID() const { return entity_id; }
-        /// 记录所属世界（同上；从未挂上世界的记录 = nullptr）
-        ECSContext *GetContext() const { return context; }
+        /// 记录所属渲染数据域（从未挂上世界的记录 = nullptr）
+        WorldRenderData *GetWorldRenderData() const { return render_data; }
 
         // ── 配方覆盖 ──
         void SetRecipe(const hgl::graph::mtl::MaterialRecipe &recipe);
@@ -331,8 +331,8 @@ namespace hgl::ecs
         /// 所有授权入口（SetRecipe / SetTextureResource / SetDataResource）都必须走它。
         void TouchAuthored();
 
-        EntityID entity_id{};       ///< 归属实体（旁表建记录时写入）
-        ECSContext *context = nullptr;  ///< 归属世界（同上）
+        EntityID entity_id{};           ///< 归属实体（旁表建记录时写入）
+        WorldRenderData *render_data = nullptr; ///< 归属渲染数据域（同上）
     };
 
     /**
@@ -342,23 +342,22 @@ namespace hgl::ecs
      * 是重类型 ⇒ 不能进任何设备侧行 arena；它们本来就只被 CPU 侧的收集路径消费。
      * **键 = `EntityID`**。
      *
-     * 归属：**世界级**（`ECSContext` 持有，与 MaterialVariantTable / MaterialRuntimeTable 同域）——
+     * 归属：**世界级**（`WorldRenderData` 持有，与 MaterialVariantTable / MaterialRuntimeTable 同域）——
      * 授权数据只被本世界的渲染路径消费。
      *
      * 生命周期：**随实体死亡而摘除**（`~Entity` 调 `Remove`；替代原 `MaterialData::OnDetach`）。
      */
     class MaterialAuthoringSideTable
     {
-        friend class ECSContext;
+        friend class WorldRenderData;
 
-        void SetOwnerContext(ECSContext *ctx) { owner_context = ctx; }
+        void SetWorldRenderData(WorldRenderData *data) { owner_render_data = data; }
 
     public:
 
-        /// 挂一个世界（建记录时写入记录的 context 字段）。默认构造仅服务于
-        /// 「独立于世界的记录装配」测试场景（context 留空 ⇒ 授权变更不推拓扑位）。
-        explicit MaterialAuthoringSideTable(ECSContext *owner_context = nullptr)
-            : owner_context(owner_context)
+        /// 挂一个渲染数据域（建记录时写入记录）。默认构造仅服务于独立装配测试。
+        explicit MaterialAuthoringSideTable(WorldRenderData *owner_render_data = nullptr)
+            : owner_render_data(owner_render_data)
         {
         }
 
@@ -375,7 +374,7 @@ namespace hgl::ecs
     private:
 
         hgl::UnorderedMap<EntityID, MaterialData> entries;
-        ECSContext *owner_context = nullptr;
+        WorldRenderData *owner_render_data = nullptr;
     };
 
     /**
@@ -432,7 +431,7 @@ namespace hgl::ecs
 
         MaterialData record{};
         record.entity_id = entity_id;
-        record.context = owner_context;
+        record.render_data = owner_render_data;
 
         if (!entries.Add(entity_id, record))
         {

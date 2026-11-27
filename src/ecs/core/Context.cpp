@@ -72,9 +72,6 @@ namespace hgl
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
             SetEntityObserver(this);
-            render_data.GetMaterialAuthoringTable()->SetOwnerContext(this);
-            render_data.GetMaterialRuntimeTable()->SetContext(this);
-            render_data.GetModelTemplateMaterialTable()->SetContext(this);
 
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
             spatial_state.Initialize(this, this);

@@ -1,9 +1,8 @@
 #include <hgl/ecs/support/material/ModelTemplateMaterialTable.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/support/render/WorldRenderData.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/asset/ModelTemplateManager.h>
-#include <hgl/vk/VKRenderTarget.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -15,10 +14,10 @@ namespace hgl::ecs
 
     void ModelTemplateMaterialTable::ReleaseBindingRows(const TemplateRenderBinding &binding)
     {
-        if (!context)
+        if (!render_data)
             return;
 
-        MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
+        MaterialRuntimeTable *runtime_table = render_data->GetMaterialRuntimeTable();
         if (!runtime_table)
             return;
 
@@ -40,7 +39,7 @@ namespace hgl::ecs
             return false;
         }
 
-        MaterialRuntimeTable *runtime_table = context ? context->GetMaterialRuntimeTable() : nullptr;
+        MaterialRuntimeTable *runtime_table = render_data ? render_data->GetMaterialRuntimeTable() : nullptr;
         if (!runtime_table || binding.groups.IsEmpty())
         {
             GLogError(u8"[ModelTemplateMaterialTable] RegisterBinding rejected: missing runtime table or groups");
@@ -101,7 +100,7 @@ namespace hgl::ecs
         if (bindings.ContainsKey(template_id))
             UnregisterBinding(template_id);
         bindings.Add(template_id, copy);
-        context->MarkTopologyChanged(TopologyChange::ModelTemplate);
+        render_data->NotifyModelTemplateChanged();
         return true;
     }
 
@@ -120,8 +119,8 @@ namespace hgl::ecs
         else
             retired_bindings.Add(existing);
         bindings.DeleteByKey(template_id);
-        if (context)
-            context->MarkTopologyChanged(TopologyChange::ModelTemplate);
+        if (render_data)
+            render_data->NotifyModelTemplateChanged();
 
         if (const SinglePrimitiveTemplateKey *k = template_to_single_key.GetValuePointer(template_id))
         {
@@ -145,11 +144,9 @@ namespace hgl::ecs
 
     bool ModelTemplateMaterialTable::IsGPUQuiescent() const
     {
-        if (!context || !context->GetGraphicsContext())
+        if (!render_data || !render_data->GetGraphicsContext())
             return true;
-        auto *target = context->GetRenderTarget();
-        auto *queue = target ? target->GetQueue() : nullptr;
-        return queue && queue->IsLastSubmitComplete();
+        return render_data->IsGPUQuiescent();
     }
 
     void ModelTemplateMaterialTable::CollectRetiredTemplates()
@@ -162,16 +159,16 @@ namespace hgl::ecs
             binding_storage.Remove(binding);
         }
         retired_bindings.Clear();
-        auto *graphics = context ? context->GetGraphicsContext() : nullptr;
+        auto *graphics = render_data ? render_data->GetGraphicsContext() : nullptr;
         auto *registry = graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
         if (!registry)
             return;
         // The graphics submission waits for culling; a completed fence also covers
         // those template reads. World-local frame counters are not completion epochs.
         if (auto *pool = registry->GetPool(graph::GlobalSSBOType::ModelTemplatePool))
-            pool->CollectRecyclable(UINT64_MAX, nullptr, context);
+            pool->CollectRecyclable(UINT64_MAX, nullptr, render_data->GetWorldIdentity());
         if (auto *pool = registry->GetPool(graph::GlobalSSBOType::ModelPartPool))
-            pool->CollectRecyclable(UINT64_MAX, nullptr, context);
+            pool->CollectRecyclable(UINT64_MAX, nullptr, render_data->GetWorldIdentity());
     }
 
     uint32_t ModelTemplateMaterialTable::FindSinglePrimitiveTemplate(const SinglePrimitiveTemplateKey &key) const
@@ -198,7 +195,7 @@ namespace hgl::ecs
             GLogError(u8"[ModelTemplateMaterialTable] Clear requires completed GPU submissions");
             return;
         }
-        auto *graphics = context ? context->GetGraphicsContext() : nullptr;
+        auto *graphics = render_data ? render_data->GetGraphicsContext() : nullptr;
         auto *registry = graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
         for (auto &pair : bindings)
         {
@@ -206,8 +203,9 @@ namespace hgl::ecs
             {
                 if (registry && pair.second->owns_gpu_rows)
                     graph::ModelTemplateManager::RetireModelTemplate(
-                        registry, pair.first, context->GetRenderSubmissionSerial()
-                                            + graph::MaterialTextureConfigurationRetireEpochDelay, context);
+                        registry, pair.first, render_data->GetRenderSubmissionSerial()
+                                            + graph::MaterialTextureConfigurationRetireEpochDelay,
+                        render_data->GetWorldIdentity());
                 ReleaseBindingRows(*pair.second);
             }
         }

@@ -1,6 +1,6 @@
 #include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
 #include<hgl/ecs/support/pipeline/RenderResource.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/support/render/WorldRenderData.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
@@ -129,9 +129,8 @@ namespace hgl::ecs
 
         // 便捷重载不新增行为路径：把现成纹理包成句柄（Resident）后走统一入口。
         hgl::graph::TextureManager *tex_manager = nullptr;
-        if (context)
-            if (hgl::graph::GraphicsContext *gc = context->GetGraphicsContext())
-                tex_manager = gc->GetTextureManager();
+        if (render_data)
+            tex_manager = render_data->GetTextureManager();
 
         if (!tex_manager)
         {
@@ -279,8 +278,8 @@ namespace hgl::ecs
 
         // P1：上游来源变化（asset 默认配方 / 变体切换）会让解析结果与 shader 身份失配 ⇒
         // 材质批的键集合可能变化，按拓扑变更记账（而不是动态事实）。
-        if (context)
-            context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+        if (render_data)
+            render_data->NotifyPipelineInvalidated();
     }
 
     // 授权变更唯一入口（见 .h 注释）：代数 +1 + 拓扑记账。
@@ -290,8 +289,8 @@ namespace hgl::ecs
 
         // P1：授权状态变化 = 材质批的划分依据可能变（从 Basic 升到 Textured
         // 会换 shader 身份 ⇒ 换 MaterialBatch 键）。归到拓扑类别，让快照拒绝复用。
-        if (context)
-            context->MarkTopologyChanged(TopologyChange::MaterialBinding);
+        if (render_data)
+            render_data->NotifyPipelineInvalidated();
     }
 
     bool MaterialData::BuildResolvedRecipe(hgl::graph::mtl::MaterialRecipe &out_recipe,

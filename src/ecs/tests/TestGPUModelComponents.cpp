@@ -387,7 +387,7 @@ namespace
         const EntityID second_id = second->GetEntityID();
         auto *first_material = ctx.GetOrCreateMaterialData(first);
         EXPECT(first_material != nullptr);
-        EXPECT(first_material && first_material->GetContext() == &ctx);
+        EXPECT(first_material && first_material->GetWorldRenderData() == &ctx.GetRenderData());
         EXPECT(ctx.GetOrCreateMaterialData(second) != nullptr);
         ctx.GetOrCreateMaterialRuntimeSlot(first_id);
 

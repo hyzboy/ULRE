@@ -6005,7 +6005,7 @@ int main(int argc, char** argv)
               "material_runtime_pipeline_table->Clear(id);",
               "无运行期 slot 时实体销毁仍须清管线旁表" },
             { "MaterialRuntimeTable.cpp", OS_TEXT("src/ecs/support/material/MaterialRuntimeTable.cpp"),
-              "context->GetMaterialRuntimePipelineTable().Clear(owner);",
+              "render_data->GetMaterialRuntimePipelineTable().Clear(owner);",
               "DestroySlot 未清该实例的管线缓存（跨生命周期串味）" },
             // ⑦ 探针同源打印行宽（与断言值对齐的观测口）
             { "ProbeTransformDiagnostics.cpp", OS_TEXT("src/ecs/tests/ProbeTransformDiagnostics.cpp"),

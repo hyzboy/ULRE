@@ -14,6 +14,9 @@ namespace hgl::ecs
         , model_template_material_table(new ModelTemplateMaterialTable())
         , camera_info_storage(std::make_shared<CameraInfoStorage>())
     {
+        material_runtime_table->SetWorldRenderData(this);
+        material_authoring_side_table->SetWorldRenderData(this);
+        model_template_material_table->SetWorldRenderData(this);
     }
 
     WorldRenderData::~WorldRenderData()
