@@ -92,7 +92,8 @@ namespace hgl::ecs
 
     /**
      * @brief 构建并注册一个单图元极简 GPU 模型模板 (part_count=1, group_count=1)。
-     * 具备按 (geometry_id, runtime_row, can_cast_shadow, is_opaque, primitive_type) 的全局去重缓存机制。
+     * 具备按 (geometry_id, can_cast_shadow, is_opaque, primitive_type) 的共享缓存机制。
+     * 材质数据行只作为逐实例事实，不进入模板身份或模板缓存。
      *
      * @return 模板池行号 (template_id != 0)，失败返回 0
      */

@@ -215,7 +215,7 @@ namespace
 
         mat_table->RegisterSinglePrimitiveTemplate(key, kTemplateID);
 
-        // 查缓存必须命中
+        // 查缓存必须命中：同拓扑实例共享模板，材质运行期行不进入模板身份。
         if (mat_table->FindSinglePrimitiveTemplate(key) != kTemplateID)
             return false;
 
