@@ -47,6 +47,13 @@ namespace hgl::ecs
             return false;
         }
 
+        if (binding.uses_instance_material
+         && (binding.groups.GetCount() != 1 || !binding.owned_part_rows.IsEmpty()))
+        {
+            GLogError(u8"[ModelTemplateMaterialTable] RegisterBinding rejected: invalid instance-material binding");
+            return false;
+        }
+
         for (int i = 0; i < binding.owned_part_rows.GetCount(); ++i)
         {
             const auto row = binding.owned_part_rows[i];
@@ -66,7 +73,8 @@ namespace hgl::ecs
         for (int g = 0; g < binding.groups.GetCount(); ++g)
         {
             const auto &group = binding.groups[g];
-            if (!binding.owned_part_rows.Contains(group.runtime_row)
+            if ((!binding.uses_instance_material && !binding.owned_part_rows.Contains(group.runtime_row))
+             || (binding.uses_instance_material && group.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
              || group.slot_geometry.GetCount() != group.slot_count.GetCount())
             {
                 GLogError(u8"[ModelTemplateMaterialTable] RegisterBinding rejected: invalid group=%d", g);
@@ -79,6 +87,7 @@ namespace hgl::ecs
         copy->template_id = binding.template_id;
         const auto *previous = FindBinding(binding.template_id);
         copy->owns_gpu_rows = binding.owns_gpu_rows || (previous && previous->owns_gpu_rows);
+        copy->uses_instance_material = binding.uses_instance_material;
         copy->owned_part_rows = binding.owned_part_rows;
         for (int i = 0; i < binding.groups.GetCount(); ++i)
         {

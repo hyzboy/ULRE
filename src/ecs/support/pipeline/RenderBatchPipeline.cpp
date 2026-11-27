@@ -671,9 +671,15 @@ namespace hgl::ecs
                             break;
                         }
 
-                        // 二级组表：本 (pass, 模板) 独占一段连续组槽
+                        const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                        const TemplateRenderBinding *binding = template_mat_table
+                            ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
+
+                        // Instance-material templates can occur in incompatible batches.
+                        // Each such batch needs its own route for the shared template.
                         uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        const uint64_t route_key = uint64_t(ref->GetTemplateID());
+                        const uint64_t route_key = (uint64_t(ref->GetTemplateID()) << 32)
+                            | (binding && binding->uses_instance_material ? geometry_batches : 0u);
                         if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
                         {
                             group_table_offset = *offset_ptr;
@@ -693,10 +699,6 @@ namespace hgl::ecs
                         uint32_t grp_bucket_count = 0;
                         const uint32_t *slot_geo_data = nullptr;
                         const uint32_t *slot_cnt_data = nullptr;
-
-                        const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
-                        const TemplateRenderBinding *binding = template_mat_table
-                            ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
 
                         if (binding && target_group < static_cast<uint32_t>(binding->groups.GetCount()))
                         {
@@ -857,7 +859,8 @@ namespace hgl::ecs
                                                       row ? row->data_index_row : 0u,
                                                       row && row->material_texture_configuration.IsValid()
                                                         ? row->material_texture_configuration.row_index : 0u,
-                                                      row && binding && binding->owns_gpu_rows);
+                                                      row && binding && binding->owns_gpu_rows
+                                                          && !binding->uses_instance_material);
                     gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
                                                         grp.group_table_offset);
                 }

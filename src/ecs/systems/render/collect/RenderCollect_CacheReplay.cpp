@@ -152,15 +152,6 @@ namespace hgl::ecs
 
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t geometry_id  = record.draw_geometry_id;
-                const MaterialData *mat_data = world->GetMaterialData(entity_id);
-                uint32_t material_id = (material_row->data_index_row != uint32_t(-1))
-                    ? material_row->data_index_row : 0u;
-                if (mat_data && mat_data->has_data_resource
-                 && mat_data->data_resource.data_index != uint32_t(-1))
-                    material_id = mat_data->data_resource.data_index;
-                const uint32_t texture_id = material_row->material_texture_configuration.IsValid()
-                    ? material_row->material_texture_configuration.row_index : 0u;
-
                 const auto *model_ref = entity->GetComponent<GPUModelRefComponent>();
                 const uint32_t group_idx = record.member_kind - 1u;
                 const ModelTemplateMaterialTable *template_table = world->GetModelTemplateMaterialTable();
@@ -172,6 +163,17 @@ namespace hgl::ecs
                     ok = false;
                     break;
                 }
+
+                const MaterialRuntimeRow *fact_row = model_ref->IsAutomaticallyNormalized()
+                    ? material_row : runtime_table->Get(binding->groups[0].runtime_row);
+                if (!fact_row)
+                {
+                    ok = false;
+                    break;
+                }
+                uint32_t material_id;
+                uint32_t texture_id;
+                ResolveMaterialFacts(world, entity_id, fact_row, material_id, texture_id);
 
                 auto *render_target = world->GetRenderTarget();
                 auto *current_render_pass = render_target ? render_target->GetRenderPass() : nullptr;

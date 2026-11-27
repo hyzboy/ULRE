@@ -395,7 +395,6 @@ namespace hgl::ecs
         using graph::ssbo::ModelTemplateRow;
         using graph::ssbo::ModelPartRow;
         using graph::ssbo::kInvalidModelTemplateID;
-        using graph::ssbo::kModelPartFlagHasMaterial;
         using graph::ssbo::kModelPartFlagCanCastShadow;
         using graph::ssbo::kModelPartFlagIsOpaque;
 
@@ -424,24 +423,6 @@ namespace hgl::ecs
         if (existing_template_id != kInvalidModelTemplateID)
         {
             return existing_template_id;
-        }
-
-        // 自动补齐 material_id / texture_id
-        uint32_t effective_mat_id = desc.material_input.material_id;
-        uint32_t effective_tex_id = desc.material_input.texture_id;
-        if (effective_mat_id == 0 && effective_tex_id == 0 && desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
-        {
-            MaterialRuntimeTable *runtime_table = context->GetMaterialRuntimeTable();
-            if (runtime_table)
-            {
-                if (const MaterialRuntimeRow *row = runtime_table->Get(desc.material_input.runtime_row))
-                {
-                    if (row->data_index_row != uint32_t(-1))
-                        effective_mat_id = row->data_index_row;
-                    if (row->material_texture_configuration.IsValid())
-                        effective_tex_id = row->material_texture_configuration.row_index;
-                }
-            }
         }
 
         // 申请 GPU SSBO 行号
@@ -474,11 +455,11 @@ namespace hgl::ecs
         part_row.aabb_center_radius = hgl::math::Vector4f(part_center.x, part_center.y, part_center.z, part_radius);
         part_row.aabb_extents = hgl::math::Vector4f(part_extent.x, part_extent.y, part_extent.z, 0.0f);
         part_row.geometry_id = geometry_id;
-        part_row.material_id = effective_mat_id;
-        part_row.texture_id = effective_tex_id;
+        part_row.material_id = 0;
+        part_row.texture_id = 0;
         part_row.shading_group = 0;
         part_row.bucket_slot = 0;
-        part_row.part_flags = kModelPartFlagHasMaterial;
+        part_row.part_flags = 0;
         if (desc.can_cast_shadow)
             part_row.part_flags |= kModelPartFlagCanCastShadow;
         if (desc.is_opaque)
@@ -512,12 +493,10 @@ namespace hgl::ecs
         // 注册 TemplateRenderBinding
         TemplateRenderBinding binding;
         binding.template_id = template_id;
-        if (desc.material_input.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID)
-            binding.owned_part_rows.Add(desc.material_input.runtime_row);
-        binding.owns_gpu_rows = false;
+        binding.owns_gpu_rows = true;
+        binding.uses_instance_material = true;
 
         TemplateShadingGroupDesc grp;
-        grp.runtime_row = desc.material_input.runtime_row;
         grp.casts_shadow = desc.can_cast_shadow;
         grp.primitive_type = desc.primitive_type;
         grp.slot_geometry.Add(geometry_id);

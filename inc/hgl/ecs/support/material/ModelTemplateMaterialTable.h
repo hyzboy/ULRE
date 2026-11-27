@@ -64,7 +64,8 @@ namespace hgl::ecs
     struct TemplateRenderBinding
     {
         uint32_t template_id = 0;
-        bool owns_gpu_rows = false;
+        bool owns_gpu_rows = false;           ///< 模板和部件 GPU 行由表负责退休
+        bool uses_instance_material = false;  ///< 单组模板从实体事实读取材质，不持有材质行
         ValueArray<MaterialRuntimeRowID> owned_part_rows; ///< 本模板持有的全部部件 MaterialRuntimeRowID（管理 AddRef/Release）
         PtrArray<TemplateShadingGroupDesc> groups;        ///< 长度 == ModelTemplateRow.shading_group_count
     };

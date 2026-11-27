@@ -22,6 +22,8 @@ namespace hgl::ecs
     class ECSContext;
     class Entity;
     class PrimitiveRenderItem;
+    class GPUModelRefComponent;
+    class TransformAccessor;
 
     /**
      * RenderCollectSystem
@@ -125,8 +127,23 @@ namespace hgl::ecs
         bool MaterializeRecipeRowsForPrimitive(Entity *primitive_comp,
                                                MaterialRuntimeSlot &slot);
 
+        struct PreparationState
+        {
+            bool any_material_work = false;
+            bool any_possible_runtime_rows_visible = false;
+            bool any_pending_resources = false;
+            ValueArray<Entity *> failed_template_preparations;
+        };
+        void PreparePrimitiveTemplates(const ValueArray<Entity *> &entities,
+                                       int mobility_filter, bool ambient_provider_changed,
+                                       PreparationState &state);
+
         /// 阶段 1：前置确保图元实体的 GPUModelRefComponent 与模型模板
         bool EnsurePrimitiveModelTemplate(Entity *entity);
+        bool EnsureAutomaticPrimitiveTemplate(Entity *entity, GPUModelRefComponent *ref);
+        bool CollectTemplateCarrier(Entity *entity, const TransformAccessor &transform,
+                                    size_t &added, bool &any_material_work,
+                                    uint64_t &shadow_pass_idsum);
 
     public:
 

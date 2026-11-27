@@ -1929,6 +1929,10 @@ int main(int argc, char** argv)
             OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollect_PrimitiveNormalize.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollect_CacheReplay.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_FactPublish.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_TemplateCarrier.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_Materialize.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_Program.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollectInternal.cpp"),
         };
 

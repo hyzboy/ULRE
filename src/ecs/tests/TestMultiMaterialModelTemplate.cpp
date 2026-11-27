@@ -20,6 +20,7 @@
 #include <hgl/log/Logger.h>
 #include <hgl/type/PtrArray.h>
 #include <hgl/type/ValueArray.h>
+#include "../systems/render/collect/RenderCollectInternal.h"
 
 namespace
 {
@@ -60,6 +61,9 @@ namespace
             OS_TEXT("src/ecs/systems/render/collect/RenderCollectSystem.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollect_PrimitiveNormalize.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollect_CacheReplay.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_FactPublish.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_TemplateCarrier.cpp"),
+            OS_TEXT("src/ecs/systems/render/collect/RenderCollect_Materialize.cpp"),
             OS_TEXT("src/ecs/systems/render/collect/RenderCollectInternal.cpp"),
         };
 
@@ -310,6 +314,33 @@ namespace
         return table->UnregisterBinding(901u) && !runtime->Get(b) && !runtime->Get(c);
     }
 
+    bool TestInstanceMaterialBinding()
+    {
+        ECSContext context("InstanceMaterialBinding");
+        auto *runtime = context.GetMaterialRuntimeTable();
+        auto *table = context.GetModelTemplateMaterialTable();
+        const auto row = runtime->Intern(MaterialRuntimeKey{1u, 90u, 0u});
+        TemplateRenderBinding binding;
+        binding.template_id = 900u;
+        binding.uses_instance_material = true;
+        TemplateShadingGroupDesc group;
+        group.slot_geometry.Add(1u);
+        group.slot_count.Add(1u);
+        binding.groups.Add(group);
+        if (!table->RegisterBinding(binding) || !table->FindBinding(900u)->uses_instance_material
+         || runtime->GetRefCount(row) != 1u)
+            return false;
+        binding.groups[0].runtime_row = row;
+        if (table->RegisterBinding(binding))
+            return false;
+        binding.groups[0].runtime_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
+        binding.groups.Add(group);
+        if (table->RegisterBinding(binding))
+            return false;
+        runtime->Release(row);
+        return !runtime->Get(row) && table->UnregisterBinding(900u);
+    }
+
     // ── 2. ModelTemplateRenderItem 载体项测试 ──────────────────────────
 
     bool TestTemplateRenderItemCarrier()
@@ -483,12 +514,35 @@ namespace
         if (!mat_data->HasDataResource() || mat_data->data_resource.data_index != 42u)
             return false;
 
+        MaterialRuntimeRow runtime_row{};
+        runtime_row.data_index_row = 7u;
+        uint32_t material_id = 0u;
+        uint32_t texture_id = 0u;
+        detail::render_collect::ResolveMaterialFacts(&context, entity->GetEntityID(),
+                                                     &runtime_row, material_id, texture_id);
+        if (material_id != 42u || texture_id != 0u)
+            return false;
+        mat_data->has_data_resource = false;
+        detail::render_collect::ResolveMaterialFacts(&context, entity->GetEntityID(),
+                                                     &runtime_row, material_id, texture_id);
+        if (material_id != 7u)
+            return false;
+        mat_data->has_data_resource = true;
+        mat_data->data_resource.data_index = uint32_t(-1);
+        detail::render_collect::ResolveMaterialFacts(&context, entity->GetEntityID(),
+                                                     &runtime_row, material_id, texture_id);
+        if (material_id != 7u)
+            return false;
+        mat_data->data_resource.data_index = 42u;
+        detail::render_collect::ResolveMaterialFacts(&context, entity->GetEntityID(),
+                                                     &runtime_row, material_id, texture_id);
+
         // 验证写入实体 4-ID 事实表
         const uint32_t pass_index = 0u;
         graph::RenderItemDescriptor ids{};
         ids.transform_id = 10u;
         ids.geometry_id = 0u;
-        ids.material_id = mat_data->data_resource.data_index;
+        ids.material_id = material_id;
         ids.texture_id = 5u;
 
         context.GetEntityRenderIDTable().SetRenderIDs(pass_index, entity->GetEntityID(), ids);
@@ -554,7 +608,7 @@ namespace
               "NoModelTemplate",
               "主收集循环必须彻底清理旧单图元物化分支，仅保留纯模板快线与 NoModelTemplate 兜底" },
             { collect_src,
-              "mat_data->has_data_resource",
+              "ResolveMaterialFacts(world, entity_id",
               "4-ID 事实表必须优先消费实体专属材质数据行 (data_resource.data_index)" },
 
             // 批处理流水线多组支持契约
@@ -591,26 +645,18 @@ namespace
             ok = false;
             GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 单图元模板共享哈希");
         }
-        if (!ContainsToken(builder_src, "binding.owns_gpu_rows = false"))
+        if (!ContainsToken(builder_src, "binding.uses_instance_material = true"))
         {
             ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 单图元模板不占有 GPU 材质行");
+            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 单图元模板使用实例材质行");
         }
-        if (ContainsToken(shader_src, "has_part_mtl")
-         || ContainsToken(shader_src, "part.material_id")
-         || ContainsToken(shader_src, "part.texture_id"))
+        if (!ContainsToken(shader_src, "has_part_mtl ? part.material_id : ids_blk.material_id")
+         || !ContainsToken(shader_src, "has_part_mtl ? part.texture_id : ids_blk.texture_id"))
         {
             ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 简化契约违反: GPU 剔除仍回退部件行");
+            GLogError(u8"TestMultiMaterialModelTemplate 契约缺失: GPU 部件材质路由");
         }
-        if (!ContainsToken(shader_src, "const uint material_id = group_route.w != 0u ? group_route.y : ids_blk.material_id")
-         || !ContainsToken(shader_src, "const uint texture_id  = group_route.w != 0u ? group_route.z : ids_blk.texture_id"))
-        {
-            ok = false;
-            GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: GPU 材质行直通");
-        }
-        if (!ContainsToken(replay_src, "mat_data && mat_data->has_data_resource")
-         || !ContainsToken(replay_src, "mat_data->data_resource.data_index"))
+        if (!ContainsToken(replay_src, "ResolveMaterialFacts(world, entity_id"))
         {
             ok = false;
             GLogError(u8"TestMultiMaterialModelTemplate 简化契约缺失: 缓存重放未复用实体专属材质行");
@@ -627,6 +673,7 @@ int main()
     Check(TestMaterialTableLifecycle(), "1. ModelTemplateMaterialTable 生命周期与引用计数");
     Check(TestSinglePrimitiveModelTemplateCache(), "1b. 单图元模板缓存与注销级联清理");
     Check(TestBindingReplacement(), "Binding replacement preserves overlapping rows and rejects invalid input atomically");
+    Check(TestInstanceMaterialBinding(), "Instance-material bindings do not retain runtime rows");
     Check(TestTemplateRenderItemCarrier(), "2. ModelTemplateRenderItem 载体项属性");
     Check(TestGroupPipelineCache(), "2c. Group pipeline isolation, pass mismatch and entity invalidation");
     Check(TestGPUModelRefBindingAndFacts(), "2b. 模型引用绑定与 GPU 事实纯净化");
