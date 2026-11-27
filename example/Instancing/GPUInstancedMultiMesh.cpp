@@ -1,6 +1,7 @@
 // GPUInstancedMultiMesh - one PBR recipe and data space across multiple geometries.
 // Entities may use different built-in meshes, but they share one shader, one
 // material recipe, and per-entity PBRSurface data rows.
+// GIMM_GPU_CHECK=1 with GIMM_FRAMES>=14 validates the ten GPU mesh buckets.
 
 #include <hgl/framework/WorkManager.h>
 #include <hgl/graph/geo/VertexDataManager.h>
@@ -22,6 +23,7 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include "../Shared/ExampleAppBase.h"
+#include "../Shared/InstancingReadback.h"
 
 #include <cstdlib>
 
@@ -63,6 +65,9 @@ class GPUInstancedMultiMeshApp final : public ulre_example::ExampleAppBase
     PrimitiveAsset mesh_primitives[MESH_VARIANT_COUNT]{};
     graph::mtl::MaterialRecipe recipe{};
     graph::mtl::MaterialDataBlockAsset *data_block = nullptr;
+    bool gpu_check = false;
+    bool gpu_check_scheduled = false;
+    bool gpu_check_completed = false;
 
 public:
     GPUInstancedMultiMeshApp()
@@ -239,6 +244,12 @@ private:
 public:
     bool OnInit() override
     {
+        gpu_check = getenv("GIMM_GPU_CHECK") != nullptr;
+        if (gpu_check && example_perf_frames < 14u)
+        {
+            GLogError(u8"[GIMM] GPU check requires GIMM_FRAMES >= 14");
+            return false;
+        }
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
         if (!InitRecipe())
@@ -248,6 +259,33 @@ public:
         if (!InitWorld())
             return false;
         return InitCamera();
+    }
+
+    void OnTick(double) override
+    {
+        if (gpu_check && example_frame_seen >= example_perf_frames && !gpu_check_completed)
+        {
+            GLogError(u8"[GIMM] GPU check did not complete before frame limit");
+            exit(1);
+        }
+        if (!gpu_check || gpu_check_scheduled || example_frame_seen < 12u)
+            return;
+
+        auto *target = dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+        if (!target)
+        {
+            GLogError(u8"[GIMM] GPU check requires a swapchain");
+            exit(1);
+        }
+        gpu_check_scheduled = true;
+        target->SetInFrameReadbackHook([this]()
+        {
+            if (!ulre_example::CheckInstancingRows(world, data_block,
+                                                  ulre_example::InstancingGroups::MeshColumns, "GIMM"))
+                exit(1);
+            gpu_check_completed = true;
+            GLogInfo(u8"[GIMM] GPU instance row validation passed");
+        });
     }
 };
 

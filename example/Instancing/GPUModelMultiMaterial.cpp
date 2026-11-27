@@ -13,16 +13,22 @@
 #include <hgl/ecs/support/cull/GPUCullSystem.h>
 #include <hgl/ecs/support/debug/ProfOverlaySystem.h>
 #include <hgl/ecs/support/material/ModelTemplateBuilder.h>
+#include <hgl/ecs/support/material/MaterialRuntimePipelineTable.h>
 #include <hgl/ecs/support/storage/MainFrameTopologySnapshot.h>
+#include <hgl/ecs/support/storage/EntityRenderIDTable.h>
+#include <hgl/ecs/support/storage/EntityGPUTable.h>
 #include <hgl/graph/asset/PrimitiveAsset.h>
 #include <hgl/graph/geo/GeometryVertexFormat.h>
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
+#include <hgl/graph/ssbo/MaterialDataRows.h>
 #include <hgl/graph/render/shadow/CascadedShadowController.h>
 #include <hgl/vk/buffer/DeviceBuffer.h>
 #include <hgl/vk/buffer/IGPUBuffer.h>
+#include <hgl/vk/buffer/IndirectCommandBuffer.h>
+#include <hgl/vk/VKBufferReadback.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/vk/VKTextureReadback.h>
 #include <hgl/util/hash/FNV1a.h>
@@ -47,6 +53,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     Entity *seeds[3]{};
     Entity *models[3]{};
     Entity *probe = nullptr;
+    Entity *line_probe = nullptr;
     Entity *ground = nullptr;
     Entity *lit_seeds[2]{};
     Geometry *cube = nullptr;
@@ -54,6 +61,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     mtl::MaterialRecipe recipes[3];
     PrimitiveAsset assets[3];
     PrimitiveAsset sphere_asset;
+    PrimitiveAsset line_asset;
     PrimitiveAsset lit_assets[2];
     PrimitiveAsset ground_asset;
     mtl::MaterialRecipe lit_recipes[2];
@@ -61,6 +69,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     GlobalSSBOBinding data[3]{};
     ModelTemplatePartInput parts[3];
     uint32_t template_id = 0;
+    uint32_t legacy_template_id = 0, legacy_part_id = 0, legacy_texture_id = 0;
     uint32_t frame = 0;
     uint32_t phase = 0;
     uint32_t phase_samples = 0;
@@ -82,6 +91,11 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     uint32_t retired_id = 0, retired_first = 0;
     uint32_t baseline_templates = 0, baseline_parts = 0, baseline_refs[3]{};
     uint32_t lifecycle_cycles = 0, lifecycle_frames = 0;
+    ssbo::EmissiveSurfaceRow original_row2{};
+    uint64_t row_update_revision = 0, row_update_cache_hits = 0;
+    uint64_t fallback_count_before = 0;
+    uint64_t invalidated_snapshot_commits = 0;
+    bool fallback_fixture = false;
     TextureAsset *mipmap_variants[2]{};
     Texture2D *mipmap_raced_sync = nullptr;
     bool mipmap_checked = false;
@@ -245,6 +259,50 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         GLogInfo(u8"[GMM] ROLLBACK live destroy rejected; exhausted part pool preserved published template");
     }
 
+    void InstallLegacyPartMaterialFixture()
+    {
+        const auto *source = registry->GetTypedRow<ssbo::ModelTemplateRow>(
+            GlobalSSBOType::ModelTemplatePool, template_id);
+        const auto *source_part = source ? registry->GetTypedRow<ssbo::ModelPartRow>(
+            GlobalSSBOType::ModelPartPool, source->part_offset) : nullptr;
+        const auto *lit_row = world->GetMaterialRuntimeTable()->Get(EntityRow(lit_seeds[0]));
+        if (!source || !source_part || !lit_row || !lit_row->material_texture_configuration.IsValid())
+            Fail("legacy material fixture source unavailable");
+
+        ssbo::ModelTemplateRow model = *source;
+        ssbo::ModelPartRow part = *source_part;
+        legacy_template_id = registry->Acquire(GlobalSSBOType::ModelTemplatePool);
+        legacy_part_id = registry->Acquire(GlobalSSBOType::ModelPartPool);
+        if (legacy_template_id == ActiveRowPool::InvalidRowID || legacy_part_id == ActiveRowPool::InvalidRowID)
+            Fail("legacy material fixture allocation failed");
+        model.part_offset = legacy_part_id;
+        model.part_count = 1u;
+        model.part_bucket_count = 1u;
+        model.shading_group_count = 1u;
+        part.local_matrix = math::Matrix4f(1.0f);
+        part.shading_group = 0u;
+        part.bucket_slot = 0u;
+        part.material_id = data[2].data_index;
+        legacy_texture_id = lit_row->material_texture_configuration.row_index;
+        part.texture_id = legacy_texture_id;
+        part.part_flags |= ssbo::kModelPartFlagHasMaterial;
+        if (!registry->Write(GlobalSSBOType::ModelPartPool, legacy_part_id, part)
+         || !registry->Write(GlobalSSBOType::ModelTemplatePool, legacy_template_id, model))
+            Fail("legacy material fixture publication failed");
+        probe->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(legacy_template_id);
+    }
+
+    void RemoveLegacyPartMaterialFixture()
+    {
+        probe->GetComponent<GPUModelRefComponent>()->SetTemplateBinding(0u);
+        if (!GetDevice()->WaitIdle()
+         || !world->GetModelTemplateMaterialTable()->UnregisterBinding(legacy_template_id)
+         || !registry->ReleaseID(GlobalSSBOType::ModelTemplatePool, legacy_template_id)
+         || !registry->ReleaseID(GlobalSSBOType::ModelPartPool, legacy_part_id))
+            Fail("legacy material fixture cleanup failed");
+        legacy_template_id = legacy_part_id = legacy_texture_id = 0u;
+    }
+
     void RetireInstances()
     {
         const auto *row = registry->GetTypedRow<ssbo::ModelTemplateRow>(
@@ -388,6 +446,9 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         uint32_t histogram[3]{};
         uint32_t total = 0;
         uint32_t lit_texture_count = 0;
+        uint32_t legacy_pair_count = 0;
+        uint32_t line_bucket_count = 0;
+        uint32_t topology_bucket_counts[4]{};
         const auto lit_row_id = phase == 12u ? EntityRow(lit_seeds[1]) : EntityRow(lit_seeds[0]);
         const auto *lit_row = world->GetMaterialRuntimeTable()->Get(lit_row_id);
         for (uint32_t b = 0; b < batches; ++b)
@@ -399,6 +460,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 break;
             }
             const uint32_t count = counts[b];
+            if (phase == 13u && b < 4u)
+                topology_bucket_counts[b] = count;
             if (!count)
                 continue;
             auto *buffer = cull->GetMtlOutBuffer();
@@ -410,6 +473,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 ok = false;
                 break;
             }
+            uint32_t line_rows = 0;
             for (uint32_t r = 0; r < count; ++r)
             {
                 bool found = false;
@@ -424,6 +488,17 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                     ok &= found;
                 if (lit_row && rows[r].texture_reference_index == lit_row->material_texture_configuration.row_index)
                     ++lit_texture_count;
+                if (rows[r].payload_index == data[2].data_index
+                 && rows[r].texture_reference_index == legacy_texture_id)
+                    ++legacy_pair_count;
+                if (phase == 13u && rows[r].payload_index == data[2].data_index
+                 && rows[r].texture_reference_index != legacy_texture_id)
+                    ++line_rows;
+            }
+            if (line_rows)
+            {
+                ++line_bucket_count;
+                ok &= line_rows == 1u && count == 1u;
             }
             buffer->GetGPUBuffer()->Unmap();
             total += count;
@@ -431,7 +506,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         cull->UnmapCurrentBatchCounters();
         uint32_t expected[3]{7u, 3u, 0u};
         if (phase == 3) { expected[0] = 7; expected[1] = 2; expected[2] = 0; }
-        if (phase == 5 || phase == 6) { expected[0] = 6; expected[1] = 3; expected[2] = 1; }
+        if (phase == 2 || phase == 5 || phase == 6) { expected[0] = 6; expected[1] = 3; expected[2] = 1; }
+        if (phase == 13) { expected[0] = 6; expected[1] = 3; expected[2] = 2; }
         if (phase <= 8u || phase == 13u)
             for (uint32_t c = 0; c < 3; ++c)
                 ok &= histogram[c] == expected[c];
@@ -449,9 +525,61 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             ok &= lit_row && lit_row->material_texture_configuration_hash != placeholder_hash
                && part->texture_id == placeholder_texture;
         }
+        if (phase == 13u)
+        {
+            VkDrawMeshTasksIndirectCommandEXT commands[4]{};
+            auto *indirect = cull->GetIndirectCommandsBuffer();
+            if (batches != 4u || !indirect
+             || !ReadbackBuffer(world->GetGPUDevice(), indirect->GetVkBuffer(), 0,
+                                sizeof(commands), commands))
+                ok = false;
+            else
+                for (uint32_t i = 0; i < 4u; ++i)
+                    ok &= commands[i].groupCountX > 0u
+                       && commands[i].groupCountY == topology_bucket_counts[i]
+                       && commands[i].groupCountZ == 1u;
+            const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(legacy_template_id);
+            const auto *row = world->GetMaterialRuntimeTable()->Get(EntityRow(probe));
+            const auto *line_ref = line_probe ? line_probe->GetComponent<GPUModelRefComponent>() : nullptr;
+            const auto *seed_ref = seeds[0]->GetComponent<GPUModelRefComponent>();
+            const auto *line_binding = line_ref
+                ? world->GetModelTemplateMaterialTable()->FindBinding(line_ref->GetTemplateID()) : nullptr;
+            ok &= binding && !binding->owns_gpu_rows && !binding->uses_instance_material
+               && row && row->data_index_row == data[0].data_index
+               && legacy_texture_id != 0u && legacy_pair_count == 1u
+               && batches == 4u && line_bucket_count == 1u
+               && line_ref && seed_ref && line_ref->GetTemplateID() != seed_ref->GetTemplateID()
+               && line_binding && line_binding->groups.GetCount() == 1
+               && line_binding->groups[0].primitive_type == PrimitiveType::Lines;
+        }
         GLogInfo(u8"[GMM] GPU phase=%u buckets=%u parts=%u material_hist=%u,%u,%u expected=%u,%u,%u",
                  phase, batches, total, histogram[0], histogram[1], histogram[2],
                  expected[0], expected[1], expected[2]);
+        return ok;
+    }
+
+    bool CheckPublishedFacts()
+    {
+        const EntityID id = models[2]->GetEntityID();
+        const auto *model_ref = models[2]->GetComponent<GPUModelRefComponent>();
+        const auto *gpu = world->GetEntityGPUTable().Row(id);
+        const auto *main_ids = world->GetEntityRenderIDTable().Row(0u, id.index);
+        if (!model_ref || !gpu || !main_ids)
+            return false;
+        bool ok = EntityGPUTable::IsVisible(*gpu)
+               && gpu->model_template_id == model_ref->GetTemplateID()
+               && gpu->model_part_mask == model_ref->part_visibility_mask
+               && main_ids->transform_id == world->GetTransformByEntity(id).GetID()
+               && main_ids->geometry_id == 0u;
+        if (phase <= 8u || phase == 13u)
+            ok &= main_ids->material_id == data[0].data_index;
+        if (phase == 14u || phase == 16u)
+        {
+            const auto *shadow_ids = world->GetEntityRenderIDTable().Row(1u, id.index);
+            ok &= shadow_ids && *shadow_ids == *main_ids;
+        }
+        if (!ok)
+            GLogError(u8"[GMM] published facts mismatch phase=%u", phase);
         return ok;
     }
 
@@ -476,16 +604,33 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                     ok = false;
                 }
             }
-            ok &= ReadColor(pixels, info, {0.0f, 0.0f, 2.2f}) == ((phase == 5 || phase == 6) ? 2 : 0);
+            const int probe_color = phase == 2 && phase_samples > 0 ? 1
+                : (phase == 2 || phase == 5 || phase == 6 || phase == 13) ? 2 : 0;
+            ok &= ReadColor(pixels, info, {0.0f, 0.0f, 2.2f}) == probe_color;
             hash::FNV1aHasher64 hasher;
             hasher.AppendBytes(pixels.GetData(), pixels.GetCount());
             const uint64_t digest = hasher;
-            if (phase_samples && digest != previous_hash)
-                ok = false;
+            if (phase_samples)
+                ok &= phase == 2 && phase_samples == 1
+                    ? digest != previous_hash : digest == previous_hash;
             previous_hash = digest;
+            if (phase == 2 && phase_samples > 0)
+            {
+                const auto collect = world->GetSystem<RenderCollectSystem>();
+                ok &= world->GetPrimitiveTopologyLedger().GetTopologyRevision() == row_update_revision;
+                ok &= !world->IsMainFrameCollectCacheEnabled()
+                   || (collect && collect->GetCollectCacheHits() > row_update_cache_hits);
+            }
             if (phase == 0) baseline_hash = digest;
-            if (phase == 1 || phase == 2 || phase == 4 || phase == 7 || phase == 8 || phase == 13) ok &= digest == baseline_hash;
-            if (phase == 3) ok &= digest != baseline_hash;
+            if (phase == 0 && phase_samples > 0 && fallback_fixture)
+                ok &= world->GetSystem<RenderCollectSystem>()->GetCollectCacheFallbacks() > fallback_count_before;
+            if (phase == 1 && world->IsMainFrameCollectCacheEnabled())
+            {
+                const auto &snapshot = world->GetMainFrameTopologySnapshot();
+                ok &= snapshot.IsReady() && snapshot.GetStats().commits > invalidated_snapshot_commits;
+            }
+            if (phase == 1 || phase == 4 || phase == 7 || phase == 8) ok &= digest == baseline_hash;
+            if (phase == 2 || phase == 3 || phase == 13) ok &= digest != baseline_hash;
             if (phase == 9) lit_hash = digest;
             if (phase == 10 || phase == 12) ok &= digest != lit_hash;
             if (phase == 11) ok &= digest == lit_hash;
@@ -536,6 +681,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                          static_cast<unsigned long long>(world->GetSystem<RenderCollectSystem>()->GetCollectCacheHits()),
                          static_cast<unsigned long long>(world->GetSystem<RenderCollectSystem>()->GetCollectCacheFallbacks()));
             }
+            ok &= CheckPublishedFacts();
             ok &= CheckGPU();
         }
         sample_ok = ok;
@@ -552,13 +698,66 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         if (!sample_ok)
             Fail("GPU data or per-part pixel validation failed");
-        if (++phase_samples < 3u)
+        ++phase_samples;
+        if (phase == 0u && phase_samples == 1u && world->IsMainFrameCollectCacheEnabled())
+        {
+            const auto &snapshot = world->GetMainFrameTopologySnapshot();
+            const auto *items = snapshot.GetItems();
+            if (!snapshot.IsReady() || snapshot.GetItemCount() < 2 || !items)
+                Fail("cache fallback fixture requires a complete snapshot");
+            const auto &last = items[snapshot.GetItemCount() - 1];
+            EntityID id;
+            id.index = last.entity_index;
+            id.generation = last.entity_generation;
+            if (!world->GetEntity(id))
+                Fail("cache fallback fixture entity unavailable");
+            fallback_count_before = world->GetSystem<RenderCollectSystem>()->GetCollectCacheFallbacks();
+            world->GetMaterialRuntimePipelineTable().Clear(id);
+            fallback_fixture = true;
+            warmup = 2u;
+        }
+        if (phase == 2u && phase_samples == 1u)
+        {
+            const auto *row2 = registry->GetTypedRow<ssbo::EmissiveSurfaceRow>(
+                data[2].ssbo_type, data[2].data_index);
+            const auto *row1 = registry->GetTypedRow<ssbo::EmissiveSurfaceRow>(
+                data[1].ssbo_type, data[1].data_index);
+            if (!row2 || !row1)
+                Fail("material content rows unavailable");
+            original_row2 = *row2;
+            row_update_revision = world->GetPrimitiveTopologyLedger().GetTopologyRevision();
+            row_update_cache_hits = world->GetSystem<RenderCollectSystem>()->GetCollectCacheHits();
+            if (!registry->Write(data[2].ssbo_type, data[2].data_index, *row1))
+                Fail("material row content update failed");
+            warmup = 2u;
+        }
+        if (phase_samples < 3u)
             return;
         phase_samples = 0;
         ++phase;
         warmup = 2u;
         auto *c = models[2]->GetComponent<GPUModelRefComponent>();
-        if (phase == 3) c->HidePart(1u);
+        if (phase == 1 && world->IsMainFrameCollectCacheEnabled())
+        {
+            auto &snapshot = world->GetMainFrameTopologySnapshot();
+            invalidated_snapshot_commits = snapshot.GetStats().commits;
+            snapshot.Invalidate();
+        }
+        if (phase == 2)
+        {
+            MaterialData::MaterialDataAuthoringResource row;
+            row = data[2];
+            if (!world->GetOrCreateMaterialData(probe)->SetDataResource(row))
+                Fail("material row switch rejected");
+        }
+        if (phase == 3)
+        {
+            if (!registry->Write(data[2].ssbo_type, data[2].data_index, original_row2))
+                Fail("material row content restoration failed");
+            if (!world->GetOrCreateMaterialData(probe)->SetDataResource(MaterialData::MaterialDataAuthoringResource{}))
+                Fail("material row restoration rejected");
+            c->HidePart(1u);
+        }
         if (phase == 4)
         {
             c->ShowAllParts();
@@ -602,8 +801,23 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                     Fail("replacement template retirement rejected");
                 id = 0u;
             }
+            InstallLegacyPartMaterialFixture();
+            line_probe = CreatePrimitive("LineTopologyProbe", {4.0f, 0.0f, 2.2f}, &line_asset);
+            if (!line_probe)
+                Fail("line topology fixture creation failed");
+            MaterialData::MaterialDataAuthoringResource line_data;
+            line_data = data[2];
+            if (!world->GetOrCreateMaterialData(line_probe)->SetDataResource(line_data))
+                Fail("line topology fixture material rejected");
         }
-        if (phase == 14) { ReplaceWithLit(0u); world->SetEntityVisible(ground->GetEntityID(), true); }
+        if (phase == 14)
+        {
+            world->DestroyEntity(line_probe->GetEntityID());
+            line_probe = nullptr;
+            RemoveLegacyPartMaterialFixture();
+            ReplaceWithLit(0u);
+            world->SetEntityVisible(ground->GetEntityID(), true);
+        }
         if (phase == 15) models[2]->GetComponent<ShadowProxy>()->SetCastShadow(false);
         if (phase == 16) models[2]->GetComponent<ShadowProxy>()->SetCastShadow(true);
         if (phase == 17)
@@ -741,6 +955,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                                   * glm::scale(math::Matrix4f(1.0f), math::Vector3f(0.65f, 0.55f, 0.8f));
         }
         sphere_asset = PrimitiveAsset(sphere, &recipes[2], PrimitiveType::Triangles);
+        line_asset = PrimitiveAsset(cube, &recipes[0], PrimitiveType::Lines);
         probe = CreatePrimitive("DynamicPrimitive", {0.0f, 0.0f, 2.2f}, &assets[0]);
         GlobalSSBOBinding lit_data;
         if (!GetMaterialDataBinding("mtldata:pack(ShaderLibrary):asset/material_data/dual_world_shadows", 0u, lit_data))

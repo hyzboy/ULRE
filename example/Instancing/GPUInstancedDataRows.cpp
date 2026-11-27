@@ -1,6 +1,8 @@
 // GPUInstancedDataRows - pure data-row instancing benchmark.
 // 100 entities share one primitive, one recipe, one shader, and one geometry.
 // Each entity changes only its PBRSurface material data row.
+// GID_GPU_CHECK=1 with GID_FRAMES>=14 validates GPU rows; GID_SPLIT_PIPELINE=1
+// additionally splits the same mesh into two incompatible pipeline batches.
 
 #include <hgl/framework/WorkManager.h>
 #include <hgl/graph/geo/VertexDataManager.h>
@@ -22,6 +24,7 @@
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include "../Shared/ExampleAppBase.h"
+#include "../Shared/InstancingReadback.h"
 
 #include <cstdlib>
 
@@ -46,8 +49,14 @@ class GPUInstancedDataRowsApp final : public ulre_example::ExampleAppBase
     hgl::AutoDelete<VertexDataManager> mesh_vdm;
     Geometry *sphere_geometry = nullptr;
     PrimitiveAsset sphere_primitive{};
+    PrimitiveAsset alternate_primitive{};
     graph::mtl::MaterialRecipe recipe{};
+    graph::mtl::MaterialRecipe alternate_recipe{};
     graph::mtl::MaterialDataBlockAsset *data_block = nullptr;
+    bool gpu_check = false;
+    bool gpu_check_scheduled = false;
+    bool gpu_check_completed = false;
+    bool split_pipeline = false;
 
 public:
     GPUInstancedDataRowsApp()
@@ -149,6 +158,14 @@ private:
             return false;
 
         sphere_primitive = PrimitiveAsset(sphere_geometry, &recipe, PrimitiveType::Triangles);
+        if (split_pipeline)
+        {
+            alternate_recipe = recipe;
+            alternate_recipe.render_state_overrides.pipeline_config.cull_mode = VK_CULL_MODE_NONE;
+            alternate_recipe.render_state_overrides.pipeline_config_mask =
+                static_cast<graph::mtl::MaterialPipelineFieldMask>(graph::mtl::MaterialPipelineField::CullMode);
+            alternate_primitive = PrimitiveAsset(sphere_geometry, &alternate_recipe, PrimitiveType::Triangles);
+        }
         const float offset = (GRID_SIZE - 1) * SPACING * 0.5f;
 
         for (uint row = 0; row < GRID_SIZE; ++row)
@@ -165,7 +182,8 @@ private:
                                    glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                                    glm::vec3(1.0f),
                                    Mobility::Static)
-                    .WithPrimitiveAsset(&sphere_primitive)
+                    .WithPrimitiveAsset(split_pipeline && row >= GRID_SIZE / 2
+                                            ? &alternate_primitive : &sphere_primitive)
                     .WithMaterialDataRow(ToOSString(DATA_PATH),
                                          row * GRID_SIZE + col)
                     .Build();
@@ -211,6 +229,13 @@ private:
 public:
     bool OnInit() override
     {
+        gpu_check = getenv("GID_GPU_CHECK") != nullptr;
+        split_pipeline = getenv("GID_SPLIT_PIPELINE") != nullptr;
+        if (gpu_check && example_perf_frames < 14u)
+        {
+            GLogError(u8"[GID] GPU check requires GID_FRAMES >= 14");
+            return false;
+        }
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
         if (!InitRecipe())
@@ -220,6 +245,34 @@ public:
         if (!InitWorld())
             return false;
         return InitCamera();
+    }
+
+    void OnTick(double) override
+    {
+        if (gpu_check && example_frame_seen >= example_perf_frames && !gpu_check_completed)
+        {
+            GLogError(u8"[GID] GPU check did not complete before frame limit");
+            exit(1);
+        }
+        if (!gpu_check || gpu_check_scheduled || example_frame_seen < 12u)
+            return;
+
+        auto *target = dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+        if (!target)
+        {
+            GLogError(u8"[GID] GPU check requires a swapchain");
+            exit(1);
+        }
+        gpu_check_scheduled = true;
+        target->SetInFrameReadbackHook([this]()
+        {
+            const auto grouping = split_pipeline ? ulre_example::InstancingGroups::PipelineHalves
+                                                 : ulre_example::InstancingGroups::Single;
+            if (!ulre_example::CheckInstancingRows(world, data_block, grouping, "GID"))
+                exit(1);
+            gpu_check_completed = true;
+            GLogInfo(u8"[GID] GPU instance row validation passed");
+        });
     }
 };
 

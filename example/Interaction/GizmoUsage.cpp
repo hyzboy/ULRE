@@ -4,6 +4,7 @@
  展示如何使用 TransformGizmoSystem 控制物体变换
  支持 5 种模式：MoveWorld, MoveLocal, RotateWorld, RotateLocal, ScaleLocal
  按键 1/2/3/4/5 切换对应模式
+ GIZMO_GPU_CHECK=1 和 GIZMO_FRAMES>=20 可执行有限帧 GPU 与画面自检。
 */
 
 #include<hgl/framework/WorkManager.h>
@@ -27,8 +28,19 @@
 #include<hgl/ecs/components/CameraControlMode.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
+#include<hgl/ecs/support/cull/GPUCullSystem.h>
+#include<hgl/ecs/support/material/MaterialAuthoringSideTable.h>
+#include<hgl/graph/ssbo/MaterialSSBOLayout.h>
+#include<hgl/vk/buffer/DeviceBuffer.h>
+#include<hgl/vk/buffer/IGPUBuffer.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKTextureReadback.h>
+#include<hgl/log/Log.h>
+#include<hgl/type/ValueArray.h>
 
 #include<glm/glm.hpp>
+#include<cstdlib>
+#include<cstring>
 #include<iostream>
 #include<memory>
 #include<string>
@@ -88,6 +100,67 @@ private:
     Geometry *cube_geometry = nullptr;
 
     std::string debug_cache;
+    uint32_t check_frames = 0, frame_count = 0;
+    uint32_t hide_frame = 0;
+    bool gpu_check = false, gpu_check_scheduled = false, gpu_check_completed = false;
+    bool gizmo_hidden = false;
+    ValueArray<uint8_t> gizmo_pixels;
+    TextureReadbackInfo gizmo_pixels_info{};
+
+    bool CheckGizmoGPU()
+    {
+        hgl::ValueArray<uint32_t> gizmo_rows, seen_rows;
+        ecs_context->ForEachAliveEntity([&](const hgl::ecs::Entity *entity)
+        {
+            if (!entity || strncmp(entity->GetName().c_str(), "GizmoAssetMove_", 15) != 0
+             || !ecs_context->IsEntityVisible(entity->GetEntityID()))
+                return;
+            const auto *material = ecs_context->GetMaterialData(entity->GetEntityID());
+            if (material && material->HasDataResource()
+             && !gizmo_rows.Contains(material->data_resource.data_index))
+                gizmo_rows.Add(material->data_resource.data_index);
+        });
+
+        auto cull = ecs_context->GetSystem<hgl::ecs::GPUCullSystem>();
+        if (!cull || !cull->SyncForParityReadback())
+            return false;
+        const uint32_t buckets = cull->GetBatchCount();
+        const uint32_t *counts = cull->MapCurrentBatchCounters(0u);
+        auto *buffer = cull->GetMtlOutBuffer();
+        if (!counts || !buffer || !buffer->GetGPUBuffer())
+        {
+            if (counts) cull->UnmapCurrentBatchCounters();
+            return false;
+        }
+        bool ok = buckets > 0 && counts[buckets] == 0;
+        for (uint32_t bucket = 0; bucket < buckets && ok; ++bucket)
+        {
+            uint32_t base = 0, capacity = 0;
+            const uint32_t count = counts[bucket];
+            if (!cull->GetBatchLayout(0u, bucket, base, capacity) || count > capacity)
+            {
+                ok = false;
+                break;
+            }
+            if (!count) continue;
+            const auto *rows = static_cast<const hgl::graph::mtl::MaterialInstanceAddresses *>(
+                buffer->GetGPUBuffer()->Map(uint64_t(base) * sizeof(hgl::graph::mtl::MaterialInstanceAddresses),
+                                            uint64_t(count) * sizeof(hgl::graph::mtl::MaterialInstanceAddresses)));
+            if (!rows)
+            {
+                ok = false;
+                break;
+            }
+            for (uint32_t i = 0; i < count; ++i)
+                if (gizmo_rows.Contains(rows[i].payload_index) && !seen_rows.Contains(rows[i].payload_index))
+                    seen_rows.Add(rows[i].payload_index);
+            buffer->GetGPUBuffer()->Unmap();
+        }
+        cull->UnmapCurrentBatchCounters();
+        GLogInfo(u8"[GIZMO] GPU buckets=%u authored_colors=%d visible_colors=%d",
+                 buckets, gizmo_rows.GetCount(), seen_rows.GetCount());
+        return ok && gizmo_rows.GetCount() == 4 && seen_rows.GetCount() == gizmo_rows.GetCount();
+    }
 
     bool InitSceneResources()
     {
@@ -294,6 +367,22 @@ private:
 public:
     bool Init() override
     {
+        if (const char *frames = getenv("GIZMO_FRAMES"))
+        {
+            const int limit = atoi(frames);
+            if (limit <= 0)
+            {
+                GLogError(u8"[GIZMO] GIZMO_FRAMES must be positive");
+                return false;
+            }
+            check_frames = static_cast<uint32_t>(limit);
+        }
+        gpu_check = getenv("GIZMO_GPU_CHECK") != nullptr;
+        if (gpu_check && check_frames < 20u)
+        {
+            GLogError(u8"[GIZMO] GPU check requires GIZMO_FRAMES >= 20");
+            return false;
+        }
         if(!InitECS())
             return false;
 
@@ -318,6 +407,76 @@ public:
 
         UpdateDebug(input_system.get());
         WorkObject::Tick(delta);
+        ++frame_count;
+        if (gpu_check && !gpu_check_scheduled && frame_count >= 12u)
+        {
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            if (!target)
+            {
+                GLogError(u8"[GIZMO] GPU check requires a swapchain");
+                exit(1);
+            }
+            gpu_check_scheduled = true;
+            target->SetInFrameReadbackHook([this]()
+            {
+                if (!CheckGizmoGPU()
+                 || !ReadbackColorTarget(ecs_context->GetRenderTarget(), gizmo_pixels, 0, &gizmo_pixels_info)
+                 || gizmo_pixels.IsEmpty())
+                {
+                    GLogError(u8"[GIZMO] GPU validation failed");
+                    exit(1);
+                }
+            });
+        }
+        if (gpu_check_scheduled && !gizmo_hidden && !gizmo_pixels.IsEmpty())
+        {
+            ValueArray<hgl::ecs::EntityID> entities;
+            ecs_context->ForEachAliveEntity([&](const hgl::ecs::Entity *entity)
+            {
+                if (entity && strncmp(entity->GetName().c_str(), "GizmoAssetMove_", 15) == 0)
+                    entities.Add(entity->GetEntityID());
+            });
+            for (const auto id : entities)
+                ecs_context->SetEntityVisible(id, false);
+            gizmo_hidden = true;
+            hide_frame = frame_count;
+        }
+        if (gizmo_hidden && !gpu_check_completed && frame_count == hide_frame + 3u)
+        {
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            target->SetInFrameReadbackHook([this]()
+            {
+                ValueArray<uint8_t> hidden_pixels;
+                TextureReadbackInfo info{};
+                if (!ReadbackColorTarget(ecs_context->GetRenderTarget(), hidden_pixels, 0, &info)
+                 || info.width != gizmo_pixels_info.width || info.height != gizmo_pixels_info.height
+                 || info.format != gizmo_pixels_info.format || hidden_pixels.GetCount() != gizmo_pixels.GetCount())
+                {
+                    GLogError(u8"[GIZMO] hidden-frame readback failed");
+                    exit(1);
+                }
+                uint32_t changed_pixels = 0;
+                for (int i = 0; i + 3 < hidden_pixels.GetCount(); i += 4)
+                    if (memcmp(hidden_pixels.GetData() + i, gizmo_pixels.GetData() + i, 4) != 0)
+                        ++changed_pixels;
+                if (changed_pixels < 50u)
+                {
+                    GLogError(u8"[GIZMO] hiding gizmo changed only %u pixels", changed_pixels);
+                    exit(1);
+                }
+                GLogInfo(u8"[GIZMO] GPU validation passed; hidden gizmo changed %u pixels", changed_pixels);
+                gpu_check_completed = true;
+            });
+        }
+        if (check_frames && frame_count >= check_frames)
+        {
+            if (gpu_check && !gpu_check_completed)
+            {
+                GLogError(u8"[GIZMO] GPU check did not complete");
+                exit(1);
+            }
+            exit(0);
+        }
     }
 };
 

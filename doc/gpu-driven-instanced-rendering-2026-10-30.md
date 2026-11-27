@@ -127,9 +127,10 @@ l2w[inst_row] / mtl[inst_row] = 逐实例数据
 低层占位模板接口保持兼容。纹理仍遵守已有策略：流送中等待，加载失败走既有 fallback，
 显式 `ClearAsyncRequest()` 后可以重试；就绪更新使用当前有效纹理配置，不改共享部件的初始 ID。
 
-整实例覆盖通过 `GPUModelRefComponent::SetOverrideMaterialRow` / `ClearOverrideMaterialRow`
-获取及释放引用，并触发失效。动态二级路由按 `(pass, template_id, override row)` 区分，
-每槽为 `uvec4(桶基址, 有效材质 ID, 有效纹理 ID, 有效位)`，CPU 选批与 GPU 展开使用同一来源。
+显式多材质模型使用各组自身的材质，不支持整实例材质覆盖。自动单图元模板共享几何和拓扑，
+材质与纹理事实来自实例；其组路由按模板和兼容材质批隔离。低层模板仍支持部件材质与纹理
+fallback。每槽路由为 `uvec4(桶基址, 材质 ID, 纹理 ID, 有效位)`。
+`MaterialRuntimeKey` 仍包含材质数据行，授权行变更仍按材质绑定变化保守失效。
 模板销毁拒绝活跃实例引用；解除引用后延迟到所属世界的 GPU 提交完成再回收部件和材质引用。
 主帧与阴影分别缓存每组程序及管线，不能互相覆盖。
 
@@ -141,7 +142,8 @@ cmake -DEXAMPLE=E:\ULRE\build\out\Windows_64_Debug\GPUModelMultiMaterial.exe -DR
 ```
 
 驱动执行三遍：缓存关、缓存开、缓存开且实例反向创建；逐阶段比较 51 份像素摘要，同时检查
-GPU 部件材质/纹理/桶路由、provider 热切换、阴影深度开关及四轮退休复用。
+GPU 部件材质/纹理/桶路由、同几何不同拓扑的独立桶与间接命令、缓存中途回退及显式失效重建、
+provider 热切换、阴影深度开关及四轮退休复用。
 负例还包括必需资源 Pending、活引用销毁拒绝、部件池耗尽回滚，以及两张纹理的确定性失败后重试。
 预期错误逐条限定次数并过滤，其余渲染错误仍使验证失败。每遍最多 240 帧、120 秒；
 日志及失败回读写入运行驱动时的当前目录，不应加入版本控制。
@@ -149,6 +151,13 @@ GPU 部件材质/纹理/桶路由、provider 热切换、阴影深度开关及�
 `GMM_SELFCHECK=1` 开启自检，`GMM_CASE=all` 为完整序列，`core` 仅验证 Unlit 核心流程及生命周期。
 `GMM_FRAMES` 设置帧预算，`GMM_REVERSE_CREATE=1` 反向创建共享实例，`GMM_DUMP` 指定失败回读路径。
 普通模式不注入失败，默认同样有有限帧预算。
+
+`GID_GPU_CHECK=1` 与 `GID_FRAMES=20` 验证单几何的 100 个实例；
+同时设置 `GID_SPLIT_PIPELINE=1` 验证两个不兼容管线桶。
+`GIMM_GPU_CHECK=1` 与 `GIMM_FRAMES=20` 验证多几何的十个桶。
+`GIZMO_GPU_CHECK=1` 与 `GIZMO_FRAMES=24` 验证 Gizmo 的 GPU 材质行及显隐画面变化。
+这些回读应逐一运行，并设置进程超时；可分别设置 `ULRE_MAINFRAME_COLLECT_CACHE=0` 或 `1`
+覆盖完整收集与缓存重放。
 
 CTest 使用独立开关 `-DULRE_ENABLE_GPU_MODEL_MULTI_MATERIAL_TEST=ON`，测试名为
 `GPUModelMultiMaterialIntegration`，要求真实 Vulkan 设备和可创建窗口的会话，不将无设备跳过算作通过。
