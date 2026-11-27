@@ -74,21 +74,24 @@ static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list
     if (!asset)
         return false;
 
-    const auto *recipe = GetGizmoRecipe3D(color);
+    const auto *recipe = GetGizmoRecipe3D();
     if (!recipe)
+        return false;
+
+    const auto *binding = GetGizmoColorBinding(color);
+    if (!binding)
         return false;
 
     // A5a：几何/资产侧状态住在实体的 GeometryData 组件（经世界访问器取用/创建）
     entity->GetContextAs<hgl::ecs::ECSContext>()->GetOrCreateGeometryData(entity)->SetPrimitiveAsset(asset);
-    graph::mtl::MaterialRecipe visual_recipe = *recipe;
-    visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
     hgl::ecs::ECSContext *material_world = entity->GetContextAs<hgl::ecs::ECSContext>();
     hgl::ecs::MaterialData *material_data = material_world
         ? material_world->GetOrCreateMaterialData(entity)
         : nullptr;
     if (!material_data)
         return false;
-    material_data->SetRecipe(visual_recipe);
+    material_data->SetRecipe(*recipe);
+    material_data->SetDataResource(*binding);
 
     // A5a：可见性真值在实体级（组件级 SetVisible 已删）——子图元初始不可见，
     // 由 SyncGizmoAssetModeBindings 按当前模式置可见。
@@ -136,8 +139,11 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     if (!entry.primitive)
         return;
 
-    const auto *recipe = GetGizmoRecipe3D(color);
-    if (!recipe)
+    if (entry.applied_color == color)
+        return;
+
+    const auto *binding = GetGizmoColorBinding(color);
+    if (!binding)
         return;
 
     hgl::ecs::Entity *owner = entry.primitive;
@@ -148,9 +154,7 @@ static void ApplyGizmoVisualColor(GizmoVisualPrimitive &entry, const GizmoColor 
     if (!material_data)
         return;
 
-    graph::mtl::MaterialRecipe visual_recipe = *recipe;
-    visual_recipe.render_state_overrides.pipeline_config = graph::mtl::MakeGizmoOverlayConfig();
-    material_data->SetRecipe(visual_recipe);
+    material_data->SetDataResource(*binding);
     entry.applied_color = color;
 }
 

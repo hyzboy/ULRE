@@ -41,10 +41,11 @@ namespace hgl::graph
                 GlobalSSBODataAccessor;
 
             ColorDataAccessor color_row_accessors[size_t(GizmoColor::RANGE_SIZE)]{};
-            VertexDataManager * vdm;
-            mtl::MaterialRecipe color_recipe[size_t(GizmoColor::RANGE_SIZE)]{};
+            GlobalSSBOBinding color_bindings[size_t(GizmoColor::RANGE_SIZE)]{};
+            VertexDataManager * vdm = nullptr;
+            mtl::MaterialRecipe base_recipe{};
 
-            GeometryCreater *  prim_creater;
+            GeometryCreater *  prim_creater = nullptr;
         };
 
         static GizmoResource    gizmo_triangle{};
@@ -59,7 +60,7 @@ namespace hgl::graph
             void Create(Geometry *p)
             {
                 geometry=p;
-                asset = PrimitiveAsset(geometry, static_cast<const mtl::MaterialRecipe *>(nullptr), PrimitiveType::Triangles);
+                asset = PrimitiveAsset(geometry, &gizmo_triangle.base_recipe, PrimitiveType::Triangles);
             }
 
             void Clear()
@@ -111,21 +112,20 @@ namespace hgl::graph
                     row.color = GetColor4f(gizmo_color[i], 1.0f);
                     if (!accessor.Write(row))
                         return false;
-                }
 
-                for (uint32_t c = 0; c < color_count; ++c)
-                {
-                    auto &recipe = gr->color_recipe[c];
-                    const auto &accessor = gr->color_row_accessors[c];
-                    recipe = mtl::MaterialRecipe{};
-                    recipe.recipe_name = "GizmoColor_" + std::to_string(c);
-                    recipe.domain = mtl::MaterialDomain::UnlitSolid;
-                    recipe.textures.clear();
-                    recipe.material_ssbo_binding =
-                        accessor.GetGlobalSSBOBinding();
-                    if (!recipe.material_ssbo_binding.IsValid())
+                    gr->color_bindings[i] = accessor.GetGlobalSSBOBinding();
+                    if (!gr->color_bindings[i].IsValid())
                         return false;
                 }
+
+                gr->base_recipe = mtl::MaterialRecipe{};
+                gr->base_recipe.recipe_name = "Gizmo3D";
+                gr->base_recipe.domain = mtl::MaterialDomain::UnlitSolid;
+                gr->base_recipe.render_state_overrides.has_pipeline_config = true;
+                gr->base_recipe.render_state_overrides.pipeline_config = mtl::MakeGizmoOverlayConfig();
+                gr->base_recipe.textures.clear();
+                gr->base_recipe.material_ssbo_binding = gr->color_bindings[0];
+                mtl::NormalizeRecipe(gr->base_recipe);
 
                 return true;
             }
@@ -273,13 +273,29 @@ namespace hgl::graph
         for (auto &accessor : gizmo_triangle.color_row_accessors)
             accessor.Release();
 
+        for (auto &binding : gizmo_triangle.color_bindings)
+            binding = {};
+
+        gizmo_triangle.base_recipe = mtl::MaterialRecipe{};
+
         graphics_context = nullptr;
+    }
+
+    const mtl::MaterialRecipe *GetGizmoRecipe3D()
+    {
+        return &gizmo_triangle.base_recipe;
     }
 
     const mtl::MaterialRecipe *GetGizmoRecipe3D(const GizmoColor &color)
     {
+        (void)color;
+        return &gizmo_triangle.base_recipe;
+    }
+
+    const GlobalSSBOBinding *GetGizmoColorBinding(const GizmoColor &color)
+    {
         RANGE_CHECK_RETURN_NULLPTR(color)
-        return gizmo_triangle.color_recipe + size_t(color);
+        return gizmo_triangle.color_bindings + size_t(color);
     }
 
     const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape)

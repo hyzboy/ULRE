@@ -88,7 +88,11 @@ namespace hgl::graph
     void ForceReleaseGizmoSystemResources();
     bool IsGizmoSystemResourcesResident();
 
+    struct GlobalSSBOBinding;
+
+    const mtl::MaterialRecipe *GetGizmoRecipe3D();
     const mtl::MaterialRecipe *GetGizmoRecipe3D(const GizmoColor &color);
+    const GlobalSSBOBinding *GetGizmoColorBinding(const GizmoColor &color);
     const PrimitiveAsset *GetGizmoMeshAsset(const GizmoShape &shape);
 
     // 辅助函数
