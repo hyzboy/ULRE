@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/support/transform/TransformAccessor.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/ecs/core/entity/Entity.h>
+#include<hgl/ecs/support/spatial/WorldSpatialState.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/ubo/ViewportInfo.h>
 
@@ -24,9 +25,9 @@ namespace hgl
 
         Entity *TransformAccessor::GetOwner() const
         {
-            ECSContext *ctx = GetContext();          // 由 storage 反查，句柄不再自带
+            WorldSpatialState *spatial = GetSpatialState();
 
-            if (!ctx)
+            if (!spatial || !spatial->GetCoreContext())
                 return nullptr;
 
             const EntityID owner = GetOwnerID();
@@ -34,7 +35,12 @@ namespace hgl
             if (!owner.IsValid())
                 return nullptr;
 
-            return ctx->GetEntity(owner);
+            return spatial->GetCoreContext()->GetEntity(owner);
+        }
+
+        WorldSpatialState *TransformAccessor::GetSpatialState() const
+        {
+            return storage ? storage->GetSpatialState() : nullptr;
         }
 
         EntityID TransformAccessor::GetOwnerID() const
@@ -112,8 +118,8 @@ namespace hgl
                 stack.insert(stack.end(),grand.begin(),grand.end());
             }
 
-            if (ECSContext *world = GetContext())
-                world->GetSpatialState().NotifyTransformChanged(id, change_mask);
+            if (WorldSpatialState *spatial = GetSpatialState())
+                spatial->NotifyTransformChanged(id, change_mask);
         }
 
         // D4：运行期写 Static 物体的一次性告警。
@@ -557,11 +563,11 @@ namespace hgl
             //
             // 渲染侧的索引映射与上传通道都按段名单分流——只改存储里的 mobility 字节、不换段的话，
             // 该行会停在旧通道：索引取不到 ⇒ 实例拿到默认行（单位矩阵）⇒ 全画在原点。
-            ECSContext *migrate_world = GetContext();
+            WorldSpatialState *spatial = GetSpatialState();
 
-            if (migrate_world)
+            if (spatial)
             {
-                if (!migrate_world->MigrateTransform(id,to_movable))
+                if (!spatial->MigrateTransform(id,to_movable))
                 {
                     GLogWarning("[TransformAccessor] SetMobility 被拒绝（目标段预算用尽）—— mobility 与段名单均保持原状：%u",
                                 static_cast<uint32_t>(id));

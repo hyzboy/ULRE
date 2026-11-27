@@ -77,7 +77,7 @@ namespace hgl
             render_data.GetModelTemplateMaterialTable()->SetContext(this);
 
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
-            spatial_state.Initialize(this, this, this);
+            spatial_state.Initialize(this, this);
 
             // P2：主帧拓扑快照默认开启；宿主可用环境变量（opt-out，`=0` 关闭）或显式 setter 调整。
             render_runner.GetMainFrameTopology().SetSnapshotEnabled(GetMainFrameTopologySnapshotEnvDefault());

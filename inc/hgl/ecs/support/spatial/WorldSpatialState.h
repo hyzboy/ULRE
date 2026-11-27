@@ -42,7 +42,6 @@ namespace hgl::ecs
         friend class TransformAccessor;
     private:
         ECSCoreContext* core_context = nullptr;
-        ECSContext* context = nullptr;
         IWorldSpatialObserver* observer = nullptr;
 
         TransformSlotTable transform_slots;
@@ -62,8 +61,9 @@ namespace hgl::ecs
         WorldSpatialState& operator=(const WorldSpatialState&) = delete;
 
     private:
-        void Initialize(ECSCoreContext* core_ctx, ECSContext* ctx, IWorldSpatialObserver* obs);
+        void Initialize(ECSCoreContext* core_ctx, IWorldSpatialObserver* obs);
         void NotifyTransformChanged(TransformID id, uint32_t change_mask);
+        ECSCoreContext *GetCoreContext() const { return core_context; }
 
     public:
         void Clear();

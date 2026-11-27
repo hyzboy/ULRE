@@ -6,7 +6,8 @@
 
 namespace hgl::ecs
 {
-    class ECSContext;
+    class ECSCoreContext;
+    class TransformDataStorage;
 
     /**
      * VisibilityDataStorage - Fast lookup for invisible entities with hierarchical support
@@ -28,14 +29,19 @@ namespace hgl::ecs
     private:
         ankerl::unordered_dense::set<EntityID> invisible_entities;
         mutable hgl::Mutex mutex;
-        ECSContext* context = nullptr;
+        ECSCoreContext *core_context = nullptr;
+        TransformDataStorage *transform_storage = nullptr;
 
     public:
-        VisibilityDataStorage(ECSContext* ctx = nullptr) : context(ctx) {}
+        VisibilityDataStorage() = default;
         ~VisibilityDataStorage() = default;
 
-        /// Set the context for hierarchical visibility checks
-        void SetContext(ECSContext* ctx) { context = ctx; }
+        /// Bind core entity lookup and the spatial transform source for ancestor checks.
+        void SetSpatialSource(ECSCoreContext *core, TransformDataStorage *transforms)
+        {
+            core_context = core;
+            transform_storage = transforms;
+        }
 
     private:
         /// 世界空间域是唯一写入方。

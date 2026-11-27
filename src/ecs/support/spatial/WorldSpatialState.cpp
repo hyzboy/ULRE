@@ -13,10 +13,9 @@ namespace hgl::ecs
 
     WorldSpatialState::~WorldSpatialState() = default;
 
-    void WorldSpatialState::Initialize(ECSCoreContext* core_ctx, ECSContext* ctx, IWorldSpatialObserver* obs)
+    void WorldSpatialState::Initialize(ECSCoreContext* core_ctx, IWorldSpatialObserver* obs)
     {
         core_context = core_ctx;
-        context = ctx;
         observer = obs;
 
         if (!transform_storage)
@@ -24,12 +23,12 @@ namespace hgl::ecs
         if (!bounding_box_storage)
             bounding_box_storage = new BoundingBoxDataStorage();
         if (!visibility_storage)
-            visibility_storage = new VisibilityDataStorage(ctx);
+            visibility_storage = new VisibilityDataStorage();
 
         if (transform_storage)
-            transform_storage->SetContext(ctx);
+            transform_storage->SetSpatialState(this);
         if (visibility_storage)
-            visibility_storage->SetContext(ctx);
+            visibility_storage->SetSpatialSource(core_ctx, transform_storage);
     }
 
     void WorldSpatialState::Clear()

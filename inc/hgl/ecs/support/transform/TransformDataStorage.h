@@ -24,7 +24,7 @@ namespace hgl
 
     namespace ecs
     {
-        class ECSContext;
+        class WorldSpatialState;
 
         /**
          * Optimized SOA (Structure of Arrays) storage for transform data
@@ -46,12 +46,8 @@ namespace hgl
 
         private:
 
-            /// 世界反向引用（**非拥有**；由所属 `ECSContext` 构造期 `SetContext(this)` 回填，
-            /// 与 `VisibilityDataStorage` 同范式）。目的：任意持有本存储的代码都能反查世界，
-            /// 行句柄（`TransformAccessor`）因此**不必在每个实例里重复携带 8 字节 context 指针**。
-            /// 注意：本存储允许独立存在（探针 `ProbeTransformDiagnostics` / 单元测试里没有世界）⇒
-            /// 所有消费点**必须容忍空**，不得假设非空。
-            ECSContext *context = nullptr;
+            /// 所属空间域（非拥有）；独立存储/探针中为空。
+            WorldSpatialState *spatial_state = nullptr;
 
             // ── 核心数据（对应未来 GPU Storage Buffer）──
             // 局部矩阵**不落内存**：TRS 是唯一真源，local 由 `ComposeLocalMatrix()` 在求值循环里
@@ -175,9 +171,9 @@ namespace hgl
             uint32_t GetRowOverflowCount() const { return row_overflow_count; }
             bool     HasWarnedRowOverflow() const { return row_overflow_warned; }
 
-            /// 世界反向引用（见成员注释）。本存储独立存在时（探针/单测）为空 ⇒ 消费点必须容忍空。
-            void        SetContext(ECSContext *ctx) { context = ctx; }
-            ECSContext *GetContext() const          { return context; }
+            /// 所属空间域。独立存储/单测时为空，消费点必须容忍空。
+            void SetSpatialState(WorldSpatialState *state) { spatial_state = state; }
+            WorldSpatialState *GetSpatialState() const { return spatial_state; }
 
             /// Allocate space for a new transform
             /// 预算超限 ⇒ **拒绝分配**（返回 INVALID_HANDLE）并一次性明确告警；不扩容。

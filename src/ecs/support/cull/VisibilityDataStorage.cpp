@@ -1,7 +1,8 @@
 ﻿#include<hgl/ecs/support/cull/VisibilityDataStorage.h>
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/ECSCoreContext.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
+#include<hgl/ecs/support/transform/TransformDataStorage.h>
 
 namespace hgl::ecs
 {
@@ -45,13 +46,14 @@ namespace hgl::ecs
         }
 
         // Check ancestor chain for hierarchical visibility
-        if (!context)
+        if (!core_context || !transform_storage)
             return false;
 
-        Entity* entity = context->GetEntity(entity_id);
+        Entity* entity = core_context->GetEntity(entity_id);
         while (entity)
         {
-            const TransformAccessor transform = context->GetTransformByEntity(entity->GetEntityID());
+            const TransformID transform_id = transform_storage->FindByOwner(entity->GetEntityID());
+            const TransformAccessor transform(transform_storage, transform_id);
             if (!transform.IsValid())
                 break;
 
@@ -59,7 +61,7 @@ namespace hgl::ecs
             if (!IsValidTransformID(parent_transform))
                 break;
 
-            const EntityID parent_id = context->GetTransformStorage()->GetOwner(parent_transform);
+            const EntityID parent_id = transform_storage->GetOwner(parent_transform);
             if (!parent_id.IsValid())
                 break;
 
@@ -70,7 +72,7 @@ namespace hgl::ecs
                     return true;
             }
 
-            entity = context->GetEntity(parent_id);
+            entity = core_context->GetEntity(parent_id);
         }
 
         return false;

@@ -21,7 +21,7 @@ namespace hgl
 {
     namespace ecs
     {
-        class ECSContext;
+        class WorldSpatialState;
         class Entity;
 
         /**
@@ -31,9 +31,8 @@ namespace hgl
          * 所有读写直落 `TransformDataStorage`（局部 TRS 唯一的真源），
          * 世界矩阵是派生量、由平铺求值算出（见 `UpdateDirtyWorldMatricesFlat`）。
          *
-         * 所属世界**不落在句柄里**：`storage` 被其 `ECSContext` 独占拥有（`Context.h` 的
-         * `unique_ptr`），句柄经 `storage->GetContext()` 反查即可 —— 刻意不留第二份 world 指针，
-         * 因为"两个字段必须永远一致"本身就是一个静默失败源（不一致时 `SetMobility` 不换边）。
+         * 所属空间域**不落在句柄里**：句柄通过存储反查 `WorldSpatialState`，不依赖完整
+         * `ECSContext`，也不留第二份域指针。
          *
          * 这是 T8（变换 `TransformID` 化）的调用面：
          * 调用点从「拿组件 shared_ptr」改成「拿 accessor 值」，语义不变。
@@ -67,8 +66,8 @@ namespace hgl
 
             TransformID           GetID() const         { return id; }
             TransformDataStorage *GetStorage() const    { return storage; }
-            /// 所属世界（由存储反查；存储独立存在 / 未回填时为 nullptr）
-            ECSContext           *GetContext() const    { return storage ? storage->GetContext() : nullptr; }
+            /// 所属空间域（由存储反查；独立存储/未回填时为 nullptr）
+            WorldSpatialState    *GetSpatialState() const;
 
             /// 所属实体（真源在存储的 owners 行；不再由组件持有）
             EntityID GetOwnerID() const;
