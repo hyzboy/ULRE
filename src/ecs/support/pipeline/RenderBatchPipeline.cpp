@@ -58,6 +58,30 @@ namespace hgl::ecs
             uint32_t capacity = 0;
         };
 
+        struct TemplateGroupDraft
+        {
+            uint32_t template_id   = 0;
+            uint32_t shading_group = 0;
+            uint32_t group_bucket  = 0;
+            uint32_t bucket_count  = 0;
+            uint32_t group_count   = 1;
+            uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
+        };
+
+        struct BatchLayoutDraft
+        {
+            ValueArray<DrawBucketDraft> buckets;
+            ValueArray<TemplateGroupDraft> template_groups;
+            ValueArray<uint32_t> item_groups;
+
+            void Clear()
+            {
+                buckets.Clear();
+                template_groups.Clear();
+                item_groups.Clear();
+            }
+        };
+
         class PassTemplateGroupRouteCache
         {
             hgl::UnorderedMap<uint64_t, uint32_t> pass_template_group_offsets;
@@ -131,6 +155,206 @@ namespace hgl::ecs
             }
 
             return false;
+        }
+
+        bool BuildBatchLayoutDraft(ECSContext *world,
+                                   GPUCullSystem *gpu_cull,
+                                   TemplateFactCache &template_facts,
+                                   graph::GlobalSSBOBufferRegistry *pool,
+                                   uint32_t pass_index,
+                                   uint32_t geometry_batch,
+                                   MaterialBatch *batch,
+                                   PassTemplateGroupRouteCache &route_cache,
+                                   BatchLayoutDraft &draft,
+                                   const char *&why)
+        {
+            draft.Clear();
+
+            if (!world || !gpu_cull || !batch)
+            {
+                why = "批布局规划缺少上下文";
+                return false;
+            }
+
+            const size_t item_count = batch->items.size();
+            for (size_t i = 0; i < item_count; ++i)
+                draft.item_groups.Add(UINT32_MAX);
+
+            for (size_t i = 0; i < item_count; ++i)
+            {
+                const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(batch->items[i]);
+                Entity *owner = tpl_item ? tpl_item->GetEntity() : nullptr;
+                const GPUModelRefComponent *ref =
+                    owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
+
+                if (!ref || ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID
+                    || ref->GetTemplateID() != tpl_item->GetTemplateID())
+                {
+                    why = "批内项缺少有效模型模板";
+                    return false;
+                }
+
+                TemplateFactCache::Result fact_result = TemplateFactCache::Result::Ok;
+                const TemplateFactCache::Facts *facts =
+                    template_facts.Resolve(pool, ref->GetTemplateID(), fact_result);
+
+                if (!facts)
+                {
+                    why = (fact_result == TemplateFactCache::Result::PartMissing)
+                        ? "模型部件行缺失（模板 part 区间越界）"
+                        : "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
+                    return false;
+                }
+
+                const uint32_t target_group = tpl_item->GetShadingGroup();
+                if (target_group >= facts->shading_group_count)
+                {
+                    why = "模板部件组索引超出模板声明的 shading_group_count";
+                    return false;
+                }
+
+                const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
+                const TemplateRenderBinding *binding = template_mat_table
+                    ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
+
+                uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
+                if (!route_cache.Resolve(gpu_cull,
+                                         pass_index,
+                                         ref->GetTemplateID(),
+                                         binding && binding->uses_instance_material,
+                                         geometry_batch,
+                                         facts->shading_group_count,
+                                         group_table_offset))
+                {
+                    why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
+                    return false;
+                }
+
+                uint32_t grp_bucket_count = 0;
+                const uint32_t *slot_geo_data = nullptr;
+                const uint32_t *slot_cnt_data = nullptr;
+
+                if (binding && target_group < static_cast<uint32_t>(binding->groups.GetCount()))
+                {
+                    const TemplateShadingGroupDesc &grp_desc = binding->groups[target_group];
+                    grp_bucket_count = static_cast<uint32_t>(grp_desc.slot_geometry.GetCount());
+                    slot_geo_data = grp_desc.slot_geometry.GetData();
+                    slot_cnt_data = grp_desc.slot_count.GetData();
+                }
+                else if (facts->shading_group_count == 1u)
+                {
+                    grp_bucket_count = facts->part_bucket_count;
+                    slot_geo_data = facts->slot_geometry.GetData();
+                    slot_cnt_data = facts->slot_count.GetData();
+                }
+                else
+                {
+                    why = "多组模板缺少 ModelTemplateMaterialTable 绑定信息";
+                    return false;
+                }
+
+                uint32_t group_index = UINT32_MAX;
+                for (uint32_t g = 0; g < static_cast<uint32_t>(draft.template_groups.GetCount()); ++g)
+                {
+                    const TemplateGroupDraft &group = draft.template_groups[static_cast<int>(g)];
+                    if (group.template_id == ref->GetTemplateID()
+                     && group.shading_group == target_group
+                     && group.group_table_offset == group_table_offset)
+                    {
+                        group_index = g;
+                        break;
+                    }
+                }
+
+                if (group_index == UINT32_MAX)
+                {
+                    group_index = static_cast<uint32_t>(draft.template_groups.GetCount());
+                    draft.template_groups.Add(TemplateGroupDraft{});
+
+                    TemplateGroupDraft &group = draft.template_groups[static_cast<int>(group_index)];
+                    group.template_id = ref->GetTemplateID();
+                    group.shading_group = target_group;
+                    group.group_bucket = static_cast<uint32_t>(draft.buckets.GetCount());
+                    group.bucket_count = grp_bucket_count;
+                    group.group_count = facts->shading_group_count;
+                    group.group_table_offset = group_table_offset;
+
+                    for (uint32_t slot = 0; slot < grp_bucket_count; ++slot)
+                    {
+                        DrawBucketDraft bucket;
+                        bucket.geometry_id = slot_geo_data ? slot_geo_data[slot] : 0u;
+                        draft.buckets.Add(bucket);
+                    }
+                }
+
+                const TemplateGroupDraft &group = draft.template_groups[static_cast<int>(group_index)];
+                for (uint32_t slot = 0; slot < group.bucket_count; ++slot)
+                {
+                    if (slot_cnt_data)
+                        draft.buckets[static_cast<int>(group.group_bucket + slot)].capacity += slot_cnt_data[slot];
+                }
+
+                draft.item_groups[static_cast<int>(i)] = group_index;
+            }
+
+            return true;
+        }
+
+        void WriteBucketLayout(GPUCullSystem *gpu_cull,
+                               uint32_t pass_index,
+                               const BatchLayoutDraft &draft,
+                               uint32_t topology,
+                               uint32_t group_size,
+                               uint32_t &next_index,
+                               uint32_t &row_cursor,
+                               uint32_t &total_items)
+        {
+            for (int bucket_index = 0; bucket_index < draft.buckets.GetCount(); ++bucket_index)
+            {
+                const uint32_t capacity = draft.buckets[bucket_index].capacity;
+                gpu_cull->SetBatchLayout(pass_index, next_index, row_cursor, capacity,
+                                         topology, group_size);
+                ++next_index;
+
+                // T3i: 4-row alignment keeps all pushed row addresses 16-byte aligned.
+                row_cursor = (row_cursor + capacity + 3u) & ~3u;
+                total_items += capacity;
+            }
+        }
+
+        void CommitTemplateGroupRoutes(ECSContext *world,
+                                       GPUCullSystem *gpu_cull,
+                                       uint32_t pass_index,
+                                       MaterialBatch *batch,
+                                       const BatchLayoutDraft &draft,
+                                       uint32_t bucket_first)
+        {
+            for (size_t i = 0; i < batch->items.size(); ++i)
+            {
+                Entity *owner = batch->items[i]->GetEntity();
+                const uint32_t group_index = draft.item_groups.IsEmpty()
+                    ? UINT32_MAX : draft.item_groups[static_cast<int>(i)];
+
+                if (group_index == UINT32_MAX)
+                    continue;
+
+                const TemplateGroupDraft &group = draft.template_groups[static_cast<int>(group_index)];
+                const auto *item = dynamic_cast<const PrimitiveRenderItem *>(batch->items[i]);
+                const auto *row = item ? item->GetMaterialRuntimeRow() : nullptr;
+                const auto *binding =
+                    world->GetModelTemplateMaterialTable()->FindBinding(group.template_id);
+
+                gpu_cull->SetModelGroupBucketBase(pass_index, group.group_table_offset,
+                                                  group.shading_group,
+                                                  bucket_first + group.group_bucket,
+                                                  row ? row->data_index_row : 0u,
+                                                  row && row->material_texture_configuration.IsValid()
+                                                    ? row->material_texture_configuration.row_index : 0u,
+                                                  row && binding && binding->owns_gpu_rows
+                                                      && !binding->uses_instance_material);
+                gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
+                                                    group.group_table_offset);
+            }
         }
 
 
@@ -603,26 +827,8 @@ namespace hgl::ecs
         uint32_t geometry_batches = 0;
         uint32_t *tags = nullptr;
 
-        // 模板部件桶草稿，跨批复用。
-        ValueArray<DrawBucketDraft> bucket_drafts; // 桶的几何与容量草稿
-
-        // T3.1 模板实体：本批的**模板部件桶组**草稿。
-        // 一个模板在一批里占 `part_bucket_count` 个**连续**桶（桶组），槽 i 对应
-        // `ModelPartRow.bucket_slot == i` 的部件；同模板的多个实例共享同一组 ⇒ 实例化。
-        // 组基址（本 pass 块内桶号）逐实体写进 `GPUCullSystem::SetModelBucketBase`，
-        // 着色器用 `组基址 + part.bucket_slot` 定位（见 entity_gpu_cull.glsl）。
-        struct TemplateGroupDraft
-        {
-            uint32_t template_id   = 0;
-            uint32_t shading_group = 0;   ///< 所属 Shading Group 索引
-            uint32_t group_bucket  = 0;   ///< 组首桶在**本批**桶表内的下标（不含 bucket_first）
-            uint32_t bucket_count  = 0;   ///< 本组的桶数
-            uint32_t group_count   = 1;   ///< = tpl.shading_group_count
-            uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase; ///< 二级组表偏移
-        };
-
-        ValueArray<TemplateGroupDraft> template_groups;      // 本批模板（去重、出现序确定）
-        ValueArray<uint32_t> template_entity_group;           // 项 → 组下标（UINT32_MAX = 非模板项）
+        BatchLayoutDraft batch_plan;
+        ValueArray<DrawBucketDraft> &bucket_drafts = batch_plan.buckets;
 
         // A shared template can have different effective bindings in this pass.
         // Packing two uint32 IDs is lossless; equality is not based on a hash.
@@ -653,171 +859,43 @@ namespace hgl::ecs
             //  本类里同名的那套 mesh per-draw 参数表构建 —— 两者都已不在。）
             const char *why = nullptr;
 
-            bucket_drafts.Clear();
-
             if (next_index >= GPUCullSystem::kMaxBatches)
                 why = "接管素材桶数超 kMaxBatches(1024)";
-            else
+            else if (!BuildBatchLayoutDraft(world,
+                                            gpu_cull.get(),
+                                            template_facts,
+                                            pool,
+                                            pass_index,
+                                            geometry_batches,
+                                            b,
+                                            route_cache,
+                                            batch_plan,
+                                            why))
             {
-                const size_t item_count = b->items.size();
-
-                // 按模板和 Shading Group 去重分配连续部件桶。
-                //
-                // 桶组容量取**精确值**：槽 s 的桶容量 = 该槽的部件数 × 本批该模板的
-                // 实体数（每个部件每实例最多落一行）。Σ 全部槽 = part_count × 实体数
-                // = 展开行数，与旧口径等同，不浪费竞技场行。
                 if (!why)
-                {
-                    template_groups.Clear();
-                    template_entity_group.Clear();
-                    for (size_t i = 0; i < item_count; ++i)
-                        template_entity_group.Add(UINT32_MAX);
+                    why = "批布局规划失败";
+            }
 
-                    for (size_t i = 0; i < item_count && !why; ++i)
-                    {
-                        const auto *tpl_item = dynamic_cast<const ModelTemplateRenderItem *>(b->items[i]);
-                        Entity *owner = tpl_item ? tpl_item->GetEntity() : nullptr;
-                        const GPUModelRefComponent *ref =
-                            owner ? owner->GetComponent<GPUModelRefComponent>() : nullptr;
+            if (!why
+             && next_index + static_cast<uint32_t>(bucket_drafts.GetCount()) > GPUCullSystem::kMaxBatches)
+            {
+                why = "接管素材桶数超 kMaxBatches(1024)";
+            }
 
-                        if (!ref || ref->GetTemplateID() == graph::ssbo::kInvalidModelTemplateID
-                            || ref->GetTemplateID() != tpl_item->GetTemplateID())
-                        {
-                            why = "批内项缺少有效模型模板";
-                            break;
-                        }
+            if (!why)
+            {
+                // 竞技场容量前置校验（实例行连续占用 = Σ 桶容量）：超了就是装配 bug，
+                // 拒绝整批（fail-fast），不许写出越界行。
+                const uint32_t sector_begin = GPUCullSystem::ArenaSectorBase(pass_index);
+                const uint32_t sector_end   = sector_begin + GPUCullSystem::kArenaRowsPerPass;
 
-                        // P4：模板事实从 CPU 侧缓存取 —— 槽计数/槽几何体只需按
-                        // `template_id` 建一次，稳定帧不再读映射缓冲里的模板行。
-                        TemplateFactCache::Result fact_result = TemplateFactCache::Result::Ok;
-                        const TemplateFactCache::Facts *facts =
-                            template_facts.Resolve(pool, ref->GetTemplateID(), fact_result);
+                uint32_t need_rows = static_cast<uint32_t>(bucket_drafts.GetCount());   // ≥1 行/桶
 
-                        if (!facts)
-                        {
-                            why = (fact_result == TemplateFactCache::Result::PartMissing)
-                                ? "模型部件行缺失（模板 part 区间越界）"
-                                : "模型模板行缺失/无部件桶（GPUModelRef 指向无效模板）";
-                            break;
-                        }
+                for (int bucket_index = 0; bucket_index < bucket_drafts.GetCount(); ++bucket_index)
+                    need_rows += bucket_drafts[bucket_index].capacity;
 
-                        const uint32_t target_group = tpl_item->GetShadingGroup();
-
-                        if (target_group >= facts->shading_group_count)
-                        {
-                            why = "模板部件组索引超出模板声明的 shading_group_count";
-                            break;
-                        }
-
-                        const ModelTemplateMaterialTable *template_mat_table = world->GetModelTemplateMaterialTable();
-                        const TemplateRenderBinding *binding = template_mat_table
-                            ? template_mat_table->FindBinding(ref->GetTemplateID()) : nullptr;
-
-                        // Instance-material templates can occur in incompatible batches.
-                        // Each such batch needs its own route for the shared template.
-                        uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        if (!route_cache.Resolve(gpu_cull.get(),
-                                                 pass_index,
-                                                 ref->GetTemplateID(),
-                                                 binding && binding->uses_instance_material,
-                                                 geometry_batches,
-                                                 facts->shading_group_count,
-                                                 group_table_offset))
-                        {
-                            why = "组基址表槽位耗尽（kModelExpansionGroupBucketSlotsPerPass）";
-                            break;
-                        }
-
-                        // 获取该组的几何与容量规格（优先从 ModelTemplateMaterialTable 取，单组可回退 facts）
-                        uint32_t grp_bucket_count = 0;
-                        const uint32_t *slot_geo_data = nullptr;
-                        const uint32_t *slot_cnt_data = nullptr;
-
-                        if (binding && target_group < static_cast<uint32_t>(binding->groups.GetCount()))
-                        {
-                            const TemplateShadingGroupDesc &grp_desc = binding->groups[target_group];
-                            grp_bucket_count = static_cast<uint32_t>(grp_desc.slot_geometry.GetCount());
-                            slot_geo_data = grp_desc.slot_geometry.GetData();
-                            slot_cnt_data = grp_desc.slot_count.GetData();
-                        }
-                        else if (facts->shading_group_count == 1u)
-                        {
-                            grp_bucket_count = facts->part_bucket_count;
-                            slot_geo_data = facts->slot_geometry.GetData();
-                            slot_cnt_data = facts->slot_count.GetData();
-                        }
-                        else
-                        {
-                            why = "多组模板缺少 ModelTemplateMaterialTable 绑定信息";
-                            break;
-                        }
-
-                        uint32_t gi = UINT32_MAX;
-
-                        for (uint32_t g = 0; g < static_cast<uint32_t>(template_groups.GetCount()); ++g)
-                            if (template_groups[g].template_id == ref->GetTemplateID()
-                             && template_groups[g].shading_group == target_group
-                             && template_groups[g].group_table_offset == group_table_offset)
-                            {
-                                gi = g;
-                                break;
-                            }
-
-                        if (gi == UINT32_MAX)
-                        {
-                            // 首次出现：建组（槽几何体来自该模板该组的部件事实）
-                            gi = static_cast<uint32_t>(template_groups.GetCount());
-                            template_groups.Add(TemplateGroupDraft{});
-
-                            TemplateGroupDraft &grp = template_groups[static_cast<int>(gi)];
-                            grp.template_id        = ref->GetTemplateID();
-                            grp.shading_group      = target_group;
-                            grp.group_bucket       = static_cast<uint32_t>(bucket_drafts.GetCount());
-                            grp.bucket_count       = grp_bucket_count;
-                            grp.group_count        = facts->shading_group_count;
-                            grp.group_table_offset = group_table_offset;
-
-                            for (uint32_t s = 0; s < grp_bucket_count; ++s)
-                            {
-                                DrawBucketDraft bucket;
-                                bucket.geometry_id = slot_geo_data ? slot_geo_data[s] : 0u;
-                                bucket_drafts.Add(bucket);
-                            }
-                        }
-
-                        // 逐实例累加：每个实例给该模板该组的每个槽再加 `slot_cnt_data[s]` 容量。
-                        const TemplateGroupDraft &grp = template_groups[gi];
-
-                        for (uint32_t s = 0; s < grp.bucket_count; ++s)
-                        {
-                            if (slot_cnt_data)
-                                bucket_drafts[static_cast<int>(grp.group_bucket + s)].capacity += slot_cnt_data[s];
-                        }
-
-                        template_entity_group[i] = gi;
-                    }
-                }
-
-                if (!why
-                 && next_index + static_cast<uint32_t>(bucket_drafts.GetCount()) > GPUCullSystem::kMaxBatches)
-                {
-                    why = "接管素材桶数超 kMaxBatches(1024)";
-                }
-                else if (!why)
-                {
-                    // 竞技场容量前置校验（实例行连续占用 = Σ 桶容量）：超了就是装配 bug，
-                    // 拒绝整批（fail-fast），不许写出越界行。
-                    const uint32_t sector_begin = GPUCullSystem::ArenaSectorBase(pass_index);
-                    const uint32_t sector_end   = sector_begin + GPUCullSystem::kArenaRowsPerPass;
-
-                    uint32_t need_rows = static_cast<uint32_t>(bucket_drafts.GetCount());   // ≥1 行/桶
-
-                    for (int bucket_index = 0; bucket_index < bucket_drafts.GetCount(); ++bucket_index)
-                        need_rows += bucket_drafts[bucket_index].capacity;
-
-                    if (row_cursor + need_rows > sector_end)
-                        why = "竞技场实例行超容量（kArenaRowsPerPass）";
-                }
+                if (row_cursor + need_rows > sector_end)
+                    why = "竞技场实例行超容量（kArenaRowsPerPass）";
             }
 
             if (why)
@@ -855,50 +933,9 @@ namespace hgl::ecs
                 : GPUCullSystem::kBatchTopologyTriangles;
             const uint32_t group_size = MeshDispatchGroupSize(batch_is_lines);
 
-            for (uint32_t k = 0; k < bucket_total; ++k)
-            {
-                const uint32_t capacity = bucket_drafts[static_cast<int>(k)].capacity;
-
-                // 布局行 = 一个桶：`row_base` 是**实例行起点**（gather 写 l2w/mtl 用），
-                // capacity = 桶容量（溢出判据 + 台架走查上界）。
-                gpu_cull->SetBatchLayout(pass_index, next_index, row_cursor, capacity,
-                                         topology, group_size);
-                ++next_index;
-
-                // T3i：切片起点按 **4 行对齐** —— 绘制侧把 push 地址加 `row_base × 行字节`
-                // 后仍须满足各引用声明的 16B 对齐（l2w 4B/行、mtl 16B/行）
-                // ⇒ row_base % 4 == 0 是同时满足两者的条件（每桶至多浪费 3 行）。
-                row_cursor = (row_cursor + capacity + 3u) & ~3u;
-                total_items += capacity;
-            }
-
-            for (size_t i = 0; i < b->items.size(); ++i)
-            {
-                Entity *owner = b->items[i]->GetEntity();
-                // 接管判据与展开落点均由组表提供，不再写代表几何体标签。
-                const uint32_t gi = template_entity_group.IsEmpty()
-                    ? UINT32_MAX : template_entity_group[i];
-
-                if (gi != UINT32_MAX)
-                {
-                    const TemplateGroupDraft &grp = template_groups[gi];
-
-                    // 二级组表：将本批分配的首桶号回填到该模板的该组槽位中
-                    // （多组在 Step 1.4 由载体项各自所属的批分别回填自己的组槽）。实体行记组表偏移。
-                    const auto *item = dynamic_cast<const PrimitiveRenderItem *>(b->items[i]);
-                    const auto *row = item ? item->GetMaterialRuntimeRow() : nullptr;
-                    const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(grp.template_id);
-                    gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, grp.shading_group,
-                                                      bucket_first + grp.group_bucket,
-                                                      row ? row->data_index_row : 0u,
-                                                      row && row->material_texture_configuration.IsValid()
-                                                        ? row->material_texture_configuration.row_index : 0u,
-                                                      row && binding && binding->owns_gpu_rows
-                                                          && !binding->uses_instance_material);
-                    gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
-                                                        grp.group_table_offset);
-                }
-            }
+            WriteBucketLayout(gpu_cull.get(), pass_index, batch_plan, topology, group_size,
+                              next_index, row_cursor, total_items);
+            CommitTemplateGroupRoutes(world, gpu_cull.get(), pass_index, b, batch_plan, bucket_first);
 
             if (s_takeover_trace)
                 tagged_items += uint32_t(b->items.size());   // 诊断：本帧本 pass 打上标签的项数

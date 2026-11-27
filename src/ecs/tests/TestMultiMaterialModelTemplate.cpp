@@ -616,7 +616,7 @@ namespace
               "pass_template_group_offsets",
               "批处理必须在 pass 级别统一分配各模板的二级组表基址" },
             { batch_src,
-              "gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, grp.shading_group,",
+              "gpu_cull->SetModelGroupBucketBase(pass_index, group.group_table_offset,",
               "各组的首桶号必须回填到各自对应的 shading_group 槽位" },
             { batch_src,
               "gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,",
