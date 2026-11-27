@@ -898,8 +898,8 @@ namespace
               "有效组路由必须优先提供当前材质行" },
             { "group_route.w != 0u ? group_route.z",
               "有效组路由必须优先提供当前纹理配置" },
-            { "entity.work_flags & ENTITY_GPU_WORK_MATERIAL_OVERRIDE",
-              "实例覆盖必须屏蔽共享部件的默认材质" },
+            { "has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u",
+              "部件材质必须按 HasMaterial 纯粹判定，杜绝 GPU 覆盖标志污染" },
         };
 
         bool ok = true;

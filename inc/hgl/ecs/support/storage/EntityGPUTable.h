@@ -214,8 +214,7 @@ namespace hgl
             /// 逐部件写实例；`0` ⇒ 传统单实体路径（整行除掩码外全不动 ⇒ 与旧行为逐字节等价）。
             /// **值变才标脏**（与 `SetShadowFacts` 同纪律：每帧都调也不制造永久脏行）。
             void SetModelFacts(EntityID id, uint32_t template_id, uint64_t part_mask,
-                               uint32_t custom_data = 0, uint32_t prev_transform = 0,
-                               bool material_override = false)
+                               uint32_t custom_data = 0, uint32_t prev_transform = 0)
             {
                 EntityGPU *row = Row(id);
 
@@ -227,17 +226,14 @@ namespace hgl
                 if (row->model_template_id == template_id
                  && row->model_part_mask == part_mask
                  && row->custom_data_index == custom_data
-                 && row->prev_transform_id == effective_prev_transform
-                 && (row->work_flags & kEntityGPUWorkMaterialOverride)
-                     == (material_override ? kEntityGPUWorkMaterialOverride : 0u))
+                 && row->prev_transform_id == effective_prev_transform)
                     return;
 
                 row->model_template_id = template_id;
                 row->model_part_mask   = part_mask;
                 row->custom_data_index = custom_data;
                 row->prev_transform_id = effective_prev_transform;
-                row->work_flags = (row->work_flags & ~kEntityGPUWorkMaterialOverride)
-                                | (material_override ? kEntityGPUWorkMaterialOverride : 0u);
+                row->work_flags        = 0u;
 
                 dirty.MarkDirty(id.index, rows.size());
             }

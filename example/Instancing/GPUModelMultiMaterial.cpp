@@ -430,9 +430,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         }
         cull->UnmapCurrentBatchCounters();
         uint32_t expected[3]{7u, 3u, 0u};
-        if (phase == 1) { expected[0] = 5; expected[1] = 2; expected[2] = 3; }
-        if (phase == 2) { expected[0] = 3; expected[1] = 4; expected[2] = 3; }
-        if (phase == 3) { expected[0] = 3; expected[1] = 4; expected[2] = 2; }
+        if (phase == 3) { expected[0] = 7; expected[1] = 2; expected[2] = 0; }
         if (phase == 5 || phase == 6) { expected[0] = 6; expected[1] = 3; expected[2] = 1; }
         if (phase <= 8u || phase == 13u)
             for (uint32_t c = 0; c < 3; ++c)
@@ -471,8 +469,6 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                  || (phase >= 9u && phase != 13u && i == 2u))
                     continue;
                 int expected = p == 1 ? 1 : 0;
-                if (phase >= 1 && phase <= 3 && i == 2) expected = 2;
-                if (phase >= 2 && phase <= 3 && i == 1) expected = 1;
                 const int actual = ReadColor(pixels, info, {ModelX(i) + PartX(p), 0.0f, 0.5f});
                 if (actual != expected)
                 {
@@ -488,7 +484,8 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                 ok = false;
             previous_hash = digest;
             if (phase == 0) baseline_hash = digest;
-            if (phase == 4 || phase == 7 || phase == 8 || phase == 13) ok &= digest == baseline_hash;
+            if (phase == 1 || phase == 2 || phase == 4 || phase == 7 || phase == 8 || phase == 13) ok &= digest == baseline_hash;
+            if (phase == 3) ok &= digest != baseline_hash;
             if (phase == 9) lit_hash = digest;
             if (phase == 10 || phase == 12) ok &= digest != lit_hash;
             if (phase == 11) ok &= digest == lit_hash;
@@ -560,15 +557,10 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
         phase_samples = 0;
         ++phase;
         warmup = 2u;
-        auto *b = models[1]->GetComponent<GPUModelRefComponent>();
         auto *c = models[2]->GetComponent<GPUModelRefComponent>();
-        if (phase == 1 && !c->SetOverrideMaterialRow(SeedRow(2))) Fail("blue override");
-        if (phase == 2 && !b->SetOverrideMaterialRow(SeedRow(1))) Fail("green override");
         if (phase == 3) c->HidePart(1u);
         if (phase == 4)
         {
-            b->ClearOverrideMaterialRow();
-            c->ClearOverrideMaterialRow();
             c->ShowAllParts();
         }
         if (phase == 5) world->GetOrCreateMaterialData(probe)->SetRecipe(recipes[2]);

@@ -2497,11 +2497,11 @@ namespace hgl::ecs
                 const uint32_t transform_id = transform.GetID();
                 const uint32_t pass_index = shadow_pass ? 1u : 0u;
 
-                // 提取材质 4-ID 事实（支持覆盖优先，默认回退模板 group 0）
+                // 提取材质 4-ID 事实（默认回退模板 group 0）
                 uint32_t fact_material_id = 0u;
                 uint32_t fact_texture_id = 0u;
-                MaterialRuntimeRowID active_row_id = pure_model_ref->GetOverrideMaterialRow();
-                if (active_row_id == INVALID_MATERIAL_RUNTIME_ROW_ID && !binding->groups.IsEmpty())
+                MaterialRuntimeRowID active_row_id = INVALID_MATERIAL_RUNTIME_ROW_ID;
+                if (!binding->groups.IsEmpty())
                 {
                     active_row_id = binding->groups[0].runtime_row;
                 }
@@ -2540,11 +2540,7 @@ namespace hgl::ecs
                     if (shadow_pass && !grp_desc.casts_shadow)
                         continue;
 
-                    MaterialRuntimeRowID row_id = grp_desc.runtime_row;
-                    if (pure_model_ref->HasMaterialOverride())
-                    {
-                        row_id = pure_model_ref->GetOverrideMaterialRow();
-                    }
+                    const MaterialRuntimeRowID row_id = grp_desc.runtime_row;
 
                     const MaterialRuntimeRow *row = current_runtime_table ? current_runtime_table->Get(row_id) : nullptr;
                     if (!row)

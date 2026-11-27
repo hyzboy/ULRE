@@ -671,10 +671,9 @@ namespace hgl::ecs
                             break;
                         }
 
-                        // 二级组表：本 (pass, 模板, 有效绑定) 独占一段连续组槽
+                        // 二级组表：本 (pass, 模板) 独占一段连续组槽
                         uint32_t group_table_offset = graph::kModelExpansionInvalidBucketBase;
-                        const uint64_t route_key = (uint64_t(ref->GetTemplateID()) << 32)
-                                                 | uint64_t(ref->GetOverrideMaterialRow());
+                        const uint64_t route_key = uint64_t(ref->GetTemplateID());
                         if (uint32_t *offset_ptr = pass_template_group_offsets.GetValuePointer(route_key))
                         {
                             group_table_offset = *offset_ptr;
@@ -853,14 +852,12 @@ namespace hgl::ecs
                     const auto *item = dynamic_cast<const PrimitiveRenderItem *>(b->items[i]);
                     const auto *row = item ? item->GetMaterialRuntimeRow() : nullptr;
                     const auto *binding = world->GetModelTemplateMaterialTable()->FindBinding(grp.template_id);
-                    const auto *ref = owner->GetComponent<GPUModelRefComponent>();
                     gpu_cull->SetModelGroupBucketBase(pass_index, grp.group_table_offset, grp.shading_group,
                                                       bucket_first + grp.group_bucket,
                                                       row ? row->data_index_row : 0u,
                                                       row && row->material_texture_configuration.IsValid()
                                                         ? row->material_texture_configuration.row_index : 0u,
-                                                      row && ((binding && binding->owns_gpu_rows)
-                                                           || (ref && ref->HasMaterialOverride())));
+                                                      row && binding && binding->owns_gpu_rows);
                     gpu_cull->SetModelEntityGroupOffset(pass_index, owner->GetEntityID().index,
                                                         grp.group_table_offset);
                 }

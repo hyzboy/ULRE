@@ -13,15 +13,13 @@
 // 线程契约：只在主线程读写（与其它组件一致）。
 
 #include <hgl/ecs/core/entity/ComponentRow.h>
-#include <hgl/ecs/support/material/MaterialRuntimeTable.h>
 
 namespace hgl::ecs
 {
     /**
      * @brief 单实体模型引用组件（CPU-only：无 GPU 行，gpu_row_bytes = 0）。
      *
-     * 无虚表；覆盖材质持有一个世界级运行期行引用。可见性掩码按部件位压缩，
-     * 超过 64 个部件的模板只掩码前 64 个（其余恒可见）。
+     * 无虚表。可见性掩码按部件位压缩，超过 64 个部件的模板只掩码前 64 个（其余恒可见）。
      */
     struct GPUModelRefComponent : public ComponentRow
     {
@@ -38,13 +36,6 @@ namespace hgl::ecs
         /// 动态事实：完整收集和快路径每帧重发布，直接写入不影响拓扑。
         uint64_t part_visibility_mask = 0xFFFFFFFFFFFFFFFFull;
 
-        // ── 材质覆盖（Instance Material Override）────────────────────────
-        /// 若有效（!= INVALID_MATERIAL_RUNTIME_ROW_ID），收集系统生成载体项时
-        /// 优先使用此材质行代替模板默认绑定的材质行。
-    private:
-        MaterialRuntimeRowID override_material_row = INVALID_MATERIAL_RUNTIME_ROW_ID;
-
-    public:
         // ── 预留插槽（空壳，字段即 ABI，后续阶段接消费者）─────────────────
         /// 实例自定义数据行（逐实例颜色/材质微调）。
         /// 消费者：`hgl::graph::ssbo::InstanceCustomData`（见 `InstanceCustomData.h`），
@@ -60,12 +51,6 @@ namespace hgl::ecs
         /// 非虚（T2-c：组件行里没有 vptr）；析构由池显式调用
         ~GPUModelRefComponent() = default;
         void OnDetach();
-
-        // ── 材质覆盖便捷操作 ─────────────────────────────────────────────
-        bool SetOverrideMaterialRow(MaterialRuntimeRowID row);
-        void ClearOverrideMaterialRow();
-        MaterialRuntimeRowID GetOverrideMaterialRow() const { return override_material_row; }
-        bool HasMaterialOverride() const { return override_material_row != INVALID_MATERIAL_RUNTIME_ROW_ID; }
 
         // ── 掩码操作 ──────────────────────────────────────────────────────
         void HidePart(uint32_t index)

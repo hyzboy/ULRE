@@ -46,10 +46,9 @@ namespace hgl::ecs
             if (const auto *binding = mat_table ? mat_table->FindBinding(ref->GetTemplateID()) : nullptr)
             {
                 auto *runtime = GetRuntimeTable(world);
-                for (int g = 0; g <= binding->groups.GetCount(); ++g)
+                for (int g = 0; g < binding->groups.GetCount(); ++g)
                 {
-                    const auto id = g == binding->groups.GetCount()
-                        ? ref->GetOverrideMaterialRow() : binding->groups[g].runtime_row;
+                    const auto id = binding->groups[g].runtime_row;
                     auto *row = runtime ? runtime->GetMutable(id) : nullptr;
                     if (!row || row->cached_effective_recipe.textures.empty()
                      || materialization.IsTemplateTextureRefreshed(id))
@@ -387,8 +386,7 @@ namespace hgl::ecs
                         model_ref ? model_ref->GetTemplateID() : 0u,
                         model_ref ? model_ref->part_visibility_mask : 0ull,
                         model_ref ? model_ref->custom_data_index : 0u,
-                        model_ref ? model_ref->prev_transform_id : 0u,
-                        model_ref && model_ref->HasMaterialOverride());
+                        model_ref ? model_ref->prev_transform_id : 0u);
                 }
 
 #if ULRE_ECS_DEBUG_API

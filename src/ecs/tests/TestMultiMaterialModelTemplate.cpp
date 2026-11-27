@@ -409,78 +409,54 @@ namespace
             && table.Get(other_id, pass_a, 1) == pipeline_c;
     }
 
-    // ── 2b. 实例级材质覆盖测试 ──────────────────────────────────────
+    // ── 2b. 模型引用绑定与 GPU 事实测试（无材质覆盖污染）──────────────
 
-    bool TestInstanceMaterialOverride()
+    bool TestGPUModelRefBindingAndFacts()
     {
-        ECSContext context("TestOverrideContext");
-        Entity *entity_default = context.CreateEntity();
-        Entity *entity_override = context.CreateEntity();
-        if (!entity_default || !entity_override)
+        ECSContext context("TestModelFactsContext");
+        Entity *entity = context.CreateEntity();
+        if (!entity)
             return false;
 
         const uint32_t kTemplateID = 77u;
-        const MaterialRuntimeRowID kOverrideRow =
-            context.GetMaterialRuntimeTable()->Intern(MaterialRuntimeKey{1u, 55u, 0u});
-
-        auto *ref_def = entity_default->AddComponent<GPUModelRefComponent>();
-        auto *ref_ovr = entity_override->AddComponent<GPUModelRefComponent>();
-        if (!ref_def || !ref_ovr)
+        auto *ref = entity->AddComponent<GPUModelRefComponent>();
+        if (!ref)
             return false;
 
-        ref_def->SetTemplateBinding(kTemplateID);
-        ref_ovr->SetTemplateBinding(kTemplateID);
-
-        // 默认无覆盖
-        if (ref_def->HasMaterialOverride())
-            return false;
-        if (ref_def->GetOverrideMaterialRow() != INVALID_MATERIAL_RUNTIME_ROW_ID)
+        const auto topo_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        ref->SetTemplateBinding(kTemplateID);
+        const auto changed_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        if (changed_revision <= topo_revision || ref->GetTemplateID() != kTemplateID)
             return false;
 
-        // 实体 B 覆盖材质
-        const auto material_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding);
-        ref_ovr->SetOverrideMaterialRow(kOverrideRow);
-        const auto changed_revision = context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding);
-        if (changed_revision <= material_revision
-         || !ref_ovr->SetOverrideMaterialRow(kOverrideRow)
-         || context.GetPrimitiveTopologyLedger().GetTopologyRevision(TopologyChange::MaterialBinding) != changed_revision)
+        // 掩码操作测试
+        ref->HidePart(2u);
+        if (ref->IsPartVisible(2u) || !ref->IsPartVisible(0u) || !ref->IsPartVisible(1u))
             return false;
-        if (!ref_ovr->HasMaterialOverride())
+        ref->ShowPart(2u);
+        if (!ref->IsPartVisible(2u))
             return false;
-        if (ref_ovr->GetOverrideMaterialRow() != kOverrideRow)
+        ref->HidePart(5u);
+        ref->ShowAllParts();
+        if (!ref->IsPartVisible(5u))
             return false;
-        auto *runtime = context.GetMaterialRuntimeTable();
-        if (kOverrideRow != 0u || runtime->GetRefCount(kOverrideRow) != 2u
-         || ref_ovr->SetOverrideMaterialRow(INVALID_MATERIAL_RUNTIME_ROW_ID - 1u)
-         || ref_ovr->GetOverrideMaterialRow() != kOverrideRow
-         || runtime->GetRefCount(kOverrideRow) != 2u)
-            return false;
+
+        // GPU 派生行事实写入测试（纯净化，无 material_override 标志位）
         auto &gpu = context.GetEntityGPUTable();
-        auto *gpu_row = gpu.Row(entity_override->GetEntityID());
-        gpu_row->work_flags = 0x80u;
-        gpu.SetModelFacts(entity_override->GetEntityID(), kTemplateID, UINT64_MAX, 0u, 0u, true);
-        if (gpu_row->work_flags != (0x80u | kEntityGPUWorkMaterialOverride))
-            return false;
-        gpu.SetModelFacts(entity_override->GetEntityID(), kTemplateID, UINT64_MAX);
-        if (gpu_row->work_flags != 0x80u)
+        gpu.SetModelFacts(entity->GetEntityID(), kTemplateID, ref->part_visibility_mask, 12u, 34u);
+        const auto *gpu_row = gpu.Row(entity->GetEntityID());
+        if (!gpu_row)
             return false;
 
-        ref_ovr->ClearOverrideMaterialRow();
-        if (ref_ovr->HasMaterialOverride())
+        if (gpu_row->model_template_id != kTemplateID
+         || gpu_row->model_part_mask != UINT64_MAX
+         || gpu_row->custom_data_index != 12u
+         || gpu_row->prev_transform_id != 34u
+         || gpu_row->work_flags != 0u)
             return false;
 
-        if (runtime->GetRefCount(kOverrideRow) != 1u)
-            return false;
-        const auto other = runtime->Intern(MaterialRuntimeKey{1u, 56u, 0u});
-        if (!ref_ovr->SetOverrideMaterialRow(kOverrideRow)
-         || !ref_ovr->SetOverrideMaterialRow(other)
-         || runtime->GetRefCount(kOverrideRow) != 1u || runtime->GetRefCount(other) != 2u)
-            return false;
-        context.DestroyEntity(entity_override->GetEntityID());
-        const bool released = runtime->GetRefCount(other) == 1u;
-        runtime->Release(kOverrideRow);
-        runtime->Release(other);
-        return released;
+        context.DestroyEntity(entity->GetEntityID());
+        return true;
     }
 
     // ── 3. 源码契约测试（验证 Step 1.4.4 与 1.4.5 的核心修改）──────────
@@ -517,8 +493,8 @@ namespace
               "ModelTemplateRenderItem",
               "纯模板实体必须按组创建 ModelTemplateRenderItem 载体项投入批次" },
             { collect_src,
-              "GetOverrideMaterialRow",
-              "收集系统必须支持整实例材质覆盖" },
+              "grp_desc.runtime_row",
+              "收集系统必须直接消费各组独立 runtime_row" },
             { collect_src,
               "BuildSinglePrimitiveModelTemplate",
               "收集系统前置保障必须调用 BuildSinglePrimitiveModelTemplate 自动提升为模板实体" },
@@ -567,7 +543,7 @@ int main()
     Check(TestBindingReplacement(), "Binding replacement preserves overlapping rows and rejects invalid input atomically");
     Check(TestTemplateRenderItemCarrier(), "2. ModelTemplateRenderItem 载体项属性");
     Check(TestGroupPipelineCache(), "2c. Group pipeline isolation, pass mismatch and entity invalidation");
-    Check(TestInstanceMaterialOverride(), "2b. 实例级材质覆盖属性与重置");
+    Check(TestGPUModelRefBindingAndFacts(), "2b. 模型引用绑定与 GPU 事实纯净化");
     Check(TestSourceContracts(), "3. 收集快线与批处理多组源码契约");
 
     if (g_failed > 0)

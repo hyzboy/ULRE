@@ -599,12 +599,12 @@ void expand_template_entity(const uint blk,
                 continue;
         }
 
-        // 有效组路由优先，保持实例覆盖及纹理就绪更新与 CPU 分批一致。
-        // 低层兼容模板无有效路由时，未覆盖的 HasMaterial 部件用自身 ID，否则继承实体。
-        // ⚠ 用显式标志位而不是 `!= 0u`：池行号 0 可能是**合法数据**。
-        const uint ENTITY_GPU_WORK_MATERIAL_OVERRIDE = 1u;
-        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u
-                              && (entity.work_flags & ENTITY_GPU_WORK_MATERIAL_OVERRIDE) == 0u;
+        // 有效组路由优先，保持多材质分组及纹理就绪动态换行与 CPU 分批一致。
+        // 低层兼容模板无独占组路由时，带有材质标记的部件使用自身 ID，否则回退到实体事实行号。
+        const bool has_part_mtl = (part.part_flags & MODEL_PART_FLAG_HAS_MATERIAL) != 0u;
+
+        const uint material_id = group_route.w != 0u ? group_route.y : (has_part_mtl ? part.material_id : ids_blk.material_id);
+        const uint texture_id  = group_route.w != 0u ? group_route.z : (has_part_mtl ? part.texture_id : ids_blk.texture_id);
 
         emit_bucket_instance(blk,
                              bucket,
@@ -612,8 +612,8 @@ void expand_template_entity(const uint blk,
                              part.geometry_id,
                              transform_id,
                              entity,
-                             group_route.w != 0u ? group_route.y : (has_part_mtl ? part.material_id : ids_blk.material_id),
-                             group_route.w != 0u ? group_route.z : (has_part_mtl ? part.texture_id : ids_blk.texture_id),
+                             material_id,
+                             texture_id,
                              true,
                              part_l2w,
                              prev_part_l2w,
