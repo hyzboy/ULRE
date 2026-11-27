@@ -94,6 +94,9 @@ namespace hgl
          */
         class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IECSEntityObserver, private IWorldGPUResourcesSource, private IWorldRenderDataSource
         {
+        private:
+            void ConfigureSystem(System *system) override;
+
         public:
 
             ECSContext(const char* name) : ECSContext(AnsiString(name)) {}
@@ -111,6 +114,12 @@ namespace hgl
             friend struct RenderPassSetupTestAccess;
             const AnsiString &RenderDataWorldName() const override { return GetName(); }
             void RenderDataPipelineInvalidated() override { MarkTopologyChanged(TopologyChange::MaterialBinding); }
+            void RenderDataModelTemplateChanged() override { MarkTopologyChanged(TopologyChange::ModelTemplate); }
+            graph::GraphicsContext *RenderDataGraphicsContext() override;
+            graph::IRenderTarget *RenderDataRenderTarget() override;
+            graph::TextureManager *RenderDataTextureManager() override;
+            uint64_t RenderDataSubmissionSerial() const override { return GetRenderSubmissionSerial(); }
+            bool RenderDataGPUQuiescent() const override;
 
             graph::GraphicsContext *GPUResourcesGraphicsContext() override;
             graph::VulkanDevice *GPUResourcesDevice() override;

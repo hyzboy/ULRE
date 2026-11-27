@@ -26,6 +26,12 @@ using namespace hgl::ecs;
 
 namespace hgl::ecs
 {
+    class ContextBindingProbeSystem : public System
+    {
+    public:
+        ContextBindingProbeSystem() : System("ContextBindingProbe") {}
+    };
+
     struct RenderPassSetupTestAccess
     {
         static void Run(ECSContext &context, uint32_t slot)
@@ -52,6 +58,15 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestFramePrepareOncePerFrame"));
 
     ECSContext ctx;
+    auto context_probe = ctx.RegisterSystem<ContextBindingProbeSystem>();
+    if (!context_probe
+        || context_probe->GetCoreContext() != &ctx
+        || context_probe->GetContext() != &ctx)
+    {
+        GLogError(u8"Test Failed: ECSContext system registration must bind core and render contexts explicitly");
+        return 1;
+    }
+
     RenderBatchPipeline pipeline;
 
     // 同帧三次（模拟 Cull / Sort / Build 三口各自调用）

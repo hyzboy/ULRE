@@ -15,6 +15,9 @@
 namespace hgl::graph
 {
     class VulkanDevice;
+    class GraphicsContext;
+    class IRenderTarget;
+    class TextureManager;
 }
 
 namespace hgl::ecs
@@ -25,6 +28,12 @@ namespace hgl::ecs
         virtual ~IWorldRenderDataSource() = default;
         virtual const AnsiString &RenderDataWorldName() const = 0;
         virtual void RenderDataPipelineInvalidated() = 0;
+        virtual void RenderDataModelTemplateChanged() = 0;
+        virtual graph::GraphicsContext *RenderDataGraphicsContext() = 0;
+        virtual graph::IRenderTarget *RenderDataRenderTarget() = 0;
+        virtual graph::TextureManager *RenderDataTextureManager() = 0;
+        virtual uint64_t RenderDataSubmissionSerial() const = 0;
+        virtual bool RenderDataGPUQuiescent() const = 0;
     };
 
     /**
@@ -122,6 +131,15 @@ namespace hgl::ecs
         MaterialData *GetOrCreateMaterialData(Entity *owner);
 
         void InvalidateEntityRuntimePipeline(EntityID owner);
+        void NotifyPipelineInvalidated() const;
+        void NotifyModelTemplateChanged() const;
+
+        graph::GraphicsContext *GetGraphicsContext();
+        graph::IRenderTarget *GetRenderTarget();
+        graph::TextureManager *GetTextureManager();
+        uint64_t GetRenderSubmissionSerial() const;
+        bool IsGPUQuiescent() const;
+        const void *GetWorldIdentity() const { return world_identity; }
 
         // ── 相机管理 ──
         CameraInfoStorage *GetCameraInfoStorage() { return camera_info_storage.get(); }

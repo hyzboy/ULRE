@@ -80,7 +80,8 @@ namespace hgl::ecs
         if (!system)
             return;
 
-        system->SetContext(reinterpret_cast<ECSContext*>(context));
+        if (context)
+            context->ConfigureSystem(system.get());
 
         // tick / render 分类的唯一权威 = 系统自己的 ExecutionPhase。
         // 旧版还收一个调用方声明的 `is_render`：相位不一致时只 LogWarning 一句就把系统

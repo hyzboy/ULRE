@@ -12,6 +12,9 @@ namespace hgl
 {
     namespace ecs
     {
+        class ECSCoreContext;
+        class ECSContext;
+
         /**
          * Execution Phase - Generic runtime cycles ordered by enum value.
          *
@@ -63,7 +66,8 @@ namespace hgl
 
             ExecutionPhase executionPhase = ExecutionPhase::TickInput;
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
-            class ECSContext* context = nullptr;  // Owning context
+            ECSCoreContext *core_context = nullptr;
+            ECSContext* context = nullptr;  // Render-world compatibility context
             bool enabled = true;
             AnsiString render_element_type;  // Render element type (e.g., "Primitive", "Text", "SkySphere")
 
@@ -101,7 +105,13 @@ namespace hgl
             /// Get dependencies (systems that must run before this one)
             const std::vector<std::type_index>& GetDependencies() const { return dependencies; }
 
-            /// Set the context (called by Context when system is registered)
+            ECSCoreContext *GetCoreContext() const { return core_context; }
+            ECSContext *GetContext() const { return context; }
+
+            /// Set the core context during system registration.
+            void SetCoreContext(ECSCoreContext *ctx) { core_context = ctx; }
+
+            /// Set the render-world compatibility context during ECSContext registration.
             void SetContext(ECSContext* ctx) { context = ctx; }
 
         protected:

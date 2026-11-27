@@ -93,6 +93,38 @@ namespace hgl
             SetEntityObserver(nullptr);
         }
 
+        void ECSContext::ConfigureSystem(System *system)
+        {
+            ECSCoreContext::ConfigureSystem(system);
+            if (system)
+                system->SetContext(this);
+        }
+
+        graph::GraphicsContext *ECSContext::RenderDataGraphicsContext()
+        {
+            return GetGraphicsContext();
+        }
+
+        graph::IRenderTarget *ECSContext::RenderDataRenderTarget()
+        {
+            return render_target;
+        }
+
+        graph::TextureManager *ECSContext::RenderDataTextureManager()
+        {
+            graph::GraphicsContext *graphics = GetGraphicsContext();
+            return graphics ? graphics->GetTextureManager() : nullptr;
+        }
+
+        bool ECSContext::RenderDataGPUQuiescent() const
+        {
+            if (!GetGraphicsContext())
+                return true;
+
+            auto *queue = render_target ? render_target->GetQueue() : nullptr;
+            return queue && queue->IsLastSubmitComplete();
+        }
+
         bool ECSContext::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target)
         {
             // W3 合并：原 InitializeGraphics 的 GPU 绑定 + 原 Initialize 的系统初始化

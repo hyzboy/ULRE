@@ -182,6 +182,11 @@ int main()
         GLogError(u8"[ECSCoreBoundary] RegisterSystem / GetSystem 契约失效");
         return 3;
     }
+    if (sys->GetCoreContext() != &core_ctx || sys->GetContext() != nullptr)
+    {
+        GLogError(u8"[ECSCoreBoundary] Core 系统上下文接线失效");
+        return 3;
+    }
 
     core_ctx.Tick(0.016f);
     if (sys->tick_count != 1)

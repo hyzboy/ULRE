@@ -33,6 +33,7 @@ namespace hgl::ecs
     class ECSCoreContext : public Object
     {
         friend class Entity;
+        friend class SystemRegistry;
     protected:
         OBJECT_LOGGER
 
@@ -153,6 +154,11 @@ namespace hgl::ecs
     protected:
         virtual void ClearComponentPools();
         virtual void DestroyComponent(ComponentType type, uint32_t row);
+        virtual void ConfigureSystem(System *system)
+        {
+            if (system)
+                system->SetCoreContext(this);
+        }
 
     public:
         // ── 虚生命周期与变更钩子（派生类扩展渲染副作用）──

@@ -106,6 +106,43 @@ namespace hgl::ecs
             source->RenderDataPipelineInvalidated();
     }
 
+    void WorldRenderData::NotifyPipelineInvalidated() const
+    {
+        if (source)
+            source->RenderDataPipelineInvalidated();
+    }
+
+    void WorldRenderData::NotifyModelTemplateChanged() const
+    {
+        if (source)
+            source->RenderDataModelTemplateChanged();
+    }
+
+    graph::GraphicsContext *WorldRenderData::GetGraphicsContext()
+    {
+        return source ? source->RenderDataGraphicsContext() : nullptr;
+    }
+
+    graph::IRenderTarget *WorldRenderData::GetRenderTarget()
+    {
+        return source ? source->RenderDataRenderTarget() : nullptr;
+    }
+
+    graph::TextureManager *WorldRenderData::GetTextureManager()
+    {
+        return source ? source->RenderDataTextureManager() : nullptr;
+    }
+
+    uint64_t WorldRenderData::GetRenderSubmissionSerial() const
+    {
+        return source ? source->RenderDataSubmissionSerial() : 0;
+    }
+
+    bool WorldRenderData::IsGPUQuiescent() const
+    {
+        return !source || source->RenderDataGPUQuiescent();
+    }
+
     CameraComponent *WorldRenderData::GetCamera(const uint32_t slot) const
     {
         return camera_info_storage ? camera_info_storage->GetSlotOwner(slot) : nullptr;

@@ -84,8 +84,15 @@ namespace
 
     public:
         int invalidations = 0;
+        int template_changes = 0;
         const AnsiString &RenderDataWorldName() const override { return name; }
         void RenderDataPipelineInvalidated() override { ++invalidations; }
+        void RenderDataModelTemplateChanged() override { ++template_changes; }
+        graph::GraphicsContext *RenderDataGraphicsContext() override { return nullptr; }
+        graph::IRenderTarget *RenderDataRenderTarget() override { return nullptr; }
+        graph::TextureManager *RenderDataTextureManager() override { return nullptr; }
+        uint64_t RenderDataSubmissionSerial() const override { return 0; }
+        bool RenderDataGPUQuiescent() const override { return true; }
     };
 
     void TestRenderDataSourceBoundary()
