@@ -1,6 +1,7 @@
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/ssbo/InstanceCustomData.h>
+#include <hgl/graph/ssbo/MeshletRows.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/CameraInfo.h>
@@ -37,6 +38,10 @@ namespace
         { GlobalSSBOType::ModelPartPool,       "ModelPartPool",       sizeof(ssbo::ModelPartRow),     16384u, 1u },
         // T6.2：实例自定义数据池（微调颜色/不透明度，16 B 行）。reserve_rows = 1 ⇒ 行 0 为缺省哨兵。
         { GlobalSSBOType::InstanceCustomDataPool, "InstanceCustomDataPool", sizeof(ssbo::InstanceCustomData), 16384u, 1u },
+        { GlobalSSBOType::MeshletDescriptorPool, "MeshletDescriptorPool", sizeof(ssbo::MeshletDescriptorRow), 65536u, 0u },
+        { GlobalSSBOType::MeshletBoundsPool, "MeshletBoundsPool", sizeof(ssbo::MeshletBoundsRow), 65536u, 0u },
+        { GlobalSSBOType::MeshletVertexPool, "MeshletVertexPool", sizeof(ssbo::MeshletVertexRow), 1048576u, 0u },
+        { GlobalSSBOType::MeshletTrianglePool, "MeshletTrianglePool", sizeof(ssbo::MeshletTriangleRow), 1048576u, 0u },
     };
 
     /// 配置表覆盖性（遍历全枚举，不手列清单）：聚合数组缺一项**不会编译报错**（值初始化），
@@ -176,6 +181,10 @@ bool GlobalSSBOBufferRegistry::InitializeGlobalAddressesTable()
     global_addresses_global.addr_model_template_pool  = GetGPUBase(GlobalSSBOType::ModelTemplatePool);
     global_addresses_global.addr_model_part_pool      = GetGPUBase(GlobalSSBOType::ModelPartPool);
     global_addresses_global.addr_instance_custom_data = GetGPUBase(GlobalSSBOType::InstanceCustomDataPool);
+    global_addresses_global.addr_meshlet_descriptor_pool = GetGPUBase(GlobalSSBOType::MeshletDescriptorPool);
+    global_addresses_global.addr_meshlet_bounds_pool = GetGPUBase(GlobalSSBOType::MeshletBoundsPool);
+    global_addresses_global.addr_meshlet_vertex_pool = GetGPUBase(GlobalSSBOType::MeshletVertexPool);
+    global_addresses_global.addr_meshlet_triangle_pool = GetGPUBase(GlobalSSBOType::MeshletTrianglePool);
 
     // 每帧槽字段（sky / viewport / shadow）在各自 buffer 就绪后由 Set*Address 填；先整表清 0。
     for (uint32_t slot = 0; slot < kGlobalAddressesSlotCount; ++slot)

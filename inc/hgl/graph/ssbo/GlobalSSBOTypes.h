@@ -130,6 +130,10 @@ HGL_ENUM_BEGIN(hgl::graph::GlobalSSBOType)
     HGL_ENUM_ITEM(ModelTemplatePool,     "模型模板行（GPU 常驻模板池）")
     HGL_ENUM_ITEM(ModelPartPool,         "模型部件行（模板内连续部件段）")
     HGL_ENUM_ITEM(InstanceCustomDataPool,"实例自定义数据行（实例微调色/透明度）")
+    HGL_ENUM_ITEM(MeshletDescriptorPool, "Meshlet 描述符行")
+    HGL_ENUM_ITEM(MeshletBoundsPool,     "Meshlet 包围体行")
+    HGL_ENUM_ITEM(MeshletVertexPool,     "Meshlet 局部顶点映射行")
+    HGL_ENUM_ITEM(MeshletTrianglePool,   "Meshlet 打包三角形行")
 HGL_ENUM_END(hgl::graph::GlobalSSBOType)
 
 static_assert(::hgl::serialize::EnumMeta<::hgl::graph::GlobalSSBOType>::Count == ::hgl::graph::GlobalSSBOTypeCount,

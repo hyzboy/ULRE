@@ -29,8 +29,12 @@ namespace hgl::graph
         ModelTemplatePool,      // 模型模板行（128 B）：部件段索引 + LOD/阴影代理槽（GPU 常驻模板池，plan T1）
         ModelPartPool,          // 模型部件行（128 B）：模板内连续部件段（local_matrix + AABB + geometry/material id）
         InstanceCustomDataPool, // 实例自定义数据行（16 B）：Vector4f custom_color（T6.2）
+        MeshletDescriptorPool,  // Meshlet 描述符（16 B）：局部顶点/三角形偏移、bounds 索引与计数
+        MeshletBoundsPool,      // Meshlet 包围球与法线锥（32 B）
+        MeshletVertexPool,      // Meshlet 局部顶点到 Geometry 顶点的映射（4 B）
+        MeshletTrianglePool,    // 每行一个打包的三角形局部索引（4 B）
 
-        ENUM_CLASS_RANGE(MeshDrawParams, InstanceCustomDataPool)
+        ENUM_CLASS_RANGE(MeshDrawParams, MeshletTrianglePool)
     };
 
     constexpr uint32_t GlobalSSBOTypeCount = static_cast<uint32_t>(GlobalSSBOType::RANGE_SIZE);

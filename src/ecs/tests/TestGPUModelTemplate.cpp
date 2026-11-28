@@ -21,8 +21,10 @@
  */
 
 #include <hgl/graph/ssbo/InstanceCustomData.h>
+#include <hgl/graph/ssbo/MeshletRows.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
+#include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/ubo/ModelExpansionArena.h>
 #include <hgl/io/FileInputStream.h>
 #include <hgl/log/Log.h>
@@ -54,6 +56,15 @@ namespace
             return false;
 
         if (alignof(ssbo::ModelTemplateRow) != 16 || alignof(ssbo::ModelPartRow) != 16)
+            return false;
+
+        if (sizeof(ssbo::MeshletDescriptorRow) != 16
+            || sizeof(ssbo::MeshletBoundsRow) != 32
+            || offsetof(ssbo::MeshletBoundsRow, cone_axis_cutoff_packed) != 28
+            || sizeof(ssbo::MeshletVertexRow) != 4
+            || sizeof(ssbo::MeshletTriangleRow) != 4
+            || sizeof(GlobalAddresses) != 120
+            || sizeof(GlobalAddresses) > kGlobalAddressesSlotStride)
             return false;
 
         // 字段偏移：与 ModelTemplateRows.h 的 static_assert 同口径，但这里**运行期**
@@ -459,10 +470,16 @@ namespace
     bool TestGlslMirrorParity()
     {
         AnsiString tpl_src, part_src, arena_src;
+        AnsiString meshlet_desc_src, meshlet_bounds_src;
+        AnsiString meshlet_vertex_src, meshlet_triangle_src;
 
         if (!ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/model_template_row.glsl"), tpl_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/model_part_row.glsl"), part_src)
-            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/model_expansion_arena.glsl"), arena_src))
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/model_expansion_arena.glsl"), arena_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/meshlet_descriptor_row.glsl"), meshlet_desc_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/meshlet_bounds_row.glsl"), meshlet_bounds_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/meshlet_vertex_row.glsl"), meshlet_vertex_src)
+            || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ssbo/meshlet_triangle_row.glsl"), meshlet_triangle_src))
         {
             GLogError(u8"TestGPUModelTemplate: 无法读取 GLSL 镜像（需在仓库根目录运行）");
             return false;
@@ -483,6 +500,14 @@ namespace
               "ModelPartRowData 镜像字段总宽必须 == 128B 且字段数不变（texture_id/shading_group 占用原填充）" },
             { &arena_src, "ModelExpansionArenaData", uint32_t(sizeof(ModelExpansionArena)),    8u,
               "ModelExpansionArenaData 镜像字段总宽必须 == 48B 且字段数不变" },
+            { &meshlet_desc_src, "MeshletDescriptorData", uint32_t(sizeof(ssbo::MeshletDescriptorRow)), 4u,
+              "MeshletDescriptorData 镜像必须与 16B C++ 行匹配" },
+            { &meshlet_bounds_src, "MeshletBoundsData", uint32_t(sizeof(ssbo::MeshletBoundsRow)), 3u,
+              "MeshletBoundsData 镜像必须与 32B C++ 行匹配" },
+            { &meshlet_vertex_src, "MeshletVertexData", uint32_t(sizeof(ssbo::MeshletVertexRow)), 1u,
+              "MeshletVertexData 镜像必须与 4B C++ 行匹配" },
+            { &meshlet_triangle_src, "MeshletTriangleData", uint32_t(sizeof(ssbo::MeshletTriangleRow)), 1u,
+              "MeshletTriangleData 镜像必须与 4B C++ 行匹配" },
         };
 
         bool ok = true;
@@ -510,6 +535,10 @@ namespace
         ok = ok && (strstr(tpl_src.c_str(), "@ulre-codegen begin") != nullptr);
         ok = ok && (strstr(part_src.c_str(), "@ulre-codegen begin") != nullptr);
         ok = ok && (strstr(arena_src.c_str(), "@ulre-codegen begin") != nullptr);
+        ok = ok && (strstr(meshlet_desc_src.c_str(), "@ulre-codegen begin") != nullptr);
+        ok = ok && (strstr(meshlet_bounds_src.c_str(), "@ulre-codegen begin") != nullptr);
+        ok = ok && (strstr(meshlet_vertex_src.c_str(), "@ulre-codegen begin") != nullptr);
+        ok = ok && (strstr(meshlet_triangle_src.c_str(), "@ulre-codegen begin") != nullptr);
 
         // 行 0 = 哨兵这一口径必须写进生成物说明（改注释也算改契约）。
         ok = ok && (strstr(tpl_src.c_str(), "行 0") != nullptr);
@@ -571,10 +600,29 @@ namespace
         static const char *const kPartAddrTokens[] =
             { "addr_model_part_pool", "GetGPUBase(GlobalSSBOType::ModelPartPool)" };
 
+        static const char *const kMeshletPoolTokens[] =
+        {
+            "MeshletDescriptorPool", "sizeof(ssbo::MeshletDescriptorRow)", "65536u", "0u",
+            "MeshletBoundsPool", "sizeof(ssbo::MeshletBoundsRow)", "65536u", "0u",
+            "MeshletVertexPool", "sizeof(ssbo::MeshletVertexRow)", "1048576u", "0u",
+            "MeshletTrianglePool", "sizeof(ssbo::MeshletTriangleRow)", "1048576u", "0u"
+        };
+        static const char *const kMeshletAddressTokens[] =
+        {
+            "addr_meshlet_descriptor_pool", "GetGPUBase(GlobalSSBOType::MeshletDescriptorPool)",
+            "addr_meshlet_bounds_pool", "GetGPUBase(GlobalSSBOType::MeshletBoundsPool)",
+            "addr_meshlet_vertex_pool", "GetGPUBase(GlobalSSBOType::MeshletVertexPool)",
+            "addr_meshlet_triangle_pool", "GetGPUBase(GlobalSSBOType::MeshletTrianglePool)"
+        };
+
         const bool tpl_pool  = ContainsInOrder(registry_src, kTplPoolTokens,  4);
         const bool part_pool = ContainsInOrder(registry_src, kPartPoolTokens, 4);
         const bool tpl_addr  = ContainsInOrder(registry_src, kTplAddrTokens,  2);
         const bool part_addr = ContainsInOrder(registry_src, kPartAddrTokens, 2);
+        const bool meshlet_pools = ContainsInOrder(
+            registry_src, kMeshletPoolTokens, sizeof(kMeshletPoolTokens) / sizeof(kMeshletPoolTokens[0]));
+        const bool meshlet_addresses = ContainsInOrder(
+            registry_src, kMeshletAddressTokens, sizeof(kMeshletAddressTokens) / sizeof(kMeshletAddressTokens[0]));
 
         // 展开侧：桶号 = 组基址 + 槽号（"部件 ⇒ 素材桶"的唯一公式；阶段 1 组基址来自二级表）。
         const bool bucket_formula = ContainsToken(cull_src,
@@ -628,6 +676,8 @@ namespace
             { part_pool, "ModelPartPool 池配置必须 stride=sizeof(ModelPartRow)、16384 行、保留行 0" },
             { tpl_addr,  "模板池 BDA 地址必须在全局地址表回填" },
             { part_addr, "部件池 BDA 地址必须在全局地址表回填" },
+            { meshlet_pools, "四个 Meshlet 全局池必须按 ABI 行宽和容量登记" },
+            { meshlet_addresses, "四个 Meshlet 池 BDA 必须回填全局地址表" },
             { bucket_formula, "展开侧桶号必须 = 组基址 + part.bucket_slot" },
             { group_table,    "展开侧必须经二级组表按 part.shading_group 取组基址" },
             { part_material,  "部件自带材质必须按 HasMaterial 标志显式选择" },

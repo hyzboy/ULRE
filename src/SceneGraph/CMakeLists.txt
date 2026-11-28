@@ -50,6 +50,7 @@ set(SG_GPU_LAYOUT_FILES ${SG_INCLUDE_PATH}/ubo/ColorPalette.h
                         ${SG_INCLUDE_PATH}/ubo/WorldAddresses.h
                         ${SG_INCLUDE_PATH}/ssbo/SSBOTypes.h
                         ${SG_INCLUDE_PATH}/ssbo/GlobalSSBOTypes.h
+                        ${SG_INCLUDE_PATH}/ssbo/MeshletRows.h
                         ${SG_INCLUDE_PATH}/ssbo/LitMaterialData.h
                         ${SG_INCLUDE_PATH}/ssbo/MaterialDataRows.h
                         ${SG_INCLUDE_PATH}/ssbo/MaterialSSBOLayout.h)

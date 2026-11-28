@@ -160,6 +160,46 @@ ref_member = "rows"
 ref_array = 1
 note = "逐实例个性化数据行（16B）：custom_color。"
 
+[[struct]]
+name = "MeshletDescriptorRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/meshlet_descriptor_row.glsl"
+glsl_struct = "MeshletDescriptorData"
+glsl_ref = "MeshletDescriptorBufferRef"
+ref_member = "rows"
+ref_array = 1
+note = "Meshlet 描述符：偏移均为对应全局池的行号，packed_counts 的低 8 位为顶点数、次 8 位为三角形数。"
+
+[[struct]]
+name = "MeshletBoundsRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/meshlet_bounds_row.glsl"
+glsl_struct = "MeshletBoundsData"
+glsl_ref = "MeshletBoundsBufferRef"
+ref_member = "rows"
+ref_array = 1
+note = "Meshlet bounds：center_radius 与 cone_apex，cone_axis_cutoff_packed 按 snorm4x8 解码。"
+
+[[struct]]
+name = "MeshletVertexRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/meshlet_vertex_row.glsl"
+glsl_struct = "MeshletVertexData"
+glsl_ref = "MeshletVertexBufferRef"
+ref_member = "rows"
+ref_array = 1
+note = "Meshlet 局部顶点索引映射到 Geometry 顶点行。"
+
+[[struct]]
+name = "MeshletTriangleRow"
+kind = "ssbo"
+file = "module/descriptor/ssbo/meshlet_triangle_row.glsl"
+glsl_struct = "MeshletTriangleData"
+glsl_ref = "MeshletTriangleBufferRef"
+ref_member = "rows"
+ref_array = 1
+note = "每行打包一个三角形，低 24 位依次保存三个 8-bit Meshlet 局部顶点索引。"
+
 # ── CPU-only（位于独占目录但不上 GPU；不产出任何派生物） ──────────────────────
 [[struct]]
 name = "EnvironmentInfo"

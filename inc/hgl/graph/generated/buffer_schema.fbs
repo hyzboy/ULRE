@@ -124,6 +124,10 @@ table GlobalAddresses
   addr_model_template_pool: ulong;
   addr_model_part_pool: ulong;
   addr_instance_custom_data: ulong;
+  addr_meshlet_descriptor_pool: ulong;
+  addr_meshlet_bounds_pool: ulong;
+  addr_meshlet_vertex_pool: ulong;
+  addr_meshlet_triangle_pool: ulong;
   addr_viewport: ulong;
 }
 
@@ -236,5 +240,34 @@ table ModelExpansionArena
 table InstanceCustomData
 {
   custom_color: Float4;
+}
+
+// inc/hgl/graph/ssbo/MeshletRows.h → MeshletDescriptorRow
+table MeshletDescriptorRow
+{
+  vertex_offset: uint;
+  triangle_offset: uint;
+  bounds_index: uint;
+  packed_counts: uint;
+}
+
+// inc/hgl/graph/ssbo/MeshletRows.h → MeshletBoundsRow
+table MeshletBoundsRow
+{
+  center_radius: Float4;
+  cone_apex: Float3;
+  cone_axis_cutoff_packed: uint;
+}
+
+// inc/hgl/graph/ssbo/MeshletRows.h → MeshletVertexRow
+table MeshletVertexRow
+{
+  vertex_index: uint;
+}
+
+// inc/hgl/graph/ssbo/MeshletRows.h → MeshletTriangleRow
+table MeshletTriangleRow
+{
+  packed_indices: uint;
 }
 

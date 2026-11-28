@@ -11,6 +11,7 @@
 #include <toml.hpp>
 #include <hgl/graph/ssbo/InstanceCustomData.h>
 #include <hgl/graph/ssbo/MaterialDataRows.h>
+#include <hgl/graph/ssbo/MeshletRows.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/ubo/AmbientEnvInfo.h>
 #include <hgl/graph/ubo/ColorPalette.h>
@@ -190,6 +191,10 @@ namespace hgl::graph::generated
     inline bool ReadModelPartRow(const toml::value &table, hgl::graph::ssbo::ModelPartRow &out);
     inline bool ReadModelExpansionArena(const toml::value &table, hgl::graph::ModelExpansionArena &out);
     inline bool ReadInstanceCustomData(const toml::value &table, hgl::graph::ssbo::InstanceCustomData &out);
+    inline bool ReadMeshletDescriptorRow(const toml::value &table, hgl::graph::ssbo::MeshletDescriptorRow &out);
+    inline bool ReadMeshletBoundsRow(const toml::value &table, hgl::graph::ssbo::MeshletBoundsRow &out);
+    inline bool ReadMeshletVertexRow(const toml::value &table, hgl::graph::ssbo::MeshletVertexRow &out);
+    inline bool ReadMeshletTriangleRow(const toml::value &table, hgl::graph::ssbo::MeshletTriangleRow &out);
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in);
     inline toml::value WriteViewportInfo(const hgl::graph::ViewportInfo &in);
     inline toml::value WriteColorPalette(const hgl::graph::ColorPalette &in);
@@ -206,6 +211,10 @@ namespace hgl::graph::generated
     inline toml::value WriteModelPartRow(const hgl::graph::ssbo::ModelPartRow &in);
     inline toml::value WriteModelExpansionArena(const hgl::graph::ModelExpansionArena &in);
     inline toml::value WriteInstanceCustomData(const hgl::graph::ssbo::InstanceCustomData &in);
+    inline toml::value WriteMeshletDescriptorRow(const hgl::graph::ssbo::MeshletDescriptorRow &in);
+    inline toml::value WriteMeshletBoundsRow(const hgl::graph::ssbo::MeshletBoundsRow &in);
+    inline toml::value WriteMeshletVertexRow(const hgl::graph::ssbo::MeshletVertexRow &in);
+    inline toml::value WriteMeshletTriangleRow(const hgl::graph::ssbo::MeshletTriangleRow &in);
 
     inline bool ReadAmbientEnvInfo(const toml::value &table, hgl::graph::AmbientEnvInfo &out)
     {
@@ -385,6 +394,22 @@ namespace hgl::graph::generated
         if (const toml::value *v = detail::Find(table, "addr_instance_custom_data"))
         {
             if (!detail::AsUnsigned(*v, out.addr_instance_custom_data)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_meshlet_descriptor_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_meshlet_descriptor_pool)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_meshlet_bounds_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_meshlet_bounds_pool)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_meshlet_vertex_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_meshlet_vertex_pool)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "addr_meshlet_triangle_pool"))
+        {
+            if (!detail::AsUnsigned(*v, out.addr_meshlet_triangle_pool)) return false;
         }
         if (const toml::value *v = detail::Find(table, "addr_viewport"))
         {
@@ -707,6 +732,70 @@ namespace hgl::graph::generated
         return true;
     }
 
+    inline bool ReadMeshletDescriptorRow(const toml::value &table, hgl::graph::ssbo::MeshletDescriptorRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "vertex_offset"))
+        {
+            if (!detail::AsUnsigned(*v, out.vertex_offset)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "triangle_offset"))
+        {
+            if (!detail::AsUnsigned(*v, out.triangle_offset)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "bounds_index"))
+        {
+            if (!detail::AsUnsigned(*v, out.bounds_index)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "packed_counts"))
+        {
+            if (!detail::AsUnsigned(*v, out.packed_counts)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadMeshletBoundsRow(const toml::value &table, hgl::graph::ssbo::MeshletBoundsRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "center_radius"))
+        {
+            if (!detail::AsFloatArray(*v, &out.center_radius.x, 4)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "cone_apex"))
+        {
+            if (!detail::AsFloatArray(*v, out.cone_apex, 3)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "cone_axis_cutoff_packed"))
+        {
+            if (!detail::AsUnsigned(*v, out.cone_axis_cutoff_packed)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadMeshletVertexRow(const toml::value &table, hgl::graph::ssbo::MeshletVertexRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "vertex_index"))
+        {
+            if (!detail::AsUnsigned(*v, out.vertex_index)) return false;
+        }
+        return true;
+    }
+
+    inline bool ReadMeshletTriangleRow(const toml::value &table, hgl::graph::ssbo::MeshletTriangleRow &out)
+    {
+        if (!table.is_table())
+            return false;
+        if (const toml::value *v = detail::Find(table, "packed_indices"))
+        {
+            if (!detail::AsUnsigned(*v, out.packed_indices)) return false;
+        }
+        return true;
+    }
+
     inline toml::value WriteAmbientEnvInfo(const hgl::graph::AmbientEnvInfo &in)
     {
         toml::table t;
@@ -780,6 +869,10 @@ namespace hgl::graph::generated
         t["addr_model_template_pool"] = detail::FromInteger(in.addr_model_template_pool);
         t["addr_model_part_pool"] = detail::FromInteger(in.addr_model_part_pool);
         t["addr_instance_custom_data"] = detail::FromInteger(in.addr_instance_custom_data);
+        t["addr_meshlet_descriptor_pool"] = detail::FromInteger(in.addr_meshlet_descriptor_pool);
+        t["addr_meshlet_bounds_pool"] = detail::FromInteger(in.addr_meshlet_bounds_pool);
+        t["addr_meshlet_vertex_pool"] = detail::FromInteger(in.addr_meshlet_vertex_pool);
+        t["addr_meshlet_triangle_pool"] = detail::FromInteger(in.addr_meshlet_triangle_pool);
         t["addr_viewport"] = detail::FromInteger(in.addr_viewport);
         return toml::value(std::move(t));
     }
@@ -902,6 +995,39 @@ namespace hgl::graph::generated
     {
         toml::table t;
         t["custom_color"] = detail::FromFloatArray(&in.custom_color.x, 4);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteMeshletDescriptorRow(const hgl::graph::ssbo::MeshletDescriptorRow &in)
+    {
+        toml::table t;
+        t["vertex_offset"] = detail::FromInteger(in.vertex_offset);
+        t["triangle_offset"] = detail::FromInteger(in.triangle_offset);
+        t["bounds_index"] = detail::FromInteger(in.bounds_index);
+        t["packed_counts"] = detail::FromInteger(in.packed_counts);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteMeshletBoundsRow(const hgl::graph::ssbo::MeshletBoundsRow &in)
+    {
+        toml::table t;
+        t["center_radius"] = detail::FromFloatArray(&in.center_radius.x, 4);
+        t["cone_apex"] = detail::FromFloatArray(in.cone_apex, 3);
+        t["cone_axis_cutoff_packed"] = detail::FromInteger(in.cone_axis_cutoff_packed);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteMeshletVertexRow(const hgl::graph::ssbo::MeshletVertexRow &in)
+    {
+        toml::table t;
+        t["vertex_index"] = detail::FromInteger(in.vertex_index);
+        return toml::value(std::move(t));
+    }
+
+    inline toml::value WriteMeshletTriangleRow(const hgl::graph::ssbo::MeshletTriangleRow &in)
+    {
+        toml::table t;
+        t["packed_indices"] = detail::FromInteger(in.packed_indices);
         return toml::value(std::move(t));
     }
 

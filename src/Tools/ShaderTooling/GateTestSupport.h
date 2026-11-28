@@ -1540,6 +1540,10 @@ namespace gate
         { "addr_model_template_pool",   false },   // T1：模型模板行池（设备级全局；模板是跨世界共享的资产级内容）
         { "addr_model_part_pool",       false },   // T1：模型部件行池（设备级全局；与模板池同 ID 索引）
         { "addr_instance_custom_data",  false },   // T6.2：实例自定义数据行池（设备级全局；行号 = custom_data_index）
+        { "addr_meshlet_descriptor_pool", false },
+        { "addr_meshlet_bounds_pool",     false },
+        { "addr_meshlet_vertex_pool",     false },
+        { "addr_meshlet_triangle_pool",   false },
         { "addr_pbr_surface",           false },
         { "addr_emissive_surface",      false },
         { "addr_transmission_surface",  false },
