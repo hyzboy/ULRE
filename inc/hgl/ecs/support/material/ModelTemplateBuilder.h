@@ -102,7 +102,9 @@ namespace hgl::ecs
                                               ECSContext *context,
                                               uint32_t geometry_id,
                                               const hgl::math::AABB &local_aabb,
-                                              const SinglePrimitiveModelTemplateDesc &desc);
+                                              const SinglePrimitiveModelTemplateDesc &desc,
+                                              uint32_t meshlet_offset = 0u,
+                                              uint32_t meshlet_count = 0u);
 
     uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,
                                               ECSContext *context,

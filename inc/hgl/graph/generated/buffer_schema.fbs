@@ -221,6 +221,8 @@ table ModelPartRow
   bucket_slot: uint;
   texture_id: uint;
   shading_group: uint;
+  meshlet_offset: uint;
+  meshlet_count: uint;
 }
 
 // inc/hgl/graph/ubo/ModelExpansionArena.h → ModelExpansionArena

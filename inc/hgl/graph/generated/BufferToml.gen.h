@@ -679,6 +679,14 @@ namespace hgl::graph::generated
         {
             if (!detail::AsUnsigned(*v, out.shading_group)) return false;
         }
+        if (const toml::value *v = detail::Find(table, "meshlet_offset"))
+        {
+            if (!detail::AsUnsigned(*v, out.meshlet_offset)) return false;
+        }
+        if (const toml::value *v = detail::Find(table, "meshlet_count"))
+        {
+            if (!detail::AsUnsigned(*v, out.meshlet_count)) return false;
+        }
         return true;
     }
 
@@ -974,6 +982,8 @@ namespace hgl::graph::generated
         t["bucket_slot"] = detail::FromInteger(in.bucket_slot);
         t["texture_id"] = detail::FromInteger(in.texture_id);
         t["shading_group"] = detail::FromInteger(in.shading_group);
+        t["meshlet_offset"] = detail::FromInteger(in.meshlet_offset);
+        t["meshlet_count"] = detail::FromInteger(in.meshlet_count);
         return toml::value(std::move(t));
     }
 

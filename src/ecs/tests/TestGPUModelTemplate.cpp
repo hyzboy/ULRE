@@ -115,6 +115,10 @@ namespace
               "ModelPartRow.texture_id @112（原 _pad0[0]）" },
             { offsetof(ssbo::ModelPartRow, shading_group) == 116,
               "ModelPartRow.shading_group @116（原 _pad0[1]）" },
+            { offsetof(ssbo::ModelPartRow, meshlet_offset) == 120,
+              "ModelPartRow.meshlet_offset @120" },
+            { offsetof(ssbo::ModelPartRow, meshlet_count) == 124,
+              "ModelPartRow.meshlet_count @124" },
 
             // T4.4：实例自定义数据独表（不挤进已被 128B 锁死的 EntityGPU 行）。
             { sizeof(ssbo::InstanceCustomData) == 16u,
@@ -195,6 +199,7 @@ namespace
         ok = ok && (part.material_id == 0u);
         ok = ok && (part.texture_id == 0u);
         ok = ok && (part.shading_group == 0u);
+        ok = ok && (part.meshlet_offset == 0u && part.meshlet_count == 0u);
 
         // 展开竞技场：48 B 头 + 64 B 对齐段首（矩阵段/桶基址段按 16B 引用对齐）。
         ok = ok && (sizeof(ModelExpansionArena) == 48);
@@ -536,8 +541,8 @@ namespace
         {
             { &tpl_src,   "ModelTemplateRowData",    uint32_t(sizeof(ssbo::ModelTemplateRow)), 11u,
               "ModelTemplateRowData 镜像字段总宽必须 == 128B 且字段数不变" },
-            { &part_src,  "ModelPartRowData",        uint32_t(sizeof(ssbo::ModelPartRow)),     10u,
-              "ModelPartRowData 镜像字段总宽必须 == 128B 且字段数不变（texture_id/shading_group 占用原填充）" },
+            { &part_src,  "ModelPartRowData",        uint32_t(sizeof(ssbo::ModelPartRow)),     11u,
+              "ModelPartRowData 镜像字段总宽必须 == 128B 且 meshlet_offset/count 取代尾部填充" },
             { &arena_src, "ModelExpansionArenaData", uint32_t(sizeof(ModelExpansionArena)),    8u,
               "ModelExpansionArenaData 镜像字段总宽必须 == 48B 且字段数不变" },
             { &meshlet_desc_src, "MeshletDescriptorData", uint32_t(sizeof(ssbo::MeshletDescriptorRow)), 4u,
@@ -614,12 +619,13 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString registry_src, geometry_src, loader_src, cull_src, mgr_src;
+        AnsiString registry_src, geometry_src, loader_src, cull_src, mgr_src, builder_src;
         AnsiString stage_head_src, interstage_writer_src, surface_src, orient_src;
 
         if (!ReadSource(OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"), registry_src)
             || !ReadSource(OS_TEXT("src/SceneGraph/geo/VKGeometry.cpp"), geometry_src)
             || !ReadSource(OS_TEXT("src/SceneGraph/geo/GeometryLoader.cpp"), loader_src)
+            || !ReadSource(OS_TEXT("src/ecs/support/material/ModelTemplateBuilder.cpp"), builder_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), cull_src)
             || !ReadSource(OS_TEXT("src/SceneGraph/asset/ModelTemplateManager.cpp"), mgr_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/stage_common_head.glsl"), stage_head_src)
@@ -683,6 +689,11 @@ namespace
         const bool loader_meshlet_support =
             ContainsToken(loader_src, "ReadMeshletData")
             && ContainsToken(loader_src, "BuildMeshletGeometryData");
+        const bool model_template_meshlet_link =
+            ContainsToken(mgr_src, "row.meshlet_offset = geometry->GetMeshletOffset();")
+            && ContainsToken(mgr_src, "row.meshlet_count = geometry->GetMeshletCount();")
+            && ContainsToken(builder_src, "row.meshlet_offset = info.meshlet_offset;")
+            && ContainsToken(builder_src, "row.meshlet_count = info.meshlet_count;");
 
         // 展开侧：桶号 = 组基址 + 槽号（"部件 ⇒ 素材桶"的唯一公式；阶段 1 组基址来自二级表）。
         const bool bucket_formula = ContainsToken(cull_src,
@@ -740,6 +751,7 @@ namespace
             { meshlet_addresses, "四个 Meshlet 池 BDA 必须回填全局地址表" },
             { meshlet_uploads, "Geometry 注册时必须申请并写入四类 Meshlet 池区间" },
             { loader_meshlet_support, "GeometryLoader 必须读取预烘焙 Meshlet 并支持缺失时构建" },
+            { model_template_meshlet_link, "ModelPartRow 必须直接链接 Geometry 的 Meshlet 连续区间" },
             { bucket_formula, "展开侧桶号必须 = 组基址 + part.bucket_slot" },
             { group_table,    "展开侧必须经二级组表按 part.shading_group 取组基址" },
             { part_material,  "部件自带材质必须按 HasMaterial 标志显式选择" },

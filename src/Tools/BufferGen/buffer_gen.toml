@@ -138,7 +138,7 @@ glsl_struct = "ModelPartRowData"
 glsl_ref = "ModelPartRowBufferRef"
 ref_member = "parts"
 ref_array = 1
-note = "模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；local_matrix @0 / 包围盒 @64/@80 / geometry_id @96。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。"
+note = "模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；geometry_id @96，meshlet_offset/count @120/@124。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。"
 
 [[struct]]
 name = "ModelExpansionArena"

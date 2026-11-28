@@ -35,6 +35,8 @@ namespace hgl::ecs
         {
             hgl::math::Matrix4f local_matrix{1.0f};
             uint32_t geometry_id = 0;
+            uint32_t meshlet_offset = 0;
+            uint32_t meshlet_count = 0;
             uint32_t material_id = 0;
             uint32_t texture_id = 0;
             uint32_t group_index = 0;
@@ -125,6 +127,9 @@ namespace hgl::ecs
         for (uint32_t p = 0; p < part_count; ++p)
         {
             const auto &input = parts[p];
+            if (input.geometry && input.geometry->GetGeometryID() == 0u)
+                input.geometry->EnsureMeshDrawParams(
+                    registry, context->Environment().GetGPUDevice());
             const auto *row = runtime_table->Get(input.material.runtime_row);
             if (input.material.runtime_row != INVALID_MATERIAL_RUNTIME_ROW_ID && !row)
             {
@@ -253,6 +258,8 @@ namespace hgl::ecs
                 PartBuildInfo pinfo;
                 pinfo.local_matrix = input.local_matrix;
                 pinfo.geometry_id = geo_id;
+                pinfo.meshlet_offset = geo->GetMeshletOffset();
+                pinfo.meshlet_count = geo->GetMeshletCount();
                 pinfo.material_id = mat_id;
                 pinfo.texture_id = tex_id;
                 pinfo.group_index = group_idx;
@@ -302,6 +309,8 @@ namespace hgl::ecs
             row.aabb_center_radius = hgl::math::Vector4f(info.part_center.x, info.part_center.y, info.part_center.z, info.part_radius);
             row.aabb_extents = hgl::math::Vector4f(info.part_extent.x, info.part_extent.y, info.part_extent.z, 0.0f);
             row.geometry_id = info.geometry_id;
+            row.meshlet_offset = info.meshlet_offset;
+            row.meshlet_count = info.meshlet_count;
             row.material_id = info.material_id;
             row.texture_id = info.texture_id;
             row.shading_group = info.group_index;
@@ -390,7 +399,9 @@ namespace hgl::ecs
                                               ECSContext *context,
                                               uint32_t geometry_id,
                                               const hgl::math::AABB &local_aabb,
-                                              const SinglePrimitiveModelTemplateDesc &desc)
+                                              const SinglePrimitiveModelTemplateDesc &desc,
+                                              const uint32_t meshlet_offset,
+                                              const uint32_t meshlet_count)
     {
         using graph::ssbo::ModelTemplateRow;
         using graph::ssbo::ModelPartRow;
@@ -455,6 +466,8 @@ namespace hgl::ecs
         part_row.aabb_center_radius = hgl::math::Vector4f(part_center.x, part_center.y, part_center.z, part_radius);
         part_row.aabb_extents = hgl::math::Vector4f(part_extent.x, part_extent.y, part_extent.z, 0.0f);
         part_row.geometry_id = geometry_id;
+        part_row.meshlet_offset = meshlet_offset;
+        part_row.meshlet_count = meshlet_count;
         part_row.material_id = 0;
         part_row.texture_id = 0;
         part_row.shading_group = 0;
@@ -530,7 +543,8 @@ namespace hgl::ecs
 
         const uint32_t geometry_id = geo->GetGeometryID();
         const hgl::math::AABB local_aabb = geo->GetBoundingVolumes().aabb;
-        return BuildSinglePrimitiveModelTemplate(registry, context, geometry_id, local_aabb, desc);
+        return BuildSinglePrimitiveModelTemplate(registry, context, geometry_id, local_aabb, desc,
+                                                 geo->GetMeshletOffset(), geo->GetMeshletCount());
     }
 
     uint32_t BuildSinglePrimitiveModelTemplate(graph::GlobalSSBOBufferRegistry *registry,

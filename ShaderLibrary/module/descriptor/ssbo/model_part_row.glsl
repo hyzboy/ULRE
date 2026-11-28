@@ -3,7 +3,7 @@
 //   由 src/Tools/BufferGen/buffer_gen.py 生成，请勿手工修改。
 //   源：inc/hgl/graph/ssbo/ModelTemplateRows.h → ModelPartRow
 //   布局：kind=ssbo bda=1 access=readonly size=128 align=16 ref_align=16
-//   说明：模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；local_matrix @0 / 包围盒 @64/@80 / geometry_id @96。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。
+//   说明：模型部件池行（GlobalSSBOType::ModelPartPool）：一步长 128B；geometry_id @96，meshlet_offset/count @120/@124。着色器经 GlobalAddresses.addr_model_part_pool 以 BDA 读取 ⇒ 本 Ref 块仅作 struct 镜像来源。
 // @ulre-codegen end
 // ─────────────────────────────────────────────────────────────────────────────
 #ifndef HGL_SHADERLIB_MODULE_DESCRIPTOR_SSBO_MODEL_PART_ROW_GLSL
@@ -20,7 +20,8 @@ struct ModelPartRowData
     uint bucket_slot;
     uint texture_id;
     uint shading_group;
-    uint _pad0[2];
+    uint meshlet_offset;
+    uint meshlet_count;
 };
 
 layout(buffer_reference, scalar, buffer_reference_align=16) readonly buffer ModelPartRowBufferRef

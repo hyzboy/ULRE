@@ -154,6 +154,8 @@ namespace hgl::graph::ssbo
      *   半径为辅助快速球测，extents 供精确 AABB）。
      * - `geometry_id`：Geometry 池（MeshDrawParams 主表）行号，0 = 无几何跳过。
      *   口径与 EntityGPU 表的 4-ID（entity_render_ids.geometry）完全一致。
+     * - `meshlet_offset/meshlet_count`：MeshletDescriptorPool 中该几何体的连续区间；
+     *   MeshletVertex/Triangle/Bounds 的全局区间通过对应 descriptor 的偏移字段取得。
      * - `material_id`：材质数据行号（MaterialData 池）。
      *   **仅当 `part_flags & kModelPartFlagHasMaterial` 置位时有效**；否则回退到宿主实体的
      *   `ids_blk.material_id`（旧单材质模板语义）。
@@ -183,7 +185,8 @@ namespace hgl::graph::ssbo
 
         uint32_t texture_id    = 0;                  ///< 纹理配置行号（HasMaterial 置位时有效）
         uint32_t shading_group = 0;                  ///< 模板内 Shading Group 序号
-        uint32_t _pad0[2]      = { 0u, 0u };         ///< 补足 128B
+        uint32_t meshlet_offset = 0;                 ///< MeshletDescriptorPool 起始行
+        uint32_t meshlet_count = 0;                  ///< Meshlet 数量
     };
 
     static_assert(sizeof(ModelPartRow) == 128, "ModelPartRow 必须恰为 128 字节");
@@ -197,4 +200,6 @@ namespace hgl::graph::ssbo
     static_assert(offsetof(ModelPartRow, bucket_slot) == 108,  "bucket_slot @108");
     static_assert(offsetof(ModelPartRow, texture_id) == 112,     "texture_id @112");
     static_assert(offsetof(ModelPartRow, shading_group) == 116,  "shading_group @116");
+    static_assert(offsetof(ModelPartRow, meshlet_offset) == 120, "meshlet_offset @120");
+    static_assert(offsetof(ModelPartRow, meshlet_count) == 124,  "meshlet_count @124");
 }

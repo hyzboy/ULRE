@@ -116,6 +116,8 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
 
             const PrimitiveAsset &asset = content.assets[static_cast<size_t>(pi)];
             Geometry *geometry = asset.GetGeometry();
+            if (geometry && geometry->GetGeometryID() == 0u)
+                geometry->EnsureMeshDrawParams(registry, registry->GetDevice());
 
             ModelPartRow row;
             row.local_matrix = node.worldMatrix;
@@ -126,7 +128,11 @@ uint32_t ModelTemplateManager::RegisterModelTemplate(GlobalSSBOBufferRegistry *r
             // 几何未流送就绪时 GetGeometryID() 为 0 ⇒ 展开跳过该部件（降级不多不少）。
             row.geometry_id = geometry ? geometry->GetGeometryID() : 0u;
             if (row.geometry_id != 0u)
+            {
                 ++ready_geometry;
+                row.meshlet_offset = geometry->GetMeshletOffset();
+                row.meshlet_count = geometry->GetMeshletCount();
+            }
 
             // material_id / texture_id：模板层不定死材质（批次/实例材质在 collect 侧回退），
             // 先行占 0 且**不置** `kModelPartFlagHasMaterial` ⇒ 展开侧沿用宿主实体材质。
