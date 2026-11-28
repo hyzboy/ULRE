@@ -1,4 +1,7 @@
 #include <hgl/ecs/support/render/WorldGPUResources.h>
+#include <hgl/ecs/support/render/WorldEntityRenderState.h>
+#include <hgl/ecs/support/render/WorldRenderData.h>
+#include <hgl/ecs/support/render/WorldRenderEnvironment.h>
 #include <hgl/ecs/support/storage/EntityGPUTable.h>
 #include <hgl/ecs/support/storage/EntityRenderIDTable.h>
 #include <hgl/ecs/support/storage/LightRowTable.h>
@@ -108,8 +111,14 @@ namespace hgl::ecs
         }
     }
 
-    WorldGPUResources::WorldGPUResources(IWorldGPUResourcesSource *value)
-        : source(value)
+    WorldGPUResources::WorldGPUResources(WorldRenderEnvironment *env,
+                                         WorldEntityRenderState *entity_state,
+                                         WorldRenderData *data,
+                                         const AnsiString &name)
+        : environment(env)
+        , entity_render_state(entity_state)
+        , render_data(data)
+        , world_name(name)
     {
     }
 
@@ -178,17 +187,17 @@ namespace hgl::ecs
         if (world_addresses_table)
             return true;
 
-        if (!source)
+        if (!environment || !entity_render_state || !render_data)
             return false;
 
-        auto *gc = source->GPUResourcesGraphicsContext();
-        auto *gpu_device = source->GPUResourcesDevice();
-        const char *world_name = source->GPUResourcesWorldName().c_str();
+        auto *gc = environment->GetGraphicsContext();
+        auto *gpu_device = environment->GetGPUDevice();
+        const char *world_name_cstr = world_name.c_str();
 
         if (!BuildWorldRowTable<graph::WorldAddresses>(
                 "WorldGPUResources::InitializeWorldAddressesTable", "AddressesTable",
                 VkDeviceSize(graph::kWorldAddressesSlotStride) * graph::kWorldAddressesSlotCount,
-                gc, gpu_device, world_name,
+                gc, gpu_device, world_name_cstr,
                 graph::BufferUpdateClass::Default,
                 world_addresses_buffer, world_addresses_table, world_addresses_addr))
             return false;
@@ -220,10 +229,10 @@ namespace hgl::ecs
 
     void WorldGPUResources::UploadEntityGPUDirtyRows(const uint32_t /*frame_slot*/)
     {
-        if (!entity_gpu_buffer || !source)
+        if (!entity_gpu_buffer || !entity_render_state)
             return;
 
-        auto &entity_gpu_table = source->GPUResourcesEntityTable();
+        auto &entity_gpu_table = entity_render_state->EntityGPU();
         UploadDirtyRowsHelper<EntityGPUTable, EntityGPU>(
             entity_gpu_table, entity_gpu_table.GetDirtySet(), entity_gpu_view, EntityGPUTable::kCapacity,
             [](const EntityGPUTable &t, uint32_t idx) { return t.Row(idx); });
@@ -231,10 +240,10 @@ namespace hgl::ecs
 
     void WorldGPUResources::UploadEntityRenderIDDirtyRows()
     {
-        if (!entity_render_id_buffer || !source)
+        if (!entity_render_id_buffer || !entity_render_state)
             return;
 
-        auto &entity_render_id_table = source->GPUResourcesRenderIDTable();
+        auto &entity_render_id_table = entity_render_state->EntityRenderIDs();
         UploadDirtyRowsHelper<EntityRenderIDTable, graph::RenderItemDescriptor>(
             entity_render_id_table, entity_render_id_table.GetDirtySet(), entity_render_id_view, EntityRenderIDTable::kRowStride,
             [](const EntityRenderIDTable &t, uint32_t idx) { return t.FlatRow(idx); });
@@ -242,10 +251,10 @@ namespace hgl::ecs
 
     void WorldGPUResources::UploadLightRowDirtyRows()
     {
-        if (!light_row_buffer || !source)
+        if (!light_row_buffer || !render_data)
             return;
 
-        auto &light_row_table = source->GPUResourcesLightTable();
+        auto &light_row_table = render_data->Lights();
         UploadDirtyRowsHelper<LightRowTable, graph::LightRow>(
             light_row_table, light_row_table.GetDirtySet(), light_row_view, LightRowTable::kCapacity,
             [](const LightRowTable &t, uint32_t idx) { return t.Row(idx); });
@@ -256,19 +265,19 @@ namespace hgl::ecs
         if (entity_render_id_buffer)
             return true;
 
-        if (!source)
+        if (!environment || !entity_render_state || !render_data)
             return false;
 
-        auto *gc = source->GPUResourcesGraphicsContext();
-        auto *gpu_device = source->GPUResourcesDevice();
-        const char *world_name = source->GPUResourcesWorldName().c_str();
+        auto *gc = environment->GetGraphicsContext();
+        auto *gpu_device = environment->GetGPUDevice();
+        const char *world_name_cstr = world_name.c_str();
 
         if (!BuildWorldRowTable<graph::RenderItemDescriptor>(
                 "WorldGPUResources::InitializeEntityRenderIDTable", "EntityRenderIDTable",
                 VkDeviceSize(graph::kWorldAddressesSlotCount)
                     * VkDeviceSize(EntityRenderIDTable::kRowStride)
                     * VkDeviceSize(sizeof(graph::RenderItemDescriptor)),
-                gc, gpu_device, world_name,
+                gc, gpu_device, world_name_cstr,
                 graph::BufferUpdateClass::Default,
                 entity_render_id_buffer, entity_render_id_view, entity_render_id_table_addr))
             return false;
@@ -285,7 +294,7 @@ namespace hgl::ecs
         GLogInfo("[WorldGPUResources] 实体 4-ID 表就绪：%s  %u 行 × %zu B = %zu KB／份 × %u 份（帧槽）= %zu KB，"
                 "帧槽 0 基址=0x%llX（消费者：GPU 剔除 / CPU 参考对拍 / 形态 B gather；"
                 "每帧地址=基址+帧槽×每份字节，经 WorldAddresses.addr_entity_render_ids 下发）",
-                world_name, EntityRenderIDTable::kRowStride,
+                world_name_cstr, EntityRenderIDTable::kRowStride,
                 sizeof(graph::RenderItemDescriptor),
                 size_t(EntityRenderIDTable::kRowStride) * sizeof(graph::RenderItemDescriptor) / 1024,
                 uint32_t(graph::kWorldAddressesSlotCount),
@@ -301,18 +310,18 @@ namespace hgl::ecs
         if (entity_gpu_buffer)
             return true;
 
-        if (!source)
+        if (!environment || !entity_render_state || !render_data)
             return false;
 
-        auto *gc = source->GPUResourcesGraphicsContext();
-        auto *gpu_device = source->GPUResourcesDevice();
-        const char *world_name = source->GPUResourcesWorldName().c_str();
+        auto *gc = environment->GetGraphicsContext();
+        auto *gpu_device = environment->GetGPUDevice();
+        const char *world_name_cstr = world_name.c_str();
 
         if (!BuildWorldRowTable<EntityGPU>(
                 "WorldGPUResources::InitializeEntityGPUTable", "EntityGPUTable",
                 VkDeviceSize(graph::kWorldAddressesSlotCount)
                     * VkDeviceSize(EntityGPUTable::kCapacity) * VkDeviceSize(sizeof(EntityGPU)),
-                gc, gpu_device, world_name,
+                gc, gpu_device, world_name_cstr,
                 graph::BufferUpdateClass::Default,
                 entity_gpu_buffer, entity_gpu_view, entity_gpu_table_addr))
             return false;
@@ -333,7 +342,7 @@ namespace hgl::ecs
         GLogInfo("[WorldGPUResources] 实体行表就绪：%s  %u 行 × %zu B = %zu KB／份 × %u 份（帧槽）= %zu KB，"
                 "帧槽 0 基址=0x%llX（消费者：GPU 剔除读实体行；每帧地址=基址+帧槽×每份字节，"
                 "经 WorldAddresses.addr_entity_gpu 下发）",
-                world_name, EntityGPUTable::kCapacity, sizeof(EntityGPU),
+                world_name_cstr, EntityGPUTable::kCapacity, sizeof(EntityGPU),
                 size_t(EntityGPUTable::kCapacity) * sizeof(EntityGPU) / 1024,
                 uint32_t(graph::kWorldAddressesSlotCount),
                 size_t(graph::kWorldAddressesSlotCount) * EntityGPUTable::kCapacity
@@ -348,23 +357,23 @@ namespace hgl::ecs
         if (light_row_buffer)
             return true;
 
-        if (!source)
+        if (!environment || !entity_render_state || !render_data)
             return false;
 
-        auto &light_row_table = source->GPUResourcesLightTable();
+        auto &light_row_table = render_data->Lights();
         light_row_table.Ensure();
 
         const VkDeviceSize one_copy = VkDeviceSize(LightRowTable::kCapacity)
                                     * VkDeviceSize(sizeof(graph::LightRow));
 
-        auto *gc = source->GPUResourcesGraphicsContext();
-        auto *gpu_device = source->GPUResourcesDevice();
-        const char *world_name = source->GPUResourcesWorldName().c_str();
+        auto *gc = environment->GetGraphicsContext();
+        auto *gpu_device = environment->GetGPUDevice();
+        const char *world_name_cstr = world_name.c_str();
 
         if (!BuildWorldRowTable<graph::LightRow>(
                 "WorldGPUResources::InitializeLightRowTable", "LightRows",
                 one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount),
-                gc, gpu_device, world_name,
+                gc, gpu_device, world_name_cstr,
                 graph::BufferUpdateClass::Default,
                 light_row_buffer, light_row_view, light_row_table_addr))
             return false;
@@ -388,7 +397,7 @@ namespace hgl::ecs
         GLogInfo("[WorldGPUResources] 光源行表就绪：%s  %u 行 × %zu B = %zu B／份 × %u 份（帧槽），"
                 "帧槽 0 基址=0x%llX（行 0 = 主方向光；每帧地址=基址+帧槽×每份字节，"
                 "经 WorldAddresses.addr_lights 下发）",
-                world_name, LightRowTable::kCapacity, sizeof(graph::LightRow),
+                world_name_cstr, LightRowTable::kCapacity, sizeof(graph::LightRow),
                 size_t(one_copy),
                 uint32_t(graph::kWorldAddressesSlotCount),
                 (unsigned long long)light_row_table_addr);
@@ -401,19 +410,19 @@ namespace hgl::ecs
         if (shadow_info_buffer)
             return true;
 
-        if (!source)
+        if (!environment || !entity_render_state || !render_data)
             return false;
 
         const VkDeviceSize one_copy = VkDeviceSize(sizeof(graph::ShadowInfo));
 
-        auto *gc = source->GPUResourcesGraphicsContext();
-        auto *gpu_device = source->GPUResourcesDevice();
-        const char *world_name = source->GPUResourcesWorldName().c_str();
+        auto *gc = environment->GetGraphicsContext();
+        auto *gpu_device = environment->GetGPUDevice();
+        const char *world_name_cstr = world_name.c_str();
 
         if (!BuildWorldRowTable<graph::ShadowInfo>(
                 "WorldGPUResources::InitializeShadowInfoTable", "ShadowInfo",
                 one_copy * VkDeviceSize(graph::kWorldAddressesSlotCount),
-                gc, gpu_device, world_name,
+                gc, gpu_device, world_name_cstr,
                 graph::BufferUpdateClass::Deferred,
                 shadow_info_buffer, shadow_info_view, shadow_info_addr))
             return false;
@@ -429,7 +438,7 @@ namespace hgl::ecs
         GLogInfo("[WorldGPUResources] 影子数据表就绪：%s  %zu B × %u 份（帧槽）= %zu KB，帧槽 0 基址=0x%llX"
                 "（世界私有；写者 = MainLightShadowSystem 的 EditShadowInfo + 提交点 CommitShadowInfo；"
                 "每帧地址=基址+帧槽×每份字节，经 WorldAddresses.addr_shadow 下发）",
-                world_name, size_t(one_copy),
+                world_name_cstr, size_t(one_copy),
                 uint32_t(graph::kWorldAddressesSlotCount),
                 size_t(graph::kWorldAddressesSlotCount) * size_t(one_copy) / 1024,
                 (unsigned long long)shadow_info_addr);
@@ -439,7 +448,7 @@ namespace hgl::ecs
 
     void WorldGPUResources::CommitShadowInfo(const uint32_t frame_slot)
     {
-        if (!shadow_info_view || !source)
+        if (!shadow_info_view || !render_data)
             return;
 
         auto *base = reinterpret_cast<graph::ShadowInfo *>(shadow_info_view->Data());
@@ -448,7 +457,7 @@ namespace hgl::ecs
 
         const uint32_t slot = frame_slot % graph::kWorldAddressesSlotCount;
 
-        base[slot] = source->GPUResourcesShadowInfo();
+        base[slot] = render_data->Shadow();
         shadow_info_view->Commit();
     }
 
@@ -462,9 +471,11 @@ namespace hgl::ecs
              * uint64_t(graph::kWorldAddressesSlotStride);
     }
 
-    bool WorldGPUResources::SyncWorldAddresses(const uint32_t frame_index)
+    bool WorldGPUResources::SyncWorldAddresses(const uint32_t frame_index,
+                                               const uint64_t transform_address,
+                                               const uint64_t model_expansion_address)
     {
-        if (!world_addresses_table || !source)
+        if (!world_addresses_table || !environment || !entity_render_state || !render_data)
             return false;
 
         auto *base = reinterpret_cast<uint8_t *>(world_addresses_table->Data());
@@ -483,7 +494,7 @@ namespace hgl::ecs
         const auto slot_offset = [slot](const uint64_t b, const uint64_t per_slot_bytes) -> uint64_t
         { return b != 0 ? (b + static_cast<uint64_t>(slot) * per_slot_bytes) : 0; };
 
-        auto *camera_info_storage = source->GPUResourcesCameraStorage();
+        auto *camera_info_storage = render_data->CameraRows();
         want.addr_camera_info = pick((camera_info_storage && camera_info_storage->IsReady())
                                      ? camera_info_storage->GetGPUBase() : 0,
                                      dst->addr_camera_info);
@@ -505,22 +516,22 @@ namespace hgl::ecs
             dst->addr_lights);
 
         {
-            const uint64_t l2w_addr = source->GPUResourcesTransformAddress();
-            want.addr_l2w = pick(l2w_addr, dst->addr_l2w);
+            want.addr_l2w = pick(transform_address, dst->addr_l2w);
         }
 
         UploadEntityGPUDirtyRows(slot);
         UploadEntityRenderIDDirtyRows();
         UploadLightRowDirtyRows();
 
-        const uint32_t active_env_profile = source->GPUResourcesEnvironmentProfile();
-        const uint64_t ambient_env_addr = source->GPUResourcesAmbientAddress(active_env_profile);
+        const uint32_t active_env_profile = environment->GetEnvProfileID();
+        auto *env_manager = environment->ResolveEnvManager();
+        const uint64_t ambient_env_addr = env_manager
+            ? env_manager->GetAmbientEnvAddress(active_env_profile)
+            : 0;
         want.addr_ambient_env = pick(ambient_env_addr, dst->addr_ambient_env);
 
         {
-            const uint64_t expansion_addr = source->GPUResourcesModelExpansionAddress();
-
-            want.addr_model_expansion = pick(expansion_addr, dst->addr_model_expansion);
+            want.addr_model_expansion = pick(model_expansion_address, dst->addr_model_expansion);
         }
 
         want.addr_shadow = pick(
@@ -539,7 +550,7 @@ namespace hgl::ecs
         if (old_shadow != want.addr_shadow || old_ambient_env != want.addr_ambient_env)
             GLogInfo("[WorldGPUResources::SyncWorldAddresses] 世界 \"%s\" 地址入表：profile=%u "
                     "shadow[%u]=0x%llX ambient_env=0x%llX",
-                    source->GPUResourcesWorldName().c_str(), active_env_profile, slot,
+                    world_name.c_str(), active_env_profile, slot,
                     static_cast<unsigned long long>(want.addr_shadow),
                     static_cast<unsigned long long>(want.addr_ambient_env));
 

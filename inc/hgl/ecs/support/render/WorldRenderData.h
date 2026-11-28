@@ -22,19 +22,8 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
-    class IWorldRenderDataSource
-    {
-    public:
-        virtual ~IWorldRenderDataSource() = default;
-        virtual const AnsiString &RenderDataWorldName() const = 0;
-        virtual void RenderDataPipelineInvalidated() = 0;
-        virtual void RenderDataModelTemplateChanged() = 0;
-        virtual graph::GraphicsContext *RenderDataGraphicsContext() = 0;
-        virtual graph::IRenderTarget *RenderDataRenderTarget() = 0;
-        virtual graph::TextureManager *RenderDataTextureManager() = 0;
-        virtual uint64_t RenderDataSubmissionSerial() const = 0;
-        virtual bool RenderDataGPUQuiescent() const = 0;
-    };
+    class WorldRenderEnvironment;
+    class WorldRenderRunner;
 
     /**
      * WorldRenderData
@@ -52,7 +41,9 @@ namespace hgl::ecs
     class WorldRenderData
     {
     private:
-        IWorldRenderDataSource *source = nullptr;
+        WorldRenderEnvironment *environment = nullptr;
+        WorldRenderRunner *render_runner = nullptr;
+        AnsiString world_name;
         const void *world_identity = nullptr;
 
         /// 光源行表（LightRow，世界私有；行 0 = 主方向光）
@@ -83,7 +74,10 @@ namespace hgl::ecs
         std::shared_ptr<CameraComponent> fallback_camera;
 
     public:
-        explicit WorldRenderData(IWorldRenderDataSource *source = nullptr, const void *world_identity = nullptr);
+        explicit WorldRenderData(WorldRenderEnvironment *environment = nullptr,
+                                 WorldRenderRunner *render_runner = nullptr,
+                                 const AnsiString &world_name = "World",
+                                 const void *world_identity = nullptr);
         ~WorldRenderData();
 
         WorldRenderData(const WorldRenderData &) = delete;

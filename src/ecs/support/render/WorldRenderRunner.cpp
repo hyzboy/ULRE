@@ -800,7 +800,7 @@ namespace hgl::ecs
 
         {
             FrameProfileSpan sync_span(FrameProfileSlot::SyncWorldAddresses);
-            context->GPUResources().SyncWorldAddresses(context->GetFrameIndex());
+            context->SyncGPUResourceAddresses();
         }
 
         {

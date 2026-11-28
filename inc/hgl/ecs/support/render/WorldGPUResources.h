@@ -25,24 +25,9 @@ namespace hgl::ecs
     class EntityRenderIDTable;
     class LightRowTable;
     class CameraInfoStorage;
-
-    class IWorldGPUResourcesSource
-    {
-    public:
-        virtual ~IWorldGPUResourcesSource() = default;
-        virtual graph::GraphicsContext *GPUResourcesGraphicsContext() = 0;
-        virtual graph::VulkanDevice *GPUResourcesDevice() = 0;
-        virtual const AnsiString &GPUResourcesWorldName() const = 0;
-        virtual EntityGPUTable &GPUResourcesEntityTable() = 0;
-        virtual EntityRenderIDTable &GPUResourcesRenderIDTable() = 0;
-        virtual LightRowTable &GPUResourcesLightTable() = 0;
-        virtual const graph::ShadowInfo &GPUResourcesShadowInfo() const = 0;
-        virtual CameraInfoStorage *GPUResourcesCameraStorage() = 0;
-        virtual uint64_t GPUResourcesTransformAddress() = 0;
-        virtual uint32_t GPUResourcesEnvironmentProfile() const = 0;
-        virtual uint64_t GPUResourcesAmbientAddress(uint32_t profile) const = 0;
-        virtual uint64_t GPUResourcesModelExpansionAddress() = 0;
-    };
+    class WorldEntityRenderState;
+    class WorldRenderData;
+    class WorldRenderEnvironment;
 
     /**
      * @brief 世界 GPU 资源底座
@@ -53,7 +38,10 @@ namespace hgl::ecs
     class WorldGPUResources
     {
     private:
-        IWorldGPUResourcesSource *source = nullptr;
+        WorldRenderEnvironment *environment = nullptr;
+        WorldEntityRenderState *entity_render_state = nullptr;
+        WorldRenderData *render_data = nullptr;
+        AnsiString world_name;
 
         // 1. 世界地址表
         graph::StructView<graph::WorldAddresses> *world_addresses_table = nullptr;
@@ -81,7 +69,10 @@ namespace hgl::ecs
         uint64_t shadow_info_addr = 0;
 
     public:
-        explicit WorldGPUResources(IWorldGPUResourcesSource *source = nullptr);
+        explicit WorldGPUResources(WorldRenderEnvironment *environment = nullptr,
+                                   WorldEntityRenderState *entity_render_state = nullptr,
+                                   WorldRenderData *render_data = nullptr,
+                                   const AnsiString &world_name = "World");
         ~WorldGPUResources();
 
         bool InitializeWorldAddressesTable();
@@ -95,7 +86,9 @@ namespace hgl::ecs
         void UploadLightRowDirtyRows();
 
         void CommitShadowInfo(const uint32_t frame_slot);
-        bool SyncWorldAddresses(const uint32_t frame_index);
+        bool SyncWorldAddresses(const uint32_t frame_index,
+                                uint64_t transform_address = 0,
+                                uint64_t model_expansion_address = 0);
 
         uint64_t GetWorldAddressesAddress(const uint32_t frame_slot) const;
 

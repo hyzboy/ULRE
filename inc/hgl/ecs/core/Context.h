@@ -62,7 +62,6 @@ namespace hgl {
         class VulkanDevice;
         class RenderContext;
         class DeviceBuffer;
-        class EnvironmentManager;
         template<typename T> class StructView;
         struct WorldAddresses;
         struct RenderPassOptions;
@@ -91,9 +90,10 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IWorldGPUResourcesSource, private IWorldRenderDataSource
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver
         {
         private:
+            friend class WorldRenderRunner;
             void ConfigureSystem(System *system) override;
 
         public:
@@ -110,28 +110,6 @@ namespace hgl
         private:
             OBJECT_LOGGER
             friend struct RenderPassSetupTestAccess;
-            const AnsiString &RenderDataWorldName() const override { return GetName(); }
-            void RenderDataPipelineInvalidated() override { MarkTopologyChanged(TopologyChange::MaterialBinding); }
-            void RenderDataModelTemplateChanged() override { MarkTopologyChanged(TopologyChange::ModelTemplate); }
-            graph::GraphicsContext *RenderDataGraphicsContext() override;
-            graph::IRenderTarget *RenderDataRenderTarget() override;
-            graph::TextureManager *RenderDataTextureManager() override;
-            uint64_t RenderDataSubmissionSerial() const override { return GetRenderSubmissionSerial(); }
-            bool RenderDataGPUQuiescent() const override;
-
-            graph::GraphicsContext *GPUResourcesGraphicsContext() override;
-            graph::VulkanDevice *GPUResourcesDevice() override;
-            const AnsiString &GPUResourcesWorldName() const override;
-            EntityGPUTable &GPUResourcesEntityTable() override;
-            EntityRenderIDTable &GPUResourcesRenderIDTable() override;
-            LightRowTable &GPUResourcesLightTable() override;
-            const graph::ShadowInfo &GPUResourcesShadowInfo() const override;
-            CameraInfoStorage *GPUResourcesCameraStorage() override;
-            uint64_t GPUResourcesTransformAddress() override;
-            uint32_t GPUResourcesEnvironmentProfile() const override;
-            uint64_t GPUResourcesAmbientAddress(uint32_t profile) const override;
-            uint64_t GPUResourcesModelExpansionAddress() override;
-
             // 实体索引的 CPU 渲染派生表；Shutdown 先清理实体，再销毁此状态域。
             WorldEntityRenderState entity_render_state;
             uint64_t render_diagnostic_world_id = 0;
@@ -177,6 +155,9 @@ namespace hgl
         private:
 
             void RunSystemUpdate(System *system, float deltaTime) override;
+            uint64_t ResolveTransformDeviceAddress() const;
+            uint64_t ResolveModelExpansionAddress() const;
+            bool SyncGPUResourceAddresses();
 
             /// 组件行增/删 ⇒ 系统组计数（A2/P-4 的挂卸驱动路径；组归属取自类型表）
             void OnComponentRowAdded(ComponentType type) override;
@@ -467,9 +448,6 @@ namespace hgl
 
             WorldGPUResources&       GPUResources()       { return gpu_resources; }
             const WorldGPUResources& GPUResources() const { return gpu_resources; }
-
-            /// 本世界的 EnvironmentManager（经 RenderContext/GraphicsContext 解析；不可用时 nullptr）
-            hgl::graph::EnvironmentManager *ResolveEnvManager() const;
 
         public:
 

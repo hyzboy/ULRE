@@ -12,22 +12,6 @@
 #include <hgl/log/Logger.h>
 #include <hgl/type/ValueArray.h>
 
-namespace hgl::ecs
-{
-    struct RenderPassSetupTestAccess
-    {
-        static EntityGPUTable &GPUResourcesEntityTable(ECSContext &context)
-        {
-            return context.GPUResourcesEntityTable();
-        }
-
-        static EntityRenderIDTable &GPUResourcesRenderIDTable(ECSContext &context)
-        {
-            return context.GPUResourcesRenderIDTable();
-        }
-    };
-}
-
 /**
  * 判据（落地计划 T2.1/T2.2/T2.3）：GPU 模型引用组件与动静 TRS 接入约定。
  *
@@ -58,68 +42,49 @@ namespace
     using namespace hgl;
     using namespace hgl::ecs;
 
-    class GPUResourcesTestSource final : public IWorldGPUResourcesSource
+    void TestGPUResourcesDirectDomainWiring()
     {
-        AnsiString name = "GPUResourcesTest";
-        EntityGPUTable entities;
-        EntityRenderIDTable render_ids;
-        LightRowTable lights;
-        graph::ShadowInfo shadow{};
-
-    public:
-        int graphics_queries = 0;
-        graph::GraphicsContext *GPUResourcesGraphicsContext() override { ++graphics_queries; return nullptr; }
-        graph::VulkanDevice *GPUResourcesDevice() override { return nullptr; }
-        const AnsiString &GPUResourcesWorldName() const override { return name; }
-        EntityGPUTable &GPUResourcesEntityTable() override { return entities; }
-        EntityRenderIDTable &GPUResourcesRenderIDTable() override { return render_ids; }
-        LightRowTable &GPUResourcesLightTable() override { return lights; }
-        const graph::ShadowInfo &GPUResourcesShadowInfo() const override { return shadow; }
-        CameraInfoStorage *GPUResourcesCameraStorage() override { return nullptr; }
-        uint64_t GPUResourcesTransformAddress() override { return 0; }
-        uint32_t GPUResourcesEnvironmentProfile() const override { return 0; }
-        uint64_t GPUResourcesAmbientAddress(uint32_t) const override { return 0; }
-        uint64_t GPUResourcesModelExpansionAddress() override { return 0; }
-    };
-
-    void TestGPUResourcesSourceBoundary()
-    {
-        GPUResourcesTestSource first;
-        GPUResourcesTestSource second;
-        WorldGPUResources resources(&first);
+        WorldRenderEnvironment first_environment;
+        WorldEntityRenderState first_entity_state;
+        WorldRenderRunner first_runner;
+        int first_world_identity = 0;
+        WorldRenderData first_data(&first_environment, &first_runner,
+                                   AnsiString("GPUResourcesTest"), &first_world_identity);
+        WorldGPUResources resources(&first_environment, &first_entity_state, &first_data,
+                                    AnsiString("GPUResourcesTest"));
         EXPECT(!resources.InitializeWorldAddressesTable());
-        EXPECT(first.graphics_queries == 1 && second.graphics_queries == 0);
 
-        WorldGPUResources other_resources(&second);
+        WorldRenderEnvironment second_environment;
+        WorldEntityRenderState second_entity_state;
+        WorldRenderRunner second_runner;
+        int second_world_identity = 0;
+        WorldRenderData second_data(&second_environment, &second_runner,
+                                    AnsiString("GPUResourcesTest"), &second_world_identity);
+        WorldGPUResources other_resources(&second_environment, &second_entity_state, &second_data,
+                                          AnsiString("GPUResourcesTest"));
         EXPECT(!other_resources.InitializeWorldAddressesTable());
-        EXPECT(first.graphics_queries == 1 && second.graphics_queries == 1);
     }
 
-    class RenderDataTestSource final : public IWorldRenderDataSource
+    void TestRenderDataDirectDomainWiring()
     {
-        AnsiString name = "RenderDataTest";
-
-    public:
-        int invalidations = 0;
-        int template_changes = 0;
-        const AnsiString &RenderDataWorldName() const override { return name; }
-        void RenderDataPipelineInvalidated() override { ++invalidations; }
-        void RenderDataModelTemplateChanged() override { ++template_changes; }
-        graph::GraphicsContext *RenderDataGraphicsContext() override { return nullptr; }
-        graph::IRenderTarget *RenderDataRenderTarget() override { return nullptr; }
-        graph::TextureManager *RenderDataTextureManager() override { return nullptr; }
-        uint64_t RenderDataSubmissionSerial() const override { return 0; }
-        bool RenderDataGPUQuiescent() const override { return true; }
-    };
-
-    void TestRenderDataSourceBoundary()
-    {
-        RenderDataTestSource source;
+        WorldRenderEnvironment environment;
+        WorldRenderRunner runner;
         int world_identity = 0;
-        WorldRenderData data(&source, &world_identity);
+        WorldRenderData data(&environment, &runner, AnsiString("RenderDataTest"), &world_identity);
 
+        const uint64_t material_revision =
+            runner.GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::MaterialBinding);
         data.InvalidateEntityRuntimePipeline(EntityID{});
-        EXPECT(source.invalidations == 1);
+        EXPECT(runner.GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::MaterialBinding)
+               == material_revision + 1);
+
+        const uint64_t template_revision =
+            runner.GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate);
+        data.NotifyModelTemplateChanged();
+        EXPECT(runner.GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::ModelTemplate)
+               == template_revision + 1);
+        EXPECT(data.IsGPUQuiescent());
+
         auto *camera = data.EnsureFallbackCamera();
         EXPECT(camera != nullptr);
         EXPECT(camera && camera->world_owner == &world_identity);
@@ -425,9 +390,6 @@ namespace
         const EntityID id = entity->GetEntityID();
         const EntityGPU *row = ctx.EntityRenderState().EntityGPU().Row(id);
         EXPECT(row && EntityGPUTable::IsActive(*row));
-        EXPECT(&ctx.EntityRenderState().EntityGPU() == &RenderPassSetupTestAccess::GPUResourcesEntityTable(ctx));
-        EXPECT(&ctx.EntityRenderState().EntityRenderIDs() == &RenderPassSetupTestAccess::GPUResourcesRenderIDTable(ctx));
-
         const graph::RenderItemDescriptor ids{5u, 6u, 7u, 8u};
         ctx.EntityRenderState().EntityRenderIDs().SetRenderIDs(0, id, ids);
         ctx.DestroyEntity(id);
@@ -490,8 +452,8 @@ int main(int argc, char **argv)
     TestWorldEntityRenderStateLifecycle();
     TestContextEntityRenderStateFacade();
     TestEntityRenderDataCleanup();
-    TestGPUResourcesSourceBoundary();
-    TestRenderDataSourceBoundary();
+    TestGPUResourcesDirectDomainWiring();
+    TestRenderDataDirectDomainWiring();
 
     if (g_fail > 0)
     {

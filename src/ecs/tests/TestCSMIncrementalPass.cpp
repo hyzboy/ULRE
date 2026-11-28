@@ -6844,11 +6844,11 @@ int main(int argc, char** argv)
               "T6b/P4：影子数据建表不与其余世界表同批（失败不中止 ⇒ 静默缺地址）" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
-              "base[slot] = source->GPUResourcesShadowInfo();",
+              "base[slot] = render_data->Shadow();",
               "T6b/P4：提交写成了「单份」而非「本帧槽」（在飞帧会读到被覆写的数据）" },
 
-            { "ContextGPU.cpp", OS_TEXT("src/ecs/core/ContextGPU.cpp"),
-              "return render_data.Shadow();",
+            { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
+              "base[slot] = render_data->Shadow();",
               "T6b/P4：影子提交源不是本世界的 CPU 权威" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
@@ -7131,7 +7131,7 @@ int main(int argc, char** argv)
               "2026-10-07：光源行表列（按帧槽切份）走统一口径" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),
-              "want.addr_l2w = pick(l2w_addr, dst->addr_l2w);",
+              "want.addr_l2w = pick(transform_address, dst->addr_l2w);",
               "2026-10-07：L2W 池列（口径的首个使用者，B1b）同批并入" },
 
             { "WorldGPUResources.cpp", OS_TEXT("src/ecs/support/render/WorldGPUResources.cpp"),

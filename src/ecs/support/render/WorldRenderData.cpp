@@ -1,11 +1,17 @@
 #include <hgl/ecs/support/render/WorldRenderData.h>
+#include <hgl/ecs/support/render/WorldRenderEnvironment.h>
+#include <hgl/ecs/support/render/WorldRenderRunner.h>
 #include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
-    WorldRenderData::WorldRenderData(IWorldRenderDataSource *value, const void *identity)
-        : source(value)
+    WorldRenderData::WorldRenderData(WorldRenderEnvironment *env, WorldRenderRunner *runner,
+                                     const AnsiString &name, const void *identity)
+        : environment(env)
+        , render_runner(runner)
+        , world_name(name)
         , world_identity(identity)
         , material_variant_table(new MaterialVariantTable())
         , material_runtime_table(new MaterialRuntimeTable())
@@ -105,45 +111,51 @@ namespace hgl::ecs
         if (material_runtime_pipeline_table)
             material_runtime_pipeline_table->Clear(owner);
 
-        if (source)
-            source->RenderDataPipelineInvalidated();
+        NotifyPipelineInvalidated();
     }
 
     void WorldRenderData::NotifyPipelineInvalidated() const
     {
-        if (source)
-            source->RenderDataPipelineInvalidated();
+        if (!render_runner)
+            return;
+
+        render_runner->GetMainFrameTopology().MarkTopology(TopologyChange::MaterialBinding);
+        render_runner->MarkSceneStructureDirty();
     }
 
     void WorldRenderData::NotifyModelTemplateChanged() const
     {
-        if (source)
-            source->RenderDataModelTemplateChanged();
+        if (!render_runner)
+            return;
+
+        render_runner->GetMainFrameTopology().MarkTopology(TopologyChange::ModelTemplate);
+        render_runner->MarkSceneStructureDirty();
     }
 
     graph::GraphicsContext *WorldRenderData::GetGraphicsContext()
     {
-        return source ? source->RenderDataGraphicsContext() : nullptr;
+        return environment ? environment->GetGraphicsContext() : nullptr;
     }
 
     graph::IRenderTarget *WorldRenderData::GetRenderTarget()
     {
-        return source ? source->RenderDataRenderTarget() : nullptr;
+        return environment ? environment->GetRenderTarget() : nullptr;
     }
 
     graph::TextureManager *WorldRenderData::GetTextureManager()
     {
-        return source ? source->RenderDataTextureManager() : nullptr;
+        auto *graphics = GetGraphicsContext();
+        return graphics ? graphics->GetTextureManager() : nullptr;
     }
 
     uint64_t WorldRenderData::GetRenderSubmissionSerial() const
     {
-        return source ? source->RenderDataSubmissionSerial() : 0;
+        return render_runner ? render_runner->GetRenderSubmissionSerial() : 0;
     }
 
     bool WorldRenderData::IsGPUQuiescent() const
     {
-        return !source || source->RenderDataGPUQuiescent();
+        return !environment || environment->IsGPUQuiescent();
     }
 
     CameraComponent *WorldRenderData::GetCamera(const uint32_t slot) const
@@ -246,7 +258,7 @@ namespace hgl::ecs
         SetDefaultCamera(camera);
 
         GLogInfo("[ECS] %s: 世界内没有相机 ⇒ 在 (0,0,0) 生成常驻 fallback 相机（占 0 号槽）",
-                 source ? source->RenderDataWorldName().c_str() : "World");
+                 world_name.c_str());
 
         return fallback_camera.get();
     }

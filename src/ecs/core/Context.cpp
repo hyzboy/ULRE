@@ -66,8 +66,8 @@ namespace hgl
 
         ECSContext::ECSContext(const AnsiString& name)
             : ECSCoreContext(name)
-            , render_data(this, static_cast<const void *>(this))
-            , gpu_resources(this)
+            , render_data(&render_environment, &render_runner, name, this)
+            , gpu_resources(&render_environment, &entity_render_state, &render_data, name)
             , render_runner(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
@@ -93,32 +93,6 @@ namespace hgl
             ECSCoreContext::ConfigureSystem(system);
             if (system)
                 system->SetContext(this);
-        }
-
-        graph::GraphicsContext *ECSContext::RenderDataGraphicsContext()
-        {
-            return GetGraphicsContext();
-        }
-
-        graph::IRenderTarget *ECSContext::RenderDataRenderTarget()
-        {
-            return render_environment.GetRenderTarget();
-        }
-
-        graph::TextureManager *ECSContext::RenderDataTextureManager()
-        {
-            graph::GraphicsContext *graphics = GetGraphicsContext();
-            return graphics ? graphics->GetTextureManager() : nullptr;
-        }
-
-        bool ECSContext::RenderDataGPUQuiescent() const
-        {
-            if (!GetGraphicsContext())
-                return true;
-
-            auto *target = render_environment.GetRenderTarget();
-            auto *queue = target ? target->GetQueue() : nullptr;
-            return queue && queue->IsLastSubmitComplete();
         }
 
         bool ECSContext::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target)
@@ -303,12 +277,7 @@ namespace hgl
 
             // Env 随世界（C2）：**本世界创建/拥有的** profile 在这里归还（内置 default 永不归还）。
             // 释放顺序在世界地址表之前——表里还留着它的地址，但表随后即销毁。
-            if (render_environment.IsEnvProfileOwned())
-            {
-                if (auto *env_manager = ResolveEnvManager())
-                    env_manager->Release(render_environment.GetExplicitEnvProfileID());
-            }
-            render_environment.ResetEnvProfile();
+            render_environment.ReleaseOwnedEnvProfile();
 
             // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
             if (auto *gc = GetGraphicsContext())
@@ -354,17 +323,12 @@ namespace hgl
 
         hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext()
         {
-            if (!render_environment.GetGraphicsContext() && render_environment.GetRenderContext())
-                render_environment.SetGraphicsContext(render_environment.GetRenderContext()->GetGraphicsContext());
             return render_environment.GetGraphicsContext();
         }
 
         const hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext() const
         {
-            if (render_environment.GetGraphicsContext())
-                return render_environment.GetGraphicsContext();
-            hgl::graph::RenderContext *render_context = render_environment.GetRenderContext();
-            return render_context ? render_context->GetGraphicsContext() : nullptr;
+            return render_environment.GetGraphicsContext();
         }
 
         void ECSContext::SetFrameIndex(const uint32_t index)
@@ -380,7 +344,7 @@ namespace hgl
 
             // 帧槽变了 ⇒ 本世界的地址表换到本槽（表内各列随世界，
             // 每个 pass 各写自己的槽，不与在途帧/其它世界互踩）。
-            gpu_resources.SyncWorldAddresses(GetFrameIndex());
+            SyncGPUResourceAddresses();
         }
 
         uint32_t ECSContext::GetActiveCameraRow() const

@@ -35,7 +35,7 @@ namespace hgl
             hgl::graph::IRenderTarget *GetRenderTarget() const { return render_target; }
             void SetRenderTarget(hgl::graph::IRenderTarget *target) { render_target = target; }
 
-            hgl::graph::GraphicsContext *GetGraphicsContext() const { return graphics_context; }
+            hgl::graph::GraphicsContext *GetGraphicsContext();
             void SetGraphicsContext(hgl::graph::GraphicsContext *context) { graphics_context = context; }
 
             hgl::graph::RenderContext *GetRenderContext() const { return render_context; }
@@ -45,8 +45,16 @@ namespace hgl
             hgl::graph::EnvProfileID GetExplicitEnvProfileID() const { return env_profile; }
             bool IsEnvProfileExplicit() const { return env_profile_explicit; }
 
+            const hgl::graph::GraphicsContext *GetGraphicsContext() const;
+            hgl::graph::EnvironmentManager *ResolveEnvManager() const;
+            bool IsGPUQuiescent() const;
+            hgl::graph::EnvProfileID CreateEnvProfile(const AnsiString &name,
+                                                      const hgl::graph::EnvironmentInfo &init);
+            void SetEnvProfileID(hgl::graph::EnvProfileID id, bool take_ownership);
+            void ReleaseOwnedEnvProfile();
+            const AnsiString &GetAmbientProviderName() const;
+
             void ResetEnvProfile();
-            void SetEnvProfile(hgl::graph::EnvProfileID id, bool take_ownership);
             bool IsEnvProfileOwned() const { return env_profile_owned; }
         };
     }
