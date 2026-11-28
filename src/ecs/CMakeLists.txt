@@ -131,6 +131,7 @@ set(ECS_CORE_SOURCES
     "support/storage/FrameProfiler.cpp"
     "systems/tick/CameraInputMapping.cpp"
     "systems/tick/InputSystem.cpp"
+    "systems/tick/JoltPhysicsSystem.cpp"
 )
 
 set(ECS_CORE_HEADERS
@@ -218,6 +219,7 @@ set(ECS_CORE_HEADERS
     "systems/render/collect/SimpleLineStatsSystem.h"
     "systems/render/frame/RenderTargetSystem.h"
     "systems/render/frame/SwapchainNextImageSystem.h"
+    "systems/tick/JoltPhysicsSystem.h"
     "systems/render/frame/SwapchainSubmitSystem.h"
     "systems/render/streaming/GeometryStreamingSystem.h"
     "systems/render/streaming/ModelLoadPolicy.h"
@@ -395,7 +397,6 @@ set(ECS_RENDER_HEADERS
     "systems/render/streaming/ModelStreamingSystem.h"
     "systems/render/streaming/TextureStreamingSystem.h"
     "systems/tick/CameraSystem.h"
-    "systems/tick/JoltPhysicsSystem.h"
     "systems/tick/TransformSystem.h"
 )
 

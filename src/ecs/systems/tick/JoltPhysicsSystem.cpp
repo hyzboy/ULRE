@@ -1,6 +1,7 @@
 #include <hgl/ecs/systems/tick/JoltPhysicsSystem.h>
 #include <hgl/ecs/core/entity/Entity.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/ECSCoreContext.h>
+#include <hgl/ecs/support/spatial/WorldSpatialState.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
 #include <hgl/log/Log.h>
 
@@ -288,16 +289,16 @@ namespace hgl::ecs
 
         // 若实体尚未挂载 RigidBodyComponent，按 Transform 的静态/动态特性自动补齐
         auto *rb = GetRigidBody(entity);
-        ECSContext *w = GetWorld();
+        WorldSpatialState *spatial = GetSpatialState();
         if (!rb)
         {
             rb = entity->AddComponent<RigidBodyComponent>();
             if (!rb)
                 return 0xFFFFFFFFu;
 
-            if (w)
+            if (spatial)
             {
-                TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
+                TransformAccessor transform = spatial->GetTransformByEntity(entity->GetEntityID());
                 if (transform.IsValid() && transform.IsMovable())
                 {
                     rb->motion_type = BodyMotionType::Kinematic;
@@ -377,9 +378,9 @@ namespace hgl::ecs
         glm::vec3 world_pos(0.0f);
         glm::quat world_rot = glm::identity<glm::quat>();
 
-        if (w)
+        if (spatial)
         {
-            TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
+            TransformAccessor transform = spatial->GetTransformByEntity(entity->GetEntityID());
             if (transform.IsValid())
             {
                 world_pos = transform.GetWorldPosition();
@@ -547,14 +548,15 @@ namespace hgl::ecs
 
     void JoltPhysicsSystem::Update(float deltaTime)
     {
-        ECSContext *w = GetWorld();
-        if (!w || !impl)
+        ECSCoreContext *core = GetCoreContext();
+        WorldSpatialState *spatial = GetSpatialState();
+        if (!core || !impl)
             return;
 
         JPH::BodyInterface &bi = impl->physics_system->GetBodyInterface();
 
         // 阶段 1：自动为包含 ModelCollisionProxyComponent 的实体创建或更新刚体
-        w->ForEachAliveEntity([this](Entity *entity)
+        core->ForEachAliveEntity([this](Entity *entity)
         {
             if (!entity)
                 return;
@@ -572,37 +574,40 @@ namespace hgl::ecs
 
         // 阶段 2：模拟前变换同步（ECS -> Jolt）
         // Kinematic 刚体推送逻辑位移；静态刚体脏变换同步
-        w->ForEachAliveEntity([&bi, this, deltaTime, w](Entity *entity)
+        if (spatial)
         {
-            if (!entity)
-                return;
-
-            auto *rb = GetRigidBody(entity);
-            if (!rb || !rb->IsValidBody())
-                return;
-
-            TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
-            if (!transform.IsValid())
-                return;
-
-            JPH::BodyID bid(rb->jolt_body_id);
-
-            if (rb->motion_type == BodyMotionType::Kinematic)
+            core->ForEachAliveEntity([&bi, deltaTime, spatial](Entity *entity)
             {
-                glm::vec3 pos = transform.GetWorldPosition();
-                glm::quat rot = transform.GetWorldRotation();
-                bi.MoveKinematic(bid, ToJPH(pos), ToJPH(rot), deltaTime > 0.0f ? deltaTime : 1.0f / 60.0f);
-            }
-            else if (rb->motion_type == BodyMotionType::Static)
-            {
-                if (transform.IsDirty())
+                if (!entity)
+                    return;
+
+                auto *rb = GetRigidBody(entity);
+                if (!rb || !rb->IsValidBody())
+                    return;
+
+                TransformAccessor transform = spatial->GetTransformByEntity(entity->GetEntityID());
+                if (!transform.IsValid())
+                    return;
+
+                JPH::BodyID bid(rb->jolt_body_id);
+
+                if (rb->motion_type == BodyMotionType::Kinematic)
                 {
                     glm::vec3 pos = transform.GetWorldPosition();
                     glm::quat rot = transform.GetWorldRotation();
-                    bi.SetPositionAndRotation(bid, ToJPH(pos), ToJPH(rot), JPH::EActivation::DontActivate);
+                    bi.MoveKinematic(bid, ToJPH(pos), ToJPH(rot), deltaTime > 0.0f ? deltaTime : 1.0f / 60.0f);
                 }
-            }
-        });
+                else if (rb->motion_type == BodyMotionType::Static)
+                {
+                    if (transform.IsDirty())
+                    {
+                        glm::vec3 pos = transform.GetWorldPosition();
+                        glm::quat rot = transform.GetWorldRotation();
+                        bi.SetPositionAndRotation(bid, ToJPH(pos), ToJPH(rot), JPH::EActivation::DontActivate);
+                    }
+                }
+            });
+        }
 
         // 阶段 3：执行物理模拟
         if (deltaTime > 0.0f)
@@ -614,32 +619,35 @@ namespace hgl::ecs
 
         // 阶段 4：模拟后变换写回（Jolt -> ECS）
         // Dynamic 刚体将解算后的世界位置与姿态写回 TransformAccessor
-        w->ForEachAliveEntity([&bi, this, w](Entity *entity)
+        if (spatial)
         {
-            if (!entity)
-                return;
-
-            auto *rb = GetRigidBody(entity);
-            if (!rb || !rb->IsValidBody())
-                return;
-
-            if (rb->motion_type == BodyMotionType::Dynamic)
+            core->ForEachAliveEntity([&bi, spatial](Entity *entity)
             {
-                JPH::BodyID bid(rb->jolt_body_id);
-                if (bi.IsActive(bid))
-                {
-                    JPH::RVec3 jpos = bi.GetPosition(bid);
-                    JPH::Quat jrot = bi.GetRotation(bid);
+                if (!entity)
+                    return;
 
-                    TransformAccessor transform = w->Spatial().GetTransformByEntity(entity->GetEntityID());
-                    if (transform.IsValid())
+                auto *rb = GetRigidBody(entity);
+                if (!rb || !rb->IsValidBody())
+                    return;
+
+                if (rb->motion_type == BodyMotionType::Dynamic)
+                {
+                    JPH::BodyID bid(rb->jolt_body_id);
+                    if (bi.IsActive(bid))
                     {
-                        transform.SetWorldPosition(FromJPH(jpos));
-                        transform.SetWorldRotation(FromJPH(jrot));
+                        JPH::RVec3 jpos = bi.GetPosition(bid);
+                        JPH::Quat jrot = bi.GetRotation(bid);
+
+                        TransformAccessor transform = spatial->GetTransformByEntity(entity->GetEntityID());
+                        if (transform.IsValid())
+                        {
+                            transform.SetWorldPosition(FromJPH(jpos));
+                            transform.SetWorldRotation(FromJPH(jrot));
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     }
 
     bool JoltPhysicsSystem::Raycast(const math::Vector3f &origin, const math::Vector3f &direction, float max_distance, PhysicsRaycastHit &out_hit) const
@@ -661,9 +669,8 @@ namespace hgl::ecs
 
             uint64_t user_data = impl->physics_system->GetBodyInterface().GetUserData(result.mBodyID);
             out_hit.entity_id = U64ToEntityID(user_data);
-            ECSContext *w = GetWorld();
-            if (w)
-                out_hit.entity = w->GetEntity(out_hit.entity_id);
+            if (ECSCoreContext *core = GetCoreContext())
+                out_hit.entity = core->GetEntity(out_hit.entity_id);
 
             JPH::BodyLockRead lock(impl->physics_system->GetBodyLockInterface(), result.mBodyID);
             if (lock.Succeeded())
@@ -709,7 +716,7 @@ namespace hgl::ecs
         );
 
         std::unordered_set<uint32_t> seen;
-        ECSContext *w = GetWorld();
+        ECSCoreContext *core = GetCoreContext();
         for (const auto &hit : collector.mHits)
         {
             const uint32_t bid = hit.mBodyID2.GetIndexAndSequenceNumber();
@@ -719,8 +726,8 @@ namespace hgl::ecs
                 o.body_id = bid;
                 uint64_t user_data = impl->physics_system->GetBodyInterface().GetUserData(hit.mBodyID2);
                 o.entity_id = U64ToEntityID(user_data);
-                if (w)
-                    o.entity = w->GetEntity(o.entity_id);
+                if (core)
+                    o.entity = core->GetEntity(o.entity_id);
                 out_hits.push_back(o);
             }
         }
@@ -748,7 +755,7 @@ namespace hgl::ecs
         );
 
         std::unordered_set<uint32_t> seen;
-        ECSContext *w = GetWorld();
+        ECSCoreContext *core = GetCoreContext();
         for (const auto &hit : collector.mHits)
         {
             const uint32_t bid = hit.mBodyID2.GetIndexAndSequenceNumber();
@@ -758,8 +765,8 @@ namespace hgl::ecs
                 o.body_id = bid;
                 uint64_t user_data = impl->physics_system->GetBodyInterface().GetUserData(hit.mBodyID2);
                 o.entity_id = U64ToEntityID(user_data);
-                if (w)
-                    o.entity = w->GetEntity(o.entity_id);
+                if (core)
+                    o.entity = core->GetEntity(o.entity_id);
                 out_hits.push_back(o);
             }
         }

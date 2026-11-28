@@ -91,8 +91,8 @@ namespace hgl
             }
             if (auto *physics = dynamic_cast<JoltPhysicsSystem *>(system))
             {
-                if (!physics->GetWorld())
-                    physics->SetWorld(this);
+                if (!physics->GetSpatialState())
+                    physics->SetSpatialState(&spatial_state);
             }
         }
 

@@ -14,7 +14,8 @@
 //   5. 物理场景查询：射线检测（Raycast）、重叠体查询（OverlapSphere、OverlapBox）。
 
 #include <hgl/ecs/core/system/System.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/ECSCoreContext.h>
+#include <hgl/ecs/support/spatial/WorldSpatialState.h>
 #include <hgl/ecs/components/RigidBodyComponent.h>
 #include <hgl/ecs/components/ModelCollisionProxyComponent.h>
 #include <hgl/math/VectorTypes.h>
@@ -58,7 +59,7 @@ namespace hgl::ecs
     {
     private:
 
-        ECSContext *world = nullptr;
+        WorldSpatialState *spatial_state = nullptr;
 
         // PIMPL 模式管理 Jolt 引擎实例与内部数据结构
         class Impl;
@@ -71,8 +72,8 @@ namespace hgl::ecs
 
     public:
 
-        void SetWorld(ECSContext *w) { world = w; }
-        ECSContext *GetWorld() const { return world; }
+        void SetSpatialState(WorldSpatialState *s) { spatial_state = s; }
+        WorldSpatialState *GetSpatialState() const { return spatial_state; }
 
         void Initialize() override;
         void Shutdown() override;
