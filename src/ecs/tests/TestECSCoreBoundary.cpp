@@ -73,7 +73,31 @@ namespace
     {
     public:
         BoundaryObservedContext() : ECSCoreContext("ObservedBoundary") {}
-        void Observe(hgl::ecs::IECSEntityObserver *observer) { SetEntityObserver(observer); }
+        int created = 0;
+        int refreshed = 0;
+        int scene_dirty = 0;
+        int destroyed = 0;
+        bool destroyed_handle_invalid = false;
+        bool attempt_reentry = false;
+        bool reentry_succeeded = false;
+        hgl::ecs::ComponentType last_type = hgl::ecs::ComponentType::None;
+
+        void OnEntityCreated(hgl::ecs::EntityID id) override
+        {
+            ++created;
+            if (attempt_reentry)
+            {
+                DestroyEntity(id);
+                Shutdown();
+            }
+        }
+        void OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type) override;
+        void OnSceneStructureDirty() override { ++scene_dirty; }
+        void OnEntityDestroyed(hgl::ecs::EntityID id) override
+        {
+            ++destroyed;
+            destroyed_handle_invalid = !GetEntity(id);
+        }
     };
 
     class BoundaryCleanupContext : public hgl::ecs::ECSCoreContext
@@ -91,37 +115,6 @@ namespace
                 created_during_cleanup = created->GetEntityID();
         }
     };
-
-    class BoundaryObserver : public hgl::ecs::IECSEntityObserver
-    {
-    public:
-        BoundaryObservedContext *world = nullptr;
-        int created = 0;
-        int refreshed = 0;
-        int destroyed = 0;
-        bool destroyed_handle_invalid = false;
-        bool attempt_reentry = false;
-        bool reentry_succeeded = false;
-        hgl::ecs::ComponentType last_type = hgl::ecs::ComponentType::None;
-
-        void OnEntityCreated(hgl::ecs::EntityID id) override
-        {
-            ++created;
-            if (attempt_reentry && world)
-            {
-                world->DestroyEntity(id);
-                world->Shutdown();
-                world->Observe(nullptr);
-            }
-        }
-        void OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type) override;
-        void OnSceneStructureDirty() override {}
-        void OnEntityDestroyed(hgl::ecs::EntityID id) override
-        {
-            ++destroyed;
-            destroyed_handle_invalid = world && !world->GetEntity(id);
-        }
-    };
 }//namespace
 
 namespace hgl::ecs
@@ -133,13 +126,13 @@ namespace hgl::ecs
     };
 }
 
-void BoundaryObserver::OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type)
+void BoundaryObservedContext::OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::ecs::ComponentType type)
 {
     ++refreshed;
     last_type = type;
-    if (attempt_reentry && world && entity)
+    if (attempt_reentry && entity)
     {
-        auto *owner = world->GetEntity(entity->GetEntityID());
+        auto *owner = GetEntity(entity->GetEntityID());
         if (owner)
         {
             owner->RemoveComponent<BoundaryTestComponent>();
@@ -147,8 +140,8 @@ void BoundaryObserver::OnEntityRowsChanged(const hgl::ecs::Entity *entity, hgl::
                 reentry_succeeded = true;
             owner->MarkSceneDirty();
         }
-        world->DestroyEntity(entity->GetEntityID());
-        world->Shutdown();
+        DestroyEntity(entity->GetEntityID());
+        Shutdown();
     }
 }
 
@@ -313,31 +306,20 @@ int main()
         return 22;
 
     BoundaryObservedContext observed;
-    BoundaryObserver observer;
-    observer.world = &observed;
-    observer.attempt_reentry = true;
-    observed.Observe(&observer);
+    observed.attempt_reentry = true;
     auto *observed_entity = observed.CreateEntity();
     if (!observed_entity || observed_entity->GetContextAs<BoundaryObservedContext>() != &observed
         || !observed_entity->AddComponent<BoundaryTestComponent>()
-        || observer.last_type != hgl::ecs::ComponentType::Lines)
+        || observed.last_type != hgl::ecs::ComponentType::Lines)
         return 16;
     observed.DestroyEntity(observed_entity);
-    if (observer.created != 1 || observer.refreshed != 2 || observer.destroyed != 1
-        || !observer.destroyed_handle_invalid || observer.reentry_succeeded
-        || observer.last_type != hgl::ecs::ComponentType::None)
+    if (observed.created != 1 || observed.refreshed != 2 || observed.scene_dirty != 2
+        || observed.destroyed != 1 || !observed.destroyed_handle_invalid
+        || observed.reentry_succeeded || observed.last_type != hgl::ecs::ComponentType::None)
     {
         GLogError(u8"[ECSCoreBoundary] 实体通知次数或销毁时序不正确");
         return 17;
     }
-
-    observed.Observe(nullptr);
-    observed_entity = observed.CreateEntity();
-    if (!observed_entity || !observed_entity->AddComponent<BoundaryTestComponent>())
-        return 18;
-    observed.DestroyEntity(observed_entity);
-    if (observer.created != 1 || observer.destroyed != 1)
-        return 19;
 
     GLogInfo(u8"[ECSCoreBoundary] Core 层自足性与解耦闸门全部通过（零图形依赖）");
     return 0;

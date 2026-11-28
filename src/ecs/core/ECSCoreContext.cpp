@@ -69,19 +69,11 @@ namespace hgl::ecs
 
     bool ECSCoreContext::CanMutateEntities()
     {
-        if (!notifying_entity_observer && !mutating_component)
+        if (!notifying_entity_lifecycle && !mutating_component)
             return true;
 
-        LogError(u8"实体观察者或组件生命周期回调期间不能修改实体或组件生命周期");
+        LogError(u8"实体生命周期或组件生命周期回调期间不能修改实体或组件生命周期");
         return false;
-    }
-
-    void ECSCoreContext::SetEntityObserver(IECSEntityObserver *observer)
-    {
-        if (!CanMutateEntities())
-            return;
-
-        entity_observer = observer;
     }
 
     void ECSCoreContext::ClearEntities()

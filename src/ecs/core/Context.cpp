@@ -71,7 +71,6 @@ namespace hgl
             , render_runner(this)
         {
             render_diagnostic_world_id=NextRenderDiagnosticWorldID();
-            SetEntityObserver(this);
 
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
             spatial_state.Initialize(this, this);
@@ -87,7 +86,6 @@ namespace hgl
         ECSContext::~ECSContext()
         {
             Shutdown();
-            SetEntityObserver(nullptr);
         }
 
         void ECSContext::ConfigureSystem(System *system)

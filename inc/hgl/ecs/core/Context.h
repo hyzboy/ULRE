@@ -91,7 +91,7 @@ namespace hgl
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IECSEntityObserver, private IWorldGPUResourcesSource, private IWorldRenderDataSource
+        class ECSContext : public ECSCoreContext, public graph::RenderTargetObserver, public IWorldSpatialObserver, private IWorldGPUResourcesSource, private IWorldRenderDataSource
         {
         private:
             void ConfigureSystem(System *system) override;
@@ -427,7 +427,7 @@ namespace hgl
             void SetResourceNamePrefix(const char* prefix) { resource_name_prefix = prefix; }
             const AnsiString& GetResourceNamePrefix() const { return resource_name_prefix; }
 
-            // ── IECSEntityObserver 接口实现 ──
+            // ── ECSCoreContext 实体变更钩子实现 ──
             void OnEntityDestroyed(EntityID id) override;
             void OnEntityRowsChanged(const Entity *entity, ComponentType type) override;
             void OnSceneStructureDirty() override;

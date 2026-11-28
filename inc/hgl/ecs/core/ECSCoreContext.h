@@ -1,7 +1,6 @@
 #pragma once
 
 #include <hgl/ecs/core/entity/Object.h>
-#include <hgl/ecs/core/entity/ECSEntityObserver.h>
 #include <hgl/ecs/core/entity/EntityManager.h>
 #include <hgl/ecs/core/entity/Entity.h>
 #include <hgl/ecs/core/system/SystemRegistry.h>
@@ -24,7 +23,7 @@ namespace hgl::ecs
      * - 实体生命周期管理（EntityManager / Entity）
      * - 组件池生命周期管理（ComponentPoolRegistry / ComponentPool）
      * - 系统注册与调度（SystemRegistry / System）
-     * - 实体生命周期观察者分发（IECSEntityObserver）
+     * - 实体生命周期与结构变更虚钩子分发
      *
      * 边界约束：
      * - 零 Vulkan / 零图形 / 零渲染管线依赖
@@ -43,8 +42,7 @@ namespace hgl::ecs
 
         bool active = false;
         bool shutdown_in_progress = false;
-        IECSEntityObserver *entity_observer = nullptr;
-        bool notifying_entity_observer = false;
+        bool notifying_entity_lifecycle = false;
         bool mutating_component = false;
 
     public:
@@ -161,7 +159,11 @@ namespace hgl::ecs
         }
 
     public:
-        // ── 虚生命周期与变更钩子（派生类扩展渲染副作用）──
+        // ── 虚生命周期与变更钩子（派生类扩展领域副作用）──
+        virtual void OnEntityCreated(EntityID id) {}
+        virtual void OnEntityRowsChanged(const Entity *entity, ComponentType type) {}
+        virtual void OnSceneStructureDirty() {}
+        virtual void OnEntityDestroyed(EntityID id) {}
         virtual void OnEntityDestroying(EntityID id) {}
         virtual void OnEntityCleanup(EntityID id) {}
         virtual void OnComponentRowAdded(ComponentType type) {}
@@ -202,7 +204,6 @@ namespace hgl::ecs
         virtual void Tick(float deltaTime);
 
     protected:
-        void SetEntityObserver(IECSEntityObserver *observer);
         bool CanMutateEntities();
         void ClearEntities();
         virtual void RunSystemUpdate(System *system, float deltaTime);
@@ -219,43 +220,31 @@ namespace hgl::ecs
 
         void NotifyEntityCreated(EntityID id)
         {
-            if (entity_observer)
-            {
-                MutationScope scope(notifying_entity_observer);
-                entity_observer->OnEntityCreated(id);
-            }
+            MutationScope scope(notifying_entity_lifecycle);
+            OnEntityCreated(id);
         }
 
         void NotifyEntityRowsChanged(const Entity *entity, ComponentType type)
         {
-            if (entity_observer)
-            {
-                MutationScope scope(notifying_entity_observer);
-                entity_observer->OnEntityRowsChanged(entity, type);
-            }
+            MutationScope scope(notifying_entity_lifecycle);
+            OnEntityRowsChanged(entity, type);
         }
 
         void NotifySceneStructureDirty()
         {
-            if (notifying_entity_observer)
+            if (notifying_entity_lifecycle)
             {
-                LogError(u8"实体观察者回调期间不能重入场景结构通知");
+                LogError(u8"实体生命周期回调期间不能重入场景结构通知");
                 return;
             }
-            if (entity_observer)
-            {
-                MutationScope scope(notifying_entity_observer);
-                entity_observer->OnSceneStructureDirty();
-            }
+            MutationScope scope(notifying_entity_lifecycle);
+            OnSceneStructureDirty();
         }
 
         void NotifyEntityDestroyed(EntityID id)
         {
-            if (entity_observer)
-            {
-                MutationScope scope(notifying_entity_observer);
-                entity_observer->OnEntityDestroyed(id);
-            }
+            MutationScope scope(notifying_entity_lifecycle);
+            OnEntityDestroyed(id);
         }
     };
 
