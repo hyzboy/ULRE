@@ -139,7 +139,7 @@ public:
         if (!gc)
         {
             if (auto *w = offscreen ? offscreen->GetWorld() : nullptr)
-                gc = w->GetGraphicsContext();
+                gc = w->Environment().GetGraphicsContext();
         }
 
         if (gc)

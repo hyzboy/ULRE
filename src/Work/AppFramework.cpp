@@ -260,7 +260,7 @@ namespace hgl
 
         if (default_ecs_context)
         {
-            default_ecs_context->SetGraphicsContext(graphics_context);
+            default_ecs_context->Environment().SetGraphicsContext(graphics_context);
         }
 
         // Create render target manager (needs ECS context)
@@ -295,7 +295,7 @@ namespace hgl
             if (systems.input_system)
                 AddChildDispatcher(systems.input_system->GetEventDispatcher());
 
-            default_ecs_context->SetRenderContext(render_context.get());
+            default_ecs_context->Environment().SetRenderContext(render_context.get());
 
             // 初始化失败（世界相机行存储 / WorldAddresses 创建失败）会让世界处于
             // 半初始化状态：地址表与相机槽是空的，继续跑每帧必踩空指针。
@@ -339,7 +339,7 @@ namespace hgl
         if (default_ecs_context)
         {
             // Update render target first
-            default_ecs_context->SetRenderTarget(GetSwapchainRenderTarget());
+            default_ecs_context->Environment().SetRenderTarget(GetSwapchainRenderTarget());
             // Then notify all dependent systems via OnResize
             default_ecs_context->OnResize(ext);
         }

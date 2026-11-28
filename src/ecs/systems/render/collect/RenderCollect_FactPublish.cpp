@@ -64,7 +64,7 @@ namespace hgl::ecs
             }
             else if (geometry_id != 0)
             {
-                auto *gc_key   = world ? world->GetGraphicsContext() : nullptr;
+                auto *gc_key   = world ? world->Environment().GetGraphicsContext() : nullptr;
                 auto *pool_key = gc_key ? gc_key->GetGlobalSSBOBufferRegistry() : nullptr;
                 const auto *params_row = pool_key ? pool_key->GetMeshDrawParamsRow(geometry_id) : nullptr;
 

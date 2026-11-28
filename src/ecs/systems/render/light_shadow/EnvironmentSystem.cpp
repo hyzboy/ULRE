@@ -34,7 +34,7 @@ namespace hgl::ecs
         // Env 随世界（C2）：profile 由**世界**持有（世界初始化时取本世界 RT 的 env_profile，
         // 也可由世界显式 SetEnvProfileID / CreateEnvProfile）——不再每次去问 RT。
         if (context)
-            return context->GetEnvProfileID();
+            return context->Environment().GetEnvProfileID();
 
         return graph::kEnvProfileDefault;
     }
@@ -49,13 +49,13 @@ namespace hgl::ecs
 
         if (context)
         {
-            if (auto *rc = context->GetRenderContext())
+            if (auto *rc = context->Environment().GetRenderContext())
             {
                 if (auto *gc = rc->GetGraphicsContext())
                     return gc->GetEnvironmentManager();
             }
 
-            if (auto *gc = context->GetGraphicsContext())
+            if (auto *gc = context->Environment().GetGraphicsContext())
                 return gc->GetEnvironmentManager();
         }
 
@@ -131,11 +131,11 @@ namespace hgl::ecs
 
         if (context)
         {
-            if (auto *rc = context->GetRenderContext())
+            if (auto *rc = context->Environment().GetRenderContext())
                 if (auto *gc = rc->GetGraphicsContext())
                     return gc;
 
-            return context->GetGraphicsContext();
+            return context->Environment().GetGraphicsContext();
         }
 
         return nullptr;

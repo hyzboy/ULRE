@@ -40,12 +40,7 @@ namespace hgl::ecs
         bool ECSContext::SyncGPUResourceAddresses()
         {
             return gpu_resources.SyncWorldAddresses(
-                GetFrameIndex(), ResolveTransformDeviceAddress(), ResolveModelExpansionAddress());
-        }
-
-        graph::EnvProfileID ECSContext::GetEnvProfileID() const
-        {
-            return render_environment.GetEnvProfileID();
+                Runner().GetFrameIndex(), ResolveTransformDeviceAddress(), ResolveModelExpansionAddress());
         }
 
         void ECSContext::SetEnvProfileID(graph::EnvProfileID id, bool take_ownership)
@@ -61,11 +56,6 @@ namespace hgl::ecs
             if (id != graph::kEnvProfileInvalid)
                 SyncGPUResourceAddresses();
             return id;
-        }
-
-        const AnsiString &ECSContext::GetAmbientProviderName() const
-        {
-            return render_environment.GetAmbientProviderName();
         }
 
 } // namespace hgl::ecs

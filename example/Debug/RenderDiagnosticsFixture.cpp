@@ -43,7 +43,7 @@ int os_main(int argc,os_char **argv)
     if(!app.Init(640,360,argc,argv))
         return 2;
     ECSContext *world=app.GetECSContext();
-    GraphicsContext *graphics=world?world->GetGraphicsContext():nullptr;
+    GraphicsContext *graphics=world?world->Environment().GetGraphicsContext():nullptr;
     BufferManager *buffers=graphics?graphics->GetManager<BufferManager>():nullptr;
     LevelAssetRegistry *levels=graphics?graphics->GetLevelAssetRegistry():nullptr;
     if(!buffers || !levels)
@@ -192,7 +192,7 @@ int os_main(int argc,os_char **argv)
     bool ready_reported=false;
     Window *window=app.GetWindow();
     const bool paired_capture=::getenv("ULRE_DIAGNOSTIC_PAIRED_CAPTURE")!=nullptr;
-    auto *main_target=dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+    auto *main_target=dynamic_cast<SwapchainRenderTarget *>(world->Environment().GetRenderTarget());
     const uint64_t main_target_id=main_target?main_target->GetDebugCaptureTargetID():0;
     if(paired_capture && !main_target_id)
         return 11;

@@ -21,8 +21,8 @@ namespace hgl::graph
      * 重复，靠每帧同步维持一致，不同步即是跨 Pass 管线误用 bug 的根源
      * （见 c778f1fb2）。
      *
-     * 当前渲染目标唯一权威：ecs::ECSContext::GetRenderTarget()
-     * 当前命令缓冲唯一权威：ecs::ECSContext::GetCurrentRenderCmd()
+     * 当前渲染目标唯一权威：ecs::ECSContext::Environment().GetRenderTarget()
+     * 当前命令缓冲唯一权威：ecs::ECSContext::Runner().GetCurrentRenderCmd()
      */
     class RenderContext
     {

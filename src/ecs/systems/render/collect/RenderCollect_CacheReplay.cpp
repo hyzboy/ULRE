@@ -29,7 +29,7 @@ namespace hgl::ecs
         if (!world->Runner().GetMainFrameTopology().IsCollectCacheEnabled())
             return false;
 
-        if (!world->IsMainFrameTopologyPass())
+        if (!world->Runner().IsMainFrameTopologyPass())
             return false;
 
         // ── 前提②：天光算法没热切（provider 变 ⇒ program 身份变 ⇒ 材质链必须重跑）──
@@ -82,7 +82,7 @@ namespace hgl::ecs
 
         // 4-ID 是**按 pass 解析**的（阴影程序/材质变体不同）；前面已限定主帧 pass，
         // 这里仍显式取一次，避免日后放宽前提时静默写错半边。
-        const uint32_t pass_index = world->IsCurrentPassShadow() ? 1u : 0u;
+        const uint32_t pass_index = world->Runner().PassScope().IsShadowPass() ? 1u : 0u;
 
         bool ok = true;
 
@@ -175,7 +175,7 @@ namespace hgl::ecs
                 uint32_t texture_id;
                 ResolveMaterialFacts(world, entity_id, fact_row, material_id, texture_id);
 
-                auto *render_target = world->GetRenderTarget();
+                auto *render_target = world->Environment().GetRenderTarget();
                 auto *current_render_pass = render_target ? render_target->GetRenderPass() : nullptr;
                 auto *cached_pipeline = current_render_pass
                     ? world->RenderData().GetMaterialRuntimePipelineTable().Get(entity_id, current_render_pass, group_idx)
@@ -256,7 +256,7 @@ namespace hgl::ecs
         // 本 pass 是否有资格：阴影 pass / 移动性过滤 pass 共用同一份 RenderFrameCache，
         // 它们的成员集合天然不同 ⇒ 只有「无过滤的非阴影 pass」才可能是主帧快照的消费者。
         const bool is_main_swapchain_frame =
-            !world->IsCurrentPassShadow() && world->GetActiveMobilityFilter() < 0;
+            !world->Runner().PassScope().IsShadowPass() && world->Runner().PassScope().GetMobilityFilter() < 0;
 
         const uint64_t topology_now = ledger.GetTopologyRevision();
 

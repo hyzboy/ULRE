@@ -51,12 +51,12 @@ namespace hgl
 
         graph::RenderContext *      GetRenderContext    ()const
         {
-            return world ? world->GetRenderContext() : nullptr;
+            return world ? world->Environment().GetRenderContext() : nullptr;
         }
 
         graph::GraphicsContext *    GetGraphicsContext  ()const
         {
-            return world ? world->GetGraphicsContext() : nullptr;
+            return world ? world->Environment().GetGraphicsContext() : nullptr;
         }
 
         /// Find a loaded material recipe, loading the default recipe directory on first miss.

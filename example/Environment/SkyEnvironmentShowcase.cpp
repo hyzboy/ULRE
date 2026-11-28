@@ -432,7 +432,7 @@ private:
         if (phase != kCycleFramesPerMode - 1)
             return;
 
-        auto * rt = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+        auto * rt = dynamic_cast<SwapchainRenderTarget *>(ecs_context->Environment().GetRenderTarget());
         if (!rt)
         {
             GLogError(u8"[SKYSHOW] 没有 swapchain 渲染靶");

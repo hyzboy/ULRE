@@ -121,7 +121,7 @@ namespace ulre_example
         virtual hgl::graph::IRenderTarget * GetActiveRenderTarget()
         {
             auto * ctx = GetECSContext();
-            return ctx ? ctx->GetRenderTarget() : nullptr;
+            return ctx ? ctx->Environment().GetRenderTarget() : nullptr;
         }
 
         /// 派生类实现具体的初始化逻辑

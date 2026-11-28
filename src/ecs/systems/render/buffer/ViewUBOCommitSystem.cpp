@@ -28,9 +28,9 @@ namespace hgl::ecs
         // 中间 pass 会把自己的身份标出来（`RenderTo(req)` 的 CSM 级联 / 同世界异目标 pass ⇒
         // `IsCurrentPassShadow()`）：那里写会踩在飞的主帧槽 ⇒ 跳过。
         // 天空（sky）是单份 buffer：数据变时 `MarkDirty` 即时写，不需要每帧重提。
-        if (auto *rt = context->GetRenderTarget())
+        if (auto *rt = context->Environment().GetRenderTarget())
         {
-            if (!context->IsCurrentPassShadow())
+            if (!context->Runner().PassScope().IsShadowPass())
                 context->GPUResources().CommitShadowInfo(rt->GetCurrentFrameIndex());
         }
     }

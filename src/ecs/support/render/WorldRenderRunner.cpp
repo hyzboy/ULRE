@@ -186,12 +186,12 @@ namespace hgl::ecs
     void WorldRenderRunner::OnSwapchainTargetChanged(graph::IRenderTarget *target)
     {
         if (context)
-            context->SetRenderTarget(target);
+            context->Environment().SetRenderTarget(target);
     }
 
     void WorldRenderRunner::OnRenderTargetResized(graph::IRenderTarget *target, uint32 width, uint32 height)
     {
-        if (context && target && context->GetRenderTarget() == target)
+        if (context && target && context->Environment().GetRenderTarget() == target)
             if (auto system = context->GetSystem<RenderSceneUBOSystem>())
                 system->SetViewportExtent(width, height);
     }
@@ -297,7 +297,7 @@ namespace hgl::ecs
         if (!EnsureRenderCoreInitialized())
             return false;
 
-        if (context->GetRenderTarget() && need_swapchain_acquire)
+        if (context->Environment().GetRenderTarget() && need_swapchain_acquire)
         {
             FrameProfileSpan acquire_span(FrameProfileSlot::AcquireSwapchain);
             if (!AcquireSwapchainImage(deltaTime))
@@ -312,7 +312,7 @@ namespace hgl::ecs
             RenderPreBeginFrame(deltaTime);
             SyncRenderTargetViewportToExtent();
 
-            if (auto *gc = context->GetGraphicsContext())
+            if (auto *gc = context->Environment().GetGraphicsContext())
             {
                 if (auto *tm = gc->GetTextureManager())
                 {
@@ -331,7 +331,7 @@ namespace hgl::ecs
         }
 
         SetCurrentRenderCmd(render_core->GetRenderCmd());
-        auto *target = context->GetRenderTarget();
+        auto *target = context->Environment().GetRenderTarget();
         PrepareRenderPassSetup(target ? target->GetCurrentFrameIndex() : 0u, deltaTime);
 
         {
@@ -439,7 +439,7 @@ namespace hgl::ecs
             return false;
         }
 
-        graph::IRenderTarget *saved_target = context->GetRenderTarget();
+        graph::IRenderTarget *saved_target = context->Environment().GetRenderTarget();
 
         if (saved_target)
         {
@@ -478,7 +478,7 @@ namespace hgl::ecs
         if (rts)
             rts->SetRenderTarget(rt);
 
-        context->SetRenderTarget(rt);
+        context->Environment().SetRenderTarget(rt);
 
         auto camera_system = context->GetSystem<CameraSystem>();
         const bool use_camera_override = (req.camera != nullptr && camera_system);
@@ -589,7 +589,7 @@ namespace hgl::ecs
             if (probe_begin_start != 0)
                 probe_begin_ns = PrepassTimingNow() - probe_begin_start;
 
-            auto *current_target = context->GetRenderTarget();
+            auto *current_target = context->Environment().GetRenderTarget();
             SetFrameIndex(current_target ? current_target->GetCurrentFrameIndex() : 0u);
 
             if (req.camera && frame_index < HGL_FRAME_SLOT_MAIN)
@@ -662,7 +662,7 @@ namespace hgl::ecs
         main_frame_topology.MarkTopology(TopologyChange::PassAndTarget);
         main_frame_topology.InvalidateSnapshot();
 
-        auto *target = context->GetRenderTarget();
+        auto *target = context->Environment().GetRenderTarget();
         if (target)
             target->OnResize(extent);
 
@@ -709,7 +709,7 @@ namespace hgl::ecs
 
         if (!RecreateSwapchainIfNeeded())
         {
-            if (auto *target = context->GetRenderTarget())
+            if (auto *target = context->Environment().GetRenderTarget())
             {
                 auto *swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget *>(target);
                 if (swapchain_rt && swapchain_rt->NeedsResize())
@@ -730,7 +730,7 @@ namespace hgl::ecs
 
         if (!swapchain_system_present)
         {
-            if (auto* target = context->GetRenderTarget())
+            if (auto* target = context->Environment().GetRenderTarget())
             {
                 if (auto swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget*>(target))
                     swapchain_ok = swapchain_rt->NextFrame();
@@ -748,7 +748,7 @@ namespace hgl::ecs
         if (!context || !context->IsActive())
             return;
 
-        auto *target = context->GetRenderTarget();
+        auto *target = context->Environment().GetRenderTarget();
         if (!target)
             return;
 
@@ -860,7 +860,7 @@ namespace hgl::ecs
 
         if (!submit_system_present)
         {
-            if (auto* target = context->GetRenderTarget())
+            if (auto* target = context->Environment().GetRenderTarget())
                 submit_ok = target->Submit();
         }
 
@@ -873,12 +873,12 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        auto *target = context->GetRenderTarget();
+        auto *target = context->Environment().GetRenderTarget();
         auto *swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget *>(target);
-        if (!swapchain_rt || !swapchain_rt->NeedsResize() || !context->GetGraphicsContext())
+        if (!swapchain_rt || !swapchain_rt->NeedsResize() || !context->Environment().GetGraphicsContext())
             return false;
 
-        auto *module_manager = context->GetGraphicsContext()->GetModuleManager();
+        auto *module_manager = context->Environment().GetGraphicsContext()->GetModuleManager();
         auto *swapchain_module = module_manager ? module_manager->Get<graph::SwapchainModule>() : nullptr;
         if (!swapchain_module)
             return false;
@@ -886,7 +886,7 @@ namespace hgl::ecs
         VkExtent2D current_extent = swapchain_rt->GetExtent();
         swapchain_module->OnResize(current_extent);
         auto *new_target = swapchain_module->GetRenderTarget();
-        context->SetRenderTarget(new_target);
+        context->Environment().SetRenderTarget(new_target);
         if (new_target)
         {
             OnResize(new_target->GetExtent());
@@ -970,7 +970,7 @@ namespace hgl::ecs
         auto &registry = context->GetSystemRegistry();
         registry.SortRender();
 
-        auto *device = context->GetGPUDevice();
+        auto *device = context->Environment().GetGPUDevice();
         if (device)
             device->SetDrawPhaseActive(true);
 

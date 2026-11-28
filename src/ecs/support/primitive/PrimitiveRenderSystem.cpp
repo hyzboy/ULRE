@@ -87,9 +87,9 @@ namespace hgl::ecs
             renderer->Render(cmdBuffer,
                              batch->transform_buffer,
                              batch,
-                             context->GetRenderContext(),
+                             context->Environment().GetRenderContext(),
                              context->GetActiveCameraRow(),
-                             context->IsCurrentPassShadow() ? RenderPassSlot::Shadow : RenderPassSlot::Main);
+                             context->Runner().PassScope().IsShadowPass() ? RenderPassSlot::Shadow : RenderPassSlot::Main);
         }
     }
 

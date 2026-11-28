@@ -257,7 +257,7 @@ public:
         if (!gpu_check || gpu_check_scheduled || example_frame_seen < 12u)
             return;
 
-        auto *target = dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+        auto *target = dynamic_cast<SwapchainRenderTarget *>(world->Environment().GetRenderTarget());
         if (!target)
         {
             GLogError(u8"[GID] GPU check requires a swapchain");

@@ -289,7 +289,7 @@ namespace hgl::ecs
         if (ULRE_DEBUG_ON(Cull))
             GLogInfo(u8"[T3i] batch slices: image=%u batches=%u rows=%u Σcount=%u global=%u overflow=%u"
                              u8" 展开行=%u 值链=%u/%u bad=%u nondefault=%u",
-                             context_->GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
+                             context_->Runner().GetFrameIndex(), batch_count, rows_read, sum, gpu_count_, overflow,
                              expansion_rows, checked, checked, bad, nondefault_seen);
     }
 
@@ -331,7 +331,7 @@ namespace hgl::ecs
         }
 
         // 获取全局 SSBO 注册表（用于访问 GeometryAABB）
-        auto* gc = context_->GetGraphicsContext();
+        auto* gc = context_->Environment().GetGraphicsContext();
         if (!gc)
         {
             l2w_device_buffer->Unmap();
@@ -553,7 +553,7 @@ namespace hgl::ecs
 
         if (ULRE_DEBUG_ON(Cull))
             GLogInfo(u8"[CPUCullReferenceSystem] Parity: image=%u CPU=%u, GPU=%u, match=%u, mismatch=%u",
-                     context_->GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
+                     context_->Runner().GetFrameIndex(), cpu_count_, gpu_count_, both, mismatch);
     }
 
 }

@@ -92,6 +92,8 @@ namespace hgl::ecs
 
         void SetScenePipelineMode(ScenePipelineMode mode);
         ScenePipelineMode GetScenePipelineMode() const { return scene_pipeline_mode; }
+        bool IsMainFrameTopologyPass() const
+        { return !pass_scope.IsShadowPass() && pass_scope.GetMobilityFilter() < 0; }
 
         RenderSystemCore *GetRenderCore() const { return const_cast<RenderSystemCore *>((const RenderSystemCore *)render_core); }
         bool EnsureRenderCoreInitialized();

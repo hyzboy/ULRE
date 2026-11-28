@@ -403,7 +403,7 @@ namespace hgl::ecs
         // 同一帧的后续调用直接返回首次结果（含失败），下一帧才开始重新准备。
         //
         // ⚠ 键必须是 `RenderFrameCache::frame_serial`（每次 BeginFrame 自增），**不能**是
-        // `ECSContext::GetFrameIndex()`：后者是驱动相机的**帧槽号**，离屏 pass 恒为该 RT 的
+        // `ECSContext::Runner().GetFrameIndex()`：后者是驱动相机的**帧槽号**，离屏 pass 恒为该 RT 的
         // 固定槽 ⇒ 离屏世界永不推进 ⇒ 首帧准备失败（首帧 renderItems 必为空）被永久缓存，
         // `RunBatching()` 再也不被调用、`materialBatches` 恒空 ⇒ 离屏世界永不绘制
         // （RenderToTexture / RenderToTextureColorDepth 两例的最终根因）。
@@ -435,7 +435,7 @@ namespace hgl::ecs
             return false;
 
         if (!device)
-            device = world->GetGPUDevice();
+            device = world->Environment().GetGPUDevice();
 
         return true;
     }
@@ -569,7 +569,7 @@ namespace hgl::ecs
     graph::BufferManager* RenderBatchPipeline::GetBufferManager() const
     {
         // W7：GetGraphicsContext() 已内置 render_ctx fallback
-        auto *gc = world ? world->GetGraphicsContext() : nullptr;
+        auto *gc = world ? world->Environment().GetGraphicsContext() : nullptr;
         return gc ? gc->GetBufferManager() : nullptr;
     }
 
@@ -578,7 +578,7 @@ namespace hgl::ecs
         // 本批次的**世界表**（WorldAddresses）本帧槽地址：表内各列（相机行 / 实体 4-ID 表 / 光源行 …）
         // 都是世界私有地址 —— 多世界渲染只换这一个指针。表地址随世界、随帧槽 ⇒ 每批重取。
         batch.world_addresses_address = world
-            ? world->GPUResources().GetWorldAddressesAddress(world->GetFrameIndex()) : 0;
+            ? world->GPUResources().GetWorldAddressesAddress(world->Runner().GetFrameIndex()) : 0;
 
         for (auto *item : batch.items)
         {
@@ -632,8 +632,8 @@ namespace hgl::ecs
         }
 
         auto buffer_manager = GetBufferManager();
-        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除）
-        auto* rt = world ? world->GetRenderTarget() : nullptr;
+        // 当前渲染目标唯一权威：world->Environment().GetRenderTarget()（RenderContext 副本已删除）
+        auto* rt = world ? world->Environment().GetRenderTarget() : nullptr;
         auto* current_render_pass = rt ? rt->GetRenderPass() : nullptr;
 
         // ── P4：稳态重放（拓扑/材质/项序列都未变 ⇒ 一个字都不解析管线）─────────
@@ -795,7 +795,7 @@ namespace hgl::ecs
         // pass 取 `MaterialBatch::gpu_slice[pass]`）。自洽性依据：派发本就**每 RT 一次**
         //（主帧槽 + 阴影离屏槽），每槽的布局只由"该槽自己的那次批装配"写 ⇒ 行、标签、
         // 计数、切片全在同槽内闭环，不存在跨槽读取。
-        const uint32_t pass_index = world->IsCurrentPassShadow() ? RenderPassSlot::Shadow
+        const uint32_t pass_index = world->Runner().PassScope().IsShadowPass() ? RenderPassSlot::Shadow
                                                                  : RenderPassSlot::Main;
 
         // T3.1：本 pass 的桶组基址块**先清回哨兵**（上一帧布局对本帧无效）。
@@ -807,7 +807,7 @@ namespace hgl::ecs
         // 迭代顺序 = `cache.materialBatches` 的 map 键序（确定性）⇒ 批号帧间稳定；
         // 未接管的批**标签留无效** ⇒ cull 不为其写行、CPU 路径照旧绘制（按批粒度：
         // 一批不满足前提不牵连其余批）——单次派发 + 标签设计白拿的粒度。
-        auto *gc = world->GetGraphicsContext();
+        auto *gc = world->Environment().GetGraphicsContext();
         auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 
         // A6-d T4b：拒 = **fail-fast**（不再回 CPU 账兜底）。依据 `GPUCullSystem::kMaxBatches`
@@ -996,7 +996,7 @@ namespace hgl::ecs
             if (s_takeover_trace)
                 GLogInfo("[T3i][TRACE] 世界=%s frame=%u pass=%u 出口=pending0 几何批=%u 辖批=%u items=%u arena_rows=%u",
                          world ? world->GetName().c_str() : "<null>",
-                         world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u, "pending0",
+                         world ? world->Runner().GetFrameIndex() : 0u, (world && world->Runner().PassScope().IsShadowPass()) ? 1u : 0u, "pending0",
                          geometry_batches, pending_count, total_items, row_cursor);
             return;
         }
@@ -1037,8 +1037,8 @@ namespace hgl::ecs
             GLogInfo("[T5][TRACE] 世界=%s frame=%u pass=%u 出口=ok 槽=%u 几何批=%u 辖批=%u 桶=%u items=%u arena_rows=%u "
                      "标签项=%u（应 == items）",
                      world ? world->GetName().c_str() : "<null>",
-                     world ? world->GetFrameIndex() : 0u, (world && world->IsCurrentPassShadow()) ? 1u : 0u,
-                     (world ? world->GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, geometry_batches,
+                     world ? world->Runner().GetFrameIndex() : 0u, (world && world->Runner().PassScope().IsShadowPass()) ? 1u : 0u,
+                     (world ? world->Runner().GetFrameIndex() : 0u) % HGL_FRAME_SLOT_TOTAL, geometry_batches,
                      pending_count, next_index, total_items, row_cursor, tagged_items);
 
         if (!gpu_cull_engaged_logged_)
@@ -1075,7 +1075,7 @@ namespace hgl::ecs
         // 必须放在 FinalizeBatch 之后：接管结果由 FinalizeBatch 定型。
         // 判据取实际结果而非请求：只要有任一批仍是 CPU 模式，就说明本帧批布局
         // 依赖 CPU 账，下一帧不可假设它稳定。
-        if (world && world->IsMainFrameTopologyPass())
+        if (world && world->Runner().IsMainFrameTopologyPass())
         {
             bool all_engaged = false;
 
@@ -1114,7 +1114,7 @@ namespace hgl::ecs
             }
         }
 
-        if (world && world->Runner().GetMainFrameTopology().IsSnapshotEnabled() && world->IsMainFrameTopologyPass())
+        if (world && world->Runner().GetMainFrameTopology().IsSnapshotEnabled() && world->Runner().IsMainFrameTopologyPass())
         {
             if (cache.is_collect_steady && !cache.has_pending_resources)
             {
@@ -1129,7 +1129,7 @@ namespace hgl::ecs
             }
         }
 
-        if (world && world->IsMainFrameTopologyPass())
+        if (world && world->Runner().IsMainFrameTopologyPass())
         {
             hgl::graph::FrameDebugger::PipelineInspectionSnapshot snapshot{};
             snapshot.valid = true;

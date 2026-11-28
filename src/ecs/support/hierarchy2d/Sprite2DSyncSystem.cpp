@@ -68,7 +68,7 @@ namespace hgl::ecs
         if (!world)
             return false;
 
-        auto *graphics = world->GetGraphicsContext();
+        auto *graphics = world->Environment().GetGraphicsContext();
         if (!graphics)
             return false;
 
@@ -119,7 +119,7 @@ namespace hgl::ecs
             return;
         }
 
-        auto *rt = world->GetRenderTarget();
+        auto *rt = world->Environment().GetRenderTarget();
         if (!rt)
             return;
 
@@ -184,7 +184,7 @@ namespace hgl::ecs
                 // 若声明了 URI 但尚未解析句柄：向 TextureManager 索取/创建（MetaOnly 句柄自动进入流送）
                 if (!sprite->texture_uri.IsEmpty() && !sprite->texture_asset && !sprite->texture)
                 {
-                    if (auto *gc = world->GetGraphicsContext())
+                    if (auto *gc = world->Environment().GetGraphicsContext())
                         if (auto *tex_manager = gc->GetTextureManager())
                             sprite->texture_asset = tex_manager->CreateTextureAsset(sprite->texture_uri, true);
                 }

@@ -33,7 +33,8 @@ namespace hgl::ecs
     {
         auto &topology = render_runner.GetMainFrameTopology();
         auto &cache = render_runner.GetAdaptiveGraphCache();
-        topology.BeginFrame(GetGraphicsContext() ? GetGraphicsContext()->GetGlobalSSBOBufferRegistry() : nullptr);
+        auto *graphics_context = Environment().GetGraphicsContext();
+        topology.BeginFrame(graphics_context ? graphics_context->GetGlobalSSBOBufferRegistry() : nullptr);
 
         if (cache.IsDirty())
         {

@@ -178,7 +178,7 @@ public:
         if (!gc)
         {
             if (auto *w = offscreen ? offscreen->GetWorld() : nullptr)
-                gc = w->GetGraphicsContext();
+                gc = w->Environment().GetGraphicsContext();
         }
 
         if (gc)
@@ -455,7 +455,7 @@ private:
     {
         if(!getenv("RTTCD_BUFFER_TEST"))
             return true;
-        auto *device=ecs_context->GetGPUDevice();
+        auto *device=ecs_context->Environment().GetGPUDevice();
         if(!device)
             return false;
         uint32_t upload[16];
@@ -482,7 +482,7 @@ private:
     {
         if(!capture_buffer_id || !graph::DebugCaptureQueue::HasQueued(capture_buffer_id))
             return;
-        auto *device=ecs_context->GetGPUDevice();
+        auto *device=ecs_context->Environment().GetGPUDevice();
         if(getenv("RTTCD_BUFFER_DESTROY_TEST"))
         {
             capture_buffer_id=0;

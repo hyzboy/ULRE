@@ -220,7 +220,7 @@ namespace hgl::graph
             world->DestroyEntity(camera_entity_id);
         camera_entity_id = ecs::EntityID::Invalid();
         if (clear_color_changed && world)
-            if (auto *render_target = world->GetRenderTarget())
+            if (auto *render_target = world->Environment().GetRenderTarget())
                 render_target->SetClearColor(previous_clear_color);
         clear_color_changed = false;
         world = nullptr;
@@ -240,7 +240,7 @@ namespace hgl::graph
             return false;
         }
 
-        GraphicsContext *gc = world->GetGraphicsContext();
+        GraphicsContext *gc = world->Environment().GetGraphicsContext();
         if (!gc)
         {
             MLogError(LevelLoader, "Instantiate: ECS world has no GraphicsContext");
@@ -621,7 +621,7 @@ namespace hgl::graph
 
         if (spec.clear_color.enabled)
         {
-            auto *render_target = world->GetRenderTarget();
+            auto *render_target = world->Environment().GetRenderTarget();
             if (!render_target)
             {
                 MLogError(LevelLoader, "Instantiate: clear color requires a render target");

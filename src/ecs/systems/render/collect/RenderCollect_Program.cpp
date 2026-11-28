@@ -277,11 +277,11 @@ namespace hgl::ecs
                 return true;
 
             ECSContext *context = primitive_comp ? primitive_comp->GetContextAs<hgl::ecs::ECSContext>() : nullptr;
-            graph::GraphicsContext *graphics = context ? context->GetGraphicsContext() : nullptr;
+            graph::GraphicsContext *graphics = context ? context->Environment().GetGraphicsContext() : nullptr;
 
             if (!graphics)
             {
-                auto *render_context = context ? context->GetRenderContext() : nullptr;
+                auto *render_context = context ? context->Environment().GetRenderContext() : nullptr;
                 graphics = render_context ? render_context->GetGraphicsContext() : nullptr;
             }
 
@@ -493,10 +493,10 @@ namespace hgl::ecs
             graph::GraphicsContext *&out_graphics,
             graph::ShaderProgramManager *&out_material_manager)
         {
-            out_graphics = world->GetGraphicsContext();
+            out_graphics = world->Environment().GetGraphicsContext();
             if (!out_graphics)
             {
-                auto *render_context = world->GetRenderContext();
+                auto *render_context = world->Environment().GetRenderContext();
                 out_graphics = render_context
                                    ? render_context->GetGraphicsContext()
                                    : nullptr;
@@ -510,7 +510,7 @@ namespace hgl::ecs
 
         // ambient provider 模块（`ambient_light_provider` 槽）由**世界/环境层**决定：
         // `EnvironmentSystem::SetAmbientProvider` → `EnvironmentManager::Profile::ambient_module_name`
-        // → `ECSContext::GetAmbientProviderName()`。材质不再声明它 —— 环境光的算法与
+        // → `ECSContext::Environment().GetAmbientProviderName()`。材质不再声明它 —— 环境光的算法与
         // 参数块（`ambient_env`）必须由同一个所有者配对。
         //
         // 世界没配环境（名字为空）时**规范化为 `ambient_light_none`**，而不是把空串
@@ -524,7 +524,7 @@ namespace hgl::ecs
             if (!world)
                 return none;
 
-            const AnsiString &name = world->GetAmbientProviderName();
+            const AnsiString &name = world->Environment().GetAmbientProviderName();
             return name.IsEmpty() ? none : name;
         }
 
@@ -854,7 +854,7 @@ namespace hgl::ecs
 
         // A1：阴影 pass 一律走专用 ShadowCaster 程序槽；下方解析链只服务
         // forward pass，不感知当前 pass。
-        if (world->IsCurrentPassShadow())
+        if (world->Runner().PassScope().IsShadowPass())
             return EnsureShadowCasterProgram(primitive_comp, slot);
 
         return EnsureForwardProgram(primitive_comp, slot);
@@ -1137,15 +1137,15 @@ namespace hgl::ecs
         // A1：阴影 pass 用 ShadowCaster 槽的 program/recipe。运行期管线按 render_pass
         // 键控缓存在**每实例 slot** 上（A5b：渲染组件已删），两槽各自对应不同
         // RenderPass，互不驱逐。
-        const bool shadow_pass = world->IsCurrentPassShadow();
+        const bool shadow_pass = world->Runner().PassScope().IsShadowPass();
         graph::ShaderProgram *program = GetCurrentPassProgram(
             GetVariantTable(world), row, shadow_pass);
         if (!program)
             return false;
 
-        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除；
+        // 当前渲染目标唯一权威：world->Environment().GetRenderTarget()（RenderContext 副本已删除；
         // RenderTo 切 RT 时会同步本世界的 render_target 指针）
-        auto *render_target = world->GetRenderTarget();
+        auto *render_target = world->Environment().GetRenderTarget();
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         if (!render_pass)
             return false;

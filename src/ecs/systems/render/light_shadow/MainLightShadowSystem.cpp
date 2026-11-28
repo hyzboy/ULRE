@@ -52,7 +52,7 @@ namespace hgl::ecs
         if (render_context)
             gc = render_context->GetGraphicsContext();
         else if (context)
-            gc = context->GetGraphicsContext();
+            gc = context->Environment().GetGraphicsContext();
 
         if (!gc)
         {

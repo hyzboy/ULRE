@@ -85,7 +85,7 @@ namespace hgl::ecs
         bool CreateTarget(ECSContext *world,IRenderTarget *main,DebugViewMode mode,
                           WorldState &state,const char *&error)
         {
-            GraphicsContext *graphics=world->GetGraphicsContext();
+            GraphicsContext *graphics=world->Environment().GetGraphicsContext();
             RenderTargetManager *manager=graphics?graphics->GetRenderTargetManager():nullptr;
             if(!manager || !main->GetDepthTexture())
             {
@@ -336,7 +336,7 @@ namespace hgl::ecs
         }
         state->recorded_frame=0;
         state->recorded_main=nullptr;
-        GraphicsContext *graphics=world->GetGraphicsContext();
+        GraphicsContext *graphics=world->Environment().GetGraphicsContext();
         RenderPass *pass=state->target->GetRenderPass();
         ValueArray<PreparedBatch> prepared;
         const char *error=nullptr;
@@ -387,7 +387,7 @@ namespace hgl::ecs
         {
             PipelineMaterialRenderer renderer(entry.program,entry.pipeline);
             renderer.Render(cmd,entry.batch->transform_buffer,entry.batch,
-                            world->GetRenderContext(),world->GetActiveCameraRow(),
+                            world->Environment().GetRenderContext(),world->GetActiveCameraRow(),
                             RenderPassSlot::Main);
         }
         cmd->EndRenderingPresent(state->target);

@@ -140,7 +140,7 @@ private:
 
     void CheckWireframe()
     {
-        auto *target = ecs_context->GetRenderTarget();
+        auto *target = ecs_context->Environment().GetRenderTarget();
         auto &pipelines = ecs_context->RenderData().GetMaterialRuntimePipelineTable();
         for (const auto &box : bounding_boxes)
         {
@@ -551,7 +551,7 @@ public:
         }
         if (selfcheck_frame >= 8u)
         {
-            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->Environment().GetRenderTarget());
             if (!target)
             {
                 GLogError(u8"[RBB] FAIL: wireframe self-check requires a swapchain");

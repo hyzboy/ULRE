@@ -459,7 +459,7 @@ namespace hgl::ecs
             return;
 
         // W7：GetGraphicsContext() 已内置 render_ctx fallback
-        auto *graphics_context = world->GetGraphicsContext();
+        auto *graphics_context = world->Environment().GetGraphicsContext();
         if (!graphics_context)
             return;
 
@@ -470,7 +470,7 @@ namespace hgl::ecs
         // Use the render target's actual frame count so the ring matches
         // the swapchain's in-flight frame count, avoiding over/under allocation.
         uint32_t ring_frames = HGL_L2W_RING_FRAMES;
-        auto render_target = world->GetRenderTarget();
+        auto render_target = world->Environment().GetRenderTarget();
         if (render_target)
             ring_frames = render_target->GetFrameCount();
 

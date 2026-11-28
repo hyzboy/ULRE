@@ -25,7 +25,7 @@ namespace hgl::ecs
             return;
         }
 
-        graph::RenderCmdBuffer *cmdBuffer = ctx->GetCurrentRenderCmd();
+        graph::RenderCmdBuffer *cmdBuffer = ctx->Runner().GetCurrentRenderCmd();
         if (!cmdBuffer)
         {
             if (ULRE_DEBUG_ON(Upload))
@@ -35,7 +35,7 @@ namespace hgl::ecs
 
         graph::VulkanDevice* active_device = device;
         if (!active_device)
-            active_device = ctx->GetGPUDevice();
+            active_device = ctx->Environment().GetGPUDevice();
 
         if (!active_device)
         {

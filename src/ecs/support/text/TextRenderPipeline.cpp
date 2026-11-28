@@ -88,7 +88,7 @@ namespace hgl::ecs
     TextRenderPipeline::~TextRenderPipeline()
     {
         if (!render_context && world)
-            render_context = world->GetRenderContext();
+            render_context = world->Environment().GetRenderContext();
 
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
@@ -98,7 +98,7 @@ namespace hgl::ecs
                 ? graphics_context->GetSSBOBufferRegistry()
                 : nullptr;
         const uint64_t texture_retire_epoch =
-            (world ? world->GetRenderSubmissionSerial() : 0u)
+            (world ? world->Runner().GetRenderSubmissionSerial() : 0u)
             + graph::MaterialTextureConfigurationRetireEpochDelay;
 
         for (auto& pair : resources_by_font)
@@ -181,7 +181,7 @@ namespace hgl::ecs
             return false;
 
         // 键用世界内帧序列号（`RenderFrameCache::frame_serial`，每次 BeginFrame 自增），
-        // **不能**用 `ECSContext::GetFrameIndex()` —— 那是驱动相机的帧槽号，
+        // **不能**用 `ECSContext::Runner().GetFrameIndex()` —— 那是驱动相机的帧槽号，
         // 离屏 pass 恒为固定槽（永不推进）⇒ 同槽的后续帧会被误判为"本帧已准备"。
         const uint32_t frame_index = world->Runner().FrameCache().frame_serial;
         if (prepared_frame_index == frame_index)
@@ -308,7 +308,7 @@ namespace hgl::ecs
             // 故先取已有值，缺失时回退到 world 的 RenderContext）
             graph::RenderContext *addr_rc = render_context;
             if (!addr_rc && world)
-                addr_rc = world->GetRenderContext();
+                addr_rc = world->Environment().GetRenderContext();
             graph::GraphicsContext *addr_gc = addr_rc ? addr_rc->GetGraphicsContext() : nullptr;
             // 表按帧槽多份：用本批次所属帧槽（= active_cam_row 的低位）取本槽表地址。
             const uint64_t addr_global_addresses =
@@ -320,7 +320,7 @@ namespace hgl::ecs
                 frame_device,
                 res.material->GetPipelineLayout(),
                 addr_global_addresses,
-                world ? world->GPUResources().GetWorldAddressesAddress(world->GetFrameIndex()) : 0,
+                world ? world->GPUResources().GetWorldAddressesAddress(world->Runner().GetFrameIndex()) : 0,
                 res.mesh_draw_params ? res.mesh_draw_params->GetGPUBuffer() : nullptr,
                 nullptr, nullptr,
                 res.material_instance_addresses_buffer
@@ -359,11 +359,11 @@ namespace hgl::ecs
         graph::FontSource* font_source = key.font_source;
 
         if (!render_context && world)
-            render_context = world->GetRenderContext();
+            render_context = world->Environment().GetRenderContext();
 
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!graphics_context && world)
-            graphics_context = world->GetGraphicsContext();
+            graphics_context = world->Environment().GetGraphicsContext();
 
         if (!render_context || !graphics_context)
             return nullptr;
@@ -422,7 +422,7 @@ namespace hgl::ecs
         VkExtent2D extent{1024, 1024};
         if (world)
         {
-            auto* target = world->GetRenderTarget();
+            auto* target = world->Environment().GetRenderTarget();
             if (target)
                 extent = target->GetExtent();
         }
@@ -537,11 +537,11 @@ namespace hgl::ecs
             return nullptr;
         }
         texture_registry->CollectRetiredMaterialTextureConfigurations(
-            world ? world->GetRenderSubmissionSerial() : 0u);
+            world ? world->Runner().GetRenderSubmissionSerial() : 0u);
 
         guard.texture_registry = texture_registry;
         guard.texture_retire_epoch =
-            (world ? world->GetRenderSubmissionSerial() : 0u)
+            (world ? world->Runner().GetRenderSubmissionSerial() : 0u)
             + graph::MaterialTextureConfigurationRetireEpochDelay;
         if (!texture_registry->AcquireMaterialTextureConfiguration(
                 text_definition,
@@ -623,14 +623,14 @@ namespace hgl::ecs
             return false;
 
         if (!render_context)
-            render_context = world->GetRenderContext();
+            render_context = world->Environment().GetRenderContext();
 
         if (!render_context)
             return false;
 
         graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!graphics_context && world)
-            graphics_context = world->GetGraphicsContext();
+            graphics_context = world->Environment().GetGraphicsContext();
 
         device = graphics_context ? graphics_context->GetDevice() : nullptr;
         if (!device)
@@ -638,8 +638,8 @@ namespace hgl::ecs
 
         material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
 
-        // 当前渲染目标唯一权威：world->GetRenderTarget()（RenderContext 副本已删除）
-        render_target = world ? world->GetRenderTarget() : nullptr;
+        // 当前渲染目标唯一权威：world->Environment().GetRenderTarget()（RenderContext 副本已删除）
+        render_target = world ? world->Environment().GetRenderTarget() : nullptr;
 
         render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 
@@ -651,8 +651,8 @@ namespace hgl::ecs
 
     graph::RenderPass* TextRenderPipeline::ResolveActiveRenderPass() const
     {
-        // 当前渲染目标唯一权威：world->GetRenderTarget()（`RenderTo` 期间它指向本次离屏 RT）
-        graph::IRenderTarget* active_target = world ? world->GetRenderTarget() : nullptr;
+        // 当前渲染目标唯一权威：world->Environment().GetRenderTarget()（`RenderTo` 期间它指向本次离屏 RT）
+        graph::IRenderTarget* active_target = world ? world->Environment().GetRenderTarget() : nullptr;
         return active_target ? active_target->GetRenderPass() : nullptr;
     }
 

@@ -530,7 +530,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             VkDrawMeshTasksIndirectCommandEXT commands[4]{};
             auto *indirect = cull->GetIndirectCommandsBuffer();
             if (batches != 4u || !indirect
-             || !ReadbackBuffer(world->GetGPUDevice(), indirect->GetVkBuffer(), 0,
+             || !ReadbackBuffer(world->Environment().GetGPUDevice(), indirect->GetVkBuffer(), 0,
                                 sizeof(commands), commands))
                 ok = false;
             else
@@ -587,7 +587,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
     {
         ValueArray<uint8_t> pixels;
         TextureReadbackInfo info;
-        bool ok = ReadbackColorTarget(world->GetRenderTarget(), pixels, 0, &info) && !pixels.IsEmpty();
+        bool ok = ReadbackColorTarget(world->Environment().GetRenderTarget(), pixels, 0, &info) && !pixels.IsEmpty();
         if (ok)
         {
             for (uint32_t i = 0; i < 3; ++i)
@@ -908,7 +908,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
             frame_limit = uint32_t(limit);
         }
         SetClearColor(Color4f(0.025f, 0.025f, 0.025f, 1.0f));
-        world->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
+        world->Runner().SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
         auto environment = world->GetSystem<EnvironmentSystem>();
         if (!environment || !environment->SetAmbientProvider("ambient_light_sh"))
             return false;
@@ -1053,7 +1053,7 @@ class GPUModelMultiMaterialApp final : public ulre_example::ExampleAppBase
                             || !lit_recipes[1].textures[0].asset->IsReady()))
                 return;
             if (warmup) { --warmup; return; }
-            auto *rt = dynamic_cast<SwapchainRenderTarget *>(world->GetRenderTarget());
+            auto *rt = dynamic_cast<SwapchainRenderTarget *>(world->Environment().GetRenderTarget());
             if (!rt) Fail("self-check requires a swapchain");
             rt->SetInFrameReadbackHook([this]() { Sample(); });
         }

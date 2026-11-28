@@ -302,7 +302,7 @@ namespace hgl::ecs
         if (!context)
             return false;
 
-        graph::GraphicsContext *gc = context->GetGraphicsContext();
+        graph::GraphicsContext *gc = context->Environment().GetGraphicsContext();
 
         if (!gc)
             return false;

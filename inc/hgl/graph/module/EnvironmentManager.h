@@ -33,7 +33,7 @@ namespace hgl::graph
      * 分层约定：
      * - 数据层：EnvironmentInfo（纯数据，CPU 侧唯一权威在 Profile::cpu）
      * - 管理层：本类（Profile 注册 / GPU UBO 物化 / 脏标记 / **按 profile 取设备地址**）
-     * - 选择层：**世界**（`ECSContext::GetEnvProfileID()`；世界初始化时取本世界 RT 的 env_profile）
+     * - 选择层：**世界**（`ECSContext::Environment().GetEnvProfileID()`；世界初始化时取本世界 RT 的 env_profile）
      * - 绑定层：**世界表**（`WorldAddresses::addr_ambient_env`；Scene 集已随 S3 整体退场，
      *   参数段全部经 pc_root 下的表 + BDA 解引用，无 binding 可推）
      *

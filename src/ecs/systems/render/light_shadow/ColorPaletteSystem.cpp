@@ -45,7 +45,7 @@ namespace hgl::ecs
                 }
                 if (!buffer_manager && context)
                 {
-                    if (auto *gc = context->GetGraphicsContext())
+                    if (auto *gc = context->Environment().GetGraphicsContext())
                         buffer_manager = gc->GetBufferManager();
                 }
 
@@ -86,9 +86,9 @@ namespace hgl::ecs
             return;
 
         if (!render_context && context)
-            render_context = context->GetRenderContext();
+            render_context = context->Environment().GetRenderContext();
 
-        auto *gc = context ? context->GetGraphicsContext() : nullptr;
+        auto *gc = context ? context->Environment().GetGraphicsContext() : nullptr;
         if (!gc && render_context)
             gc = render_context->GetGraphicsContext();
 

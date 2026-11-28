@@ -73,9 +73,9 @@ namespace hgl::ecs
             if (geometry_comp->GetGeometryID() != 0)
                 return true;
 
-            auto *gc = world ? world->GetGraphicsContext() : nullptr;
+            auto *gc = world ? world->Environment().GetGraphicsContext() : nullptr;
             auto *pool = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
-            auto *dev = world ? world->GetGPUDevice() : nullptr;
+            auto *dev = world ? world->Environment().GetGPUDevice() : nullptr;
 
             if (!pool || !dev)
                 return false;
@@ -135,13 +135,13 @@ namespace hgl::ecs
             out.facts.has_material_source = template_carrier || HasAnyMaterialSource(owner);
             out.facts.cast_shadow         = CanCastShadow(owner);
             out.facts.receive_shadow      = CanReceiveShadow(owner);
-            out.facts.shadow_pass         = world->IsCurrentPassShadow();
+            out.facts.shadow_pass         = world->Runner().PassScope().IsShadowPass();
 
             if (out.facts.shadow_pass && owner)
             {
                 const float max_dist = GetShadowMaxDistance(owner);
 
-                if (max_dist > 0.0f && world->HasShadowOrigin())
+                if (max_dist > 0.0f && world->Runner().PassScope().HasShadowOrigin())
                 {
                     const TransformAccessor transform =
                         world->Spatial().GetTransformByEntity(owner->GetEntityID());
@@ -149,7 +149,7 @@ namespace hgl::ecs
                     if (transform.IsValid())
                     {
                         const glm::vec3 diff =
-                            transform.GetWorldPosition() - world->GetShadowOrigin();
+                            transform.GetWorldPosition() - world->Runner().PassScope().ShadowOrigin();
 
                         out.in_shadow_range = glm::dot(diff,diff) <= max_dist * max_dist;
                     }
@@ -361,8 +361,8 @@ namespace hgl::ecs
         auto& cache = world->Runner().FrameCache();
         cache.cameraInfo = cameraInfo;
         hgl::graph::FrameDebugger::SetCameraSnapshot(cameraInfo);
-        if(!world->IsCurrentPassShadow())
-            if(auto *swapchain=dynamic_cast<hgl::graph::SwapchainRenderTarget *>(world->GetRenderTarget()))
+        if(!world->Runner().PassScope().IsShadowPass())
+            if(auto *swapchain=dynamic_cast<hgl::graph::SwapchainRenderTarget *>(world->Environment().GetRenderTarget()))
                 swapchain->RecordCaptureCamera(cameraInfo);
 
         // P1：每 pass 一次资格判定（只统计，不改变本帧任何行为）。
@@ -372,7 +372,7 @@ namespace hgl::ecs
         // 基线日志逐字不变）。
         g_fallback_recipe_builds = 0;
 
-        const int active_mobility_filter = world ? world->GetActiveMobilityFilter() : -1;
+        const int active_mobility_filter = world ? world->Runner().PassScope().GetMobilityFilter() : -1;
 
         // T2-c + 阶段 1：图元枚举源 = **GeometryData 活跃集 ∪ 纯模板载体实体**。
         //
@@ -393,7 +393,7 @@ namespace hgl::ecs
         // 这次"变化"，它解析完会顺手把共享的 `program_dirty` 清回 false，前向 pass 就
         // 再也看不到 provider 变过 —— 表现为热切天光算法后前向材质仍用旧 program。
         bool ambient_provider_changed = false;
-        if (!world->IsCurrentPassShadow())
+        if (!world->Runner().PassScope().IsShadowPass())
         {
             const AnsiString &ambient_provider_now = ResolveAmbientProviderModule(world);
             const uint64_t ambient_provider_hash =
@@ -631,11 +631,11 @@ namespace hgl::ecs
         if (g_fallback_recipe_builds > 0)
         {
             GLogWarning(u8"[MaterialFallback] shadow_pass=%d fallback material recipes built this pass: %u",
-                        world->IsCurrentPassShadow() ? 1 : 0, g_fallback_recipe_builds);
+                        world->Runner().PassScope().IsShadowPass() ? 1 : 0, g_fallback_recipe_builds);
         }
 
         const bool s6_collect_log = ULRE_DEBUG_ON(Shadow);
-        if (s6_collect_log && world && world->IsCurrentPassShadow())
+        if (s6_collect_log && world && world->Runner().PassScope().IsShadowPass())
         {
             const MaterialRuntimeTable *runtime_stats = GetRuntimeTable(world);
 
@@ -655,7 +655,7 @@ namespace hgl::ecs
 
         // P3：记录本 pass 是否"稳态"（无任何图元需要完整材质链），供下一帧快路径判定。
         // 只在主帧 pass 更新：阴影/过滤 pass 的结论会污染这份判断。
-        if (world->IsMainFrameTopologyPass())
+        if (world->Runner().IsMainFrameTopologyPass())
         {
             collect_cache.SetLastMainCollectSteady(!preparation.any_material_work && !preparation.any_pending_resources);
             cache.is_collect_steady     = collect_cache.IsLastMainCollectSteady();

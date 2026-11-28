@@ -34,7 +34,7 @@ namespace hgl::graph
         // 1. 本类持有的四个系统 shared_ptr 必须在 ECSContext 存活时先放掉。
         //    `ecs::System::context` 是裸指针，若 ECSContext 已销毁而这里还持有最后一个
         //    引用，系统析构路径（如 ~RenderSceneUBOSystem → ReleaseViewportUBO →
-        //    GetBufferManager(context) → context->GetRenderContext()）会解引用悬垂 context：
+        //    GetBufferManager(context) → context->Environment().GetRenderContext()）会解引用悬垂 context：
         //    RenderToTexture 系列实测 AV @ 0xFEEEFEEE。
         //    放掉后系统仍由 ECSContext 自身的 shared_ptr 持有，最终在 Shutdown 内销毁，
         //    那时 context 仍是有效对象。
@@ -67,7 +67,7 @@ namespace hgl::graph
         cull_mode_  = desc.cull_mode;
 
         if(main_world_)
-            render_context_ = main_world_->GetRenderContext();
+            render_context_ = main_world_->Environment().GetRenderContext();
 
         VulkanDevice *device = gc->GetDevice();
         RenderTargetManager *rtm = gc->GetRenderTargetManager();
@@ -109,7 +109,7 @@ namespace hgl::graph
             return false;
 
         if(render_context_)
-            world_->SetRenderContext(render_context_);
+            world_->Environment().SetRenderContext(render_context_);
 
         rt_system_      = world_->RegisterSystem<ecs::RenderTargetSystem>();
         collect_system_ = world_->RegisterSystem<ecs::RenderCollectSystem>();
@@ -172,7 +172,7 @@ namespace hgl::graph
 
         // **绘制前**判定资源就绪：本帧若现在提交，画出来的是不是完整内容。
         // 必须在 Tick/RenderTo 之前取，否则可能被本帧 DriveResources 改过状态。
-        const bool scene_ready = !world_->HasPendingRenderableResources();
+        const bool scene_ready = !world_->Runner().HasPendingRenderableResources();
 
         world_->Tick(delta_time);
 
@@ -210,7 +210,7 @@ namespace hgl::graph
 
     bool OffscreenWorld::IsSceneContentReady() const
     {
-        return world_ ? !world_->HasPendingRenderableResources() : true;
+        return world_ ? !world_->Runner().HasPendingRenderableResources() : true;
     }
 
     void OffscreenWorld::MarkContentReady()
@@ -262,7 +262,7 @@ namespace hgl::graph
             camera_system_->SetViewportInfo(rt->GetViewportInfo());
 
         if(world_)
-            world_->SetRenderTarget(rt);
+            world_->Environment().SetRenderTarget(rt);
 
         return true;
     }

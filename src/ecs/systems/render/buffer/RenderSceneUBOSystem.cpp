@@ -39,13 +39,13 @@ namespace hgl::ecs
             if (!ctx)
                 return nullptr;
 
-            if (auto *rc = ctx->GetRenderContext())
+            if (auto *rc = ctx->Environment().GetRenderContext())
             {
                 if (auto *gc = rc->GetGraphicsContext())
                     return gc->GetBufferManager();
             }
 
-            if (auto *gc = ctx->GetGraphicsContext())
+            if (auto *gc = ctx->Environment().GetGraphicsContext())
                 return gc->GetBufferManager();
 
             return nullptr;
@@ -56,13 +56,13 @@ namespace hgl::ecs
             if (!ctx)
                 return nullptr;
 
-            if (auto *rc = ctx->GetRenderContext())
+            if (auto *rc = ctx->Environment().GetRenderContext())
             {
                 if (auto *gc = rc->GetGraphicsContext())
                     return gc->GetSSBOBufferRegistry();
             }
 
-            if (auto *gc = ctx->GetGraphicsContext())
+            if (auto *gc = ctx->Environment().GetGraphicsContext())
                 return gc->GetSSBOBufferRegistry();
 
             return nullptr;
@@ -106,7 +106,7 @@ namespace hgl::ecs
         uint32_t h = pending_viewport_height;
         if (w == 0 && h == 0)
         {
-            auto *rt = context->GetRenderTarget();
+            auto *rt = context->Environment().GetRenderTarget();
             if (rt) { w = rt->GetExtent().width; h = rt->GetExtent().height; }
         }
         viewport_ubo->Data()->Set(w, h);
@@ -115,10 +115,10 @@ namespace hgl::ecs
         // 地址进表：**在物化处注册**（地址唯一会变的地方，取不到即 fail-fast）。viewport 是
         // 单份 buffer（内容按 pass/RT 覆盖写、地址恒定）⇒ 一个地址写满所有帧槽。
         graph::GraphicsContext *gc = nullptr;
-        if (auto *rc = context->GetRenderContext())
+        if (auto *rc = context->Environment().GetRenderContext())
             gc = rc->GetGraphicsContext();
         if (!gc)
-            gc = context->GetGraphicsContext();
+            gc = context->Environment().GetGraphicsContext();
 
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
         if (!registry)
@@ -171,7 +171,7 @@ namespace hgl::ecs
 
         if (context)
         {
-            if (auto *rt = context->GetRenderTarget())
+            if (auto *rt = context->Environment().GetRenderTarget())
             {
                 if (const auto *vi = rt->GetViewportInfo())
                 {
@@ -187,7 +187,7 @@ namespace hgl::ecs
         uint32_t h = pending_viewport_height;
         if ((w == 0 && h == 0) && context)
         {
-            if (auto *rt = context->GetRenderTarget())
+            if (auto *rt = context->Environment().GetRenderTarget())
             {
                 w = rt->GetExtent().width;
                 h = rt->GetExtent().height;
@@ -207,7 +207,7 @@ namespace hgl::ecs
     {
         if (context)
         {
-            if (auto *rt = context->GetRenderTarget())
+            if (auto *rt = context->Environment().GetRenderTarget())
                 return rt->GetViewportInfo();
         }
 

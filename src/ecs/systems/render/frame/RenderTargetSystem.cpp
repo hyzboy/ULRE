@@ -26,10 +26,10 @@ namespace hgl::ecs
     void RenderTargetSystem::Update(float /*deltaTime*/)
     {
         if (!render_context && context)
-            render_context = context->GetRenderContext();
+            render_context = context->Environment().GetRenderContext();
 
         if (!render_target && context)
-            render_target = context->GetRenderTarget();
+            render_target = context->Environment().GetRenderTarget();
 
         if (!render_target)
             return;

@@ -36,7 +36,7 @@ namespace hgl::ecs
 
         auto *ref = entity->GetComponent<GPUModelRefComponent>();
         auto *mat_table = world->RenderData().TemplateMaterials();
-        auto *gc = world->GetGraphicsContext();
+        auto *gc = world->Environment().GetGraphicsContext();
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 
         // 分支 1：实体本身已经拥有合法的模型模板 ID（例如通过 RegisterModelTemplate 注册的多部件模板）
@@ -150,7 +150,7 @@ namespace hgl::ecs
 
     bool RenderCollectSystem::EnsureAutomaticPrimitiveTemplate(Entity *entity, GPUModelRefComponent *ref)
     {
-        auto *gc = world->GetGraphicsContext();
+        auto *gc = world->Environment().GetGraphicsContext();
         auto *registry = gc ? gc->GetGlobalSSBOBufferRegistry() : nullptr;
 
         // 单图元实体按自身材质 slot 物化，并共享几何模板。

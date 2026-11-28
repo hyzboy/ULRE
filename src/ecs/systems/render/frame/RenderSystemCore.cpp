@@ -28,8 +28,8 @@ bool RenderSystemCore::Initialize() {
         return false;
     }
 
-    gpu_device = world->GetGPUDevice();
-    render_target = world->GetRenderTarget();
+    gpu_device = world->Environment().GetGPUDevice();
+    render_target = world->Environment().GetRenderTarget();
 
     if (!gpu_device || !render_target) {
         LogError("RenderSystemCore::Initialize: gpu_device or render_target is null");
@@ -43,7 +43,7 @@ bool RenderSystemCore::Initialize() {
 bool RenderSystemCore::BeginFrame() {
     // 每次BeginFrame时重新获取render_target，因为窗口resize时可能被重建
     if (world) {
-        render_target = world->GetRenderTarget();
+        render_target = world->Environment().GetRenderTarget();
     }
 
     if (!render_target) {
@@ -63,11 +63,11 @@ bool RenderSystemCore::BeginFrame() {
         return false;
     }
 
-    // 命令缓冲的帧内权威在 ECSContext::SetCurrentRenderCmd（BeginManagedRenderFrame
+    // 命令缓冲的帧内权威在 ECSContext::Runner().SetCurrentRenderCmd（BeginManagedRenderFrame
     // 也会调它）——RenderContext::current_render_cmd_buf 副本已删除
     if (world)
     {
-        world->SetRenderSubmissionSerial(render_submission_serial);
+        world->Runner().SetRenderSubmissionSerial(render_submission_serial);
     }
 
     // T10 隐含不变量：本 index 驱动 L2W 等 per-frame ring 的槽位选择。
@@ -120,7 +120,7 @@ bool RenderSystemCore::EndFrame() {
 
     // 重新获取render_target以防resize时被重建
     if (world) {
-        render_target = world->GetRenderTarget();
+        render_target = world->Environment().GetRenderTarget();
     }
 
     if (!render_target) {

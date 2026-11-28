@@ -518,7 +518,7 @@ public:
     void InstallIsolationHook()
     {
         auto *rt = dynamic_cast<graph::SwapchainRenderTarget *>(
-            ecs_context ? ecs_context->GetRenderTarget() : nullptr);
+            ecs_context ? ecs_context->Environment().GetRenderTarget() : nullptr);
         if (!rt)
         {
             std::printf("[DWS] no swapchain RT\n");

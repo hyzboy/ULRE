@@ -209,7 +209,7 @@ namespace hgl::graph
         /// 全局地址表基址（push constant 的根入口 addr_global_addresses 取址来源；未初始化 = 0）
         /// 定义在 .cpp（此处只有 GlobalSSBOBufferRegistry 前置声明，不能取成员）
         /// 本帧槽的全局地址表地址（pc_root.addr_global_addresses 取址源）。
-        /// 表按 HGL_FRAME_SLOT_TOTAL 多份 ⇒ 必须给出帧槽号（Context::GetFrameIndex()）。
+        /// 表按 HGL_FRAME_SLOT_TOTAL 多份 ⇒ 必须给出帧槽号（Context::Runner().GetFrameIndex()）。
         uint64_t GetGlobalAddressesAddress(uint32_t frame_slot) const;
         EnvironmentManager *GetEnvironmentManager() { return env_manager; }
         BindlessTextureManager *GetBindlessTextureManager() { return bindless_texture_manager_; }

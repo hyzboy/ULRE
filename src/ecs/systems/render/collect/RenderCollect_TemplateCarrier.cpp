@@ -39,8 +39,8 @@ namespace hgl::ecs
             return true;
         }
 
-        const bool shadow_pass = world->IsCurrentPassShadow();
-        auto *render_target = world->GetRenderTarget();
+        const bool shadow_pass = world->Runner().PassScope().IsShadowPass();
+        auto *render_target = world->Environment().GetRenderTarget();
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         MaterialRuntimeTable *runtime_table = GetRuntimeTable(world);
         MaterialVariantTable *variant_table = world->RenderData().Variants();

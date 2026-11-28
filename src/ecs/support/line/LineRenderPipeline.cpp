@@ -376,17 +376,17 @@ namespace hgl::ecs
 
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: START"));
 
-        auto* gc = context_ ? context_->GetGraphicsContext() : nullptr;
+        auto* gc = context_ ? context_->Environment().GetGraphicsContext() : nullptr;
         if (!gc)
         {
-            if (auto* rc = context_ ? context_->GetRenderContext() : nullptr)
+            if (auto* rc = context_ ? context_->Environment().GetRenderContext() : nullptr)
                 gc = rc->GetGraphicsContext();
         }
 
         if (!gc)
             return false;
 
-        auto* rt = context_->GetRenderTarget();
+        auto* rt = context_->Environment().GetRenderTarget();
         if (!rt)
             return false;
 
@@ -449,7 +449,7 @@ namespace hgl::ecs
 
         current_line_buffer_ = nullptr;
         total_line_count_ = 0;
-        const uint32_t slot = context_->GetFrameIndex();
+        const uint32_t slot = context_->Runner().GetFrameIndex();
         if (slot >= HGL_FRAME_SLOT_TOTAL)
         {
             GLogError("[LineRenderPipeline] Invalid render frame slot %u (limit=%u)",
@@ -634,7 +634,7 @@ namespace hgl::ecs
         const uint32_t frame_serial = context_
             ? context_->Runner().FrameCache().frame_serial
             : 0;
-        if (!line_buffer_.EnsureCapacity(expected_total, device_, frame_serial, context_->GetFrameIndex()))
+        if (!line_buffer_.EnsureCapacity(expected_total, device_, frame_serial, context_->Runner().GetFrameIndex()))
         {
             LinePeriodicLog(s_line_log_ticks[10],
                             "[LineRenderPipeline] EnsureCapacity failed: need=%u cap=%u",
@@ -701,7 +701,7 @@ namespace hgl::ecs
                 line_buffer_.mesh_draw_params = device_->CreateSSBO(
                     "ECS:Line:MeshDrawCommands", sizeof(graph::mtl::MeshDrawCommand));
 
-            auto *gc_l = context_ ? context_->GetGraphicsContext() : nullptr;
+            auto *gc_l = context_ ? context_->Environment().GetGraphicsContext() : nullptr;
             auto *pool = gc_l ? gc_l->GetGlobalSSBOBufferRegistry() : nullptr;
 
             if (line_buffer_.geometry && pool && device_)
@@ -794,7 +794,7 @@ namespace hgl::ecs
             return;
         }
 
-        graph::IRenderTarget* active_target = context_ ? context_->GetRenderTarget() : nullptr;
+        graph::IRenderTarget* active_target = context_ ? context_->Environment().GetRenderTarget() : nullptr;
         graph::RenderPass* active_pass = active_target ? active_target->GetRenderPass() : nullptr;
         if (!active_pass)
         {
@@ -826,7 +826,7 @@ namespace hgl::ecs
         cmd->ApplyPipelineState(pipeline_config_);
 
         // 全局集（Scene/Bindless）绑定：每 cmd 首绑一次（守卫），重复调用跳过。
-        if (auto* rc = context_ ? context_->GetRenderContext() : nullptr)
+        if (auto* rc = context_ ? context_->Environment().GetRenderContext() : nullptr)
         {
             if (auto* gc = rc->GetGraphicsContext())
                 gc->BindGlobalDescriptorSets(cmd, material_->GetPipelineLayout());
@@ -849,9 +849,9 @@ namespace hgl::ecs
         const uint32_t active_cam_row = context_ ? context_->GetActiveCameraRow() : 0;
 
         // 全局地址表基址 = 本次 push 的根入口
-        graph::GraphicsContext *addr_gc = context_ ? context_->GetGraphicsContext() : nullptr;
+        graph::GraphicsContext *addr_gc = context_ ? context_->Environment().GetGraphicsContext() : nullptr;
         if (!addr_gc)
-            if (auto *addr_rc = context_ ? context_->GetRenderContext() : nullptr)
+            if (auto *addr_rc = context_ ? context_->Environment().GetRenderContext() : nullptr)
                 addr_gc = addr_rc->GetGraphicsContext();
         // 表按帧槽多份：用本批次所属帧槽（= active_cam_row 的低位）取本槽表地址。
         const uint64_t addr_global_addresses =
@@ -863,7 +863,7 @@ namespace hgl::ecs
             device_,
             material_->GetPipelineLayout(),
             addr_global_addresses,
-            context_ ? context_->GPUResources().GetWorldAddressesAddress(context_->GetFrameIndex()) : 0,
+            context_ ? context_->GPUResources().GetWorldAddressesAddress(context_->Runner().GetFrameIndex()) : 0,
             line_buffer_.mesh_draw_params
                 ? line_buffer_.mesh_draw_params->GetGPUBuffer() : nullptr,
             l2w_gpu,
@@ -908,7 +908,7 @@ namespace hgl::ecs
         for (auto &buffer : line_buffers_)
             buffer.Clear();
 
-        if (auto* gc = context_ ? context_->GetGraphicsContext() : nullptr)
+        if (auto* gc = context_ ? context_->Environment().GetGraphicsContext() : nullptr)
         {
             auto* mat_mgr = gc->GetMaterialManager();
             if (mat_mgr)

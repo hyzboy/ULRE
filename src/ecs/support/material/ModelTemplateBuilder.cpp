@@ -111,7 +111,7 @@ namespace hgl::ecs
             GLogError(u8"[BuildMultiMaterialModelTemplate] Material tables unavailable");
             return kInvalidModelTemplateID;
         }
-        auto *graphics = context->GetGraphicsContext();
+        auto *graphics = context->Environment().GetGraphicsContext();
         const auto *part_pool = registry->GetPool(GlobalSSBOType::ModelPartPool);
         if (!graphics || graphics->GetGlobalSSBOBufferRegistry() != registry
          || !part_pool || part_count >= part_pool->GetRowCapacity()
@@ -525,7 +525,7 @@ namespace hgl::ecs
 
         if (geo->GetGeometryID() == 0 && registry && context)
         {
-            geo->EnsureMeshDrawParams(registry, context->GetGPUDevice());
+            geo->EnsureMeshDrawParams(registry, context->Environment().GetGPUDevice());
         }
 
         const uint32_t geometry_id = geo->GetGeometryID();
@@ -570,7 +570,7 @@ namespace hgl::ecs
             return false;
         }
         if (!graph::ModelTemplateManager::RetireModelTemplate(
-                registry, template_id, context->GetRenderSubmissionSerial()
+                registry, template_id, context->Runner().GetRenderSubmissionSerial()
                                        + graph::MaterialTextureConfigurationRetireEpochDelay, context))
             return false;
         auto *table = context->RenderData().TemplateMaterials();

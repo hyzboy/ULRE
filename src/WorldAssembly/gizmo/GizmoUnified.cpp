@@ -448,7 +448,7 @@ bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
     if (!world)
         return false;
 
-    auto *graphics = world->GetGraphicsContext();
+    auto *graphics = world->Environment().GetGraphicsContext();
 
     if (!graphics)
         return false;

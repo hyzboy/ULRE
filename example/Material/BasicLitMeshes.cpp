@@ -53,7 +53,7 @@ private:
         if (!ecs_context || !InitVDM())
             return false;
 
-        GraphicsContext *graphics = ecs_context->GetGraphicsContext();
+        GraphicsContext *graphics = ecs_context->Environment().GetGraphicsContext();
         LevelAssetRegistry *level_registry =
             graphics ? graphics->GetLevelAssetRegistry() : nullptr;
         if (!level_registry)

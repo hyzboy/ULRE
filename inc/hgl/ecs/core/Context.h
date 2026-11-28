@@ -192,59 +192,22 @@ namespace hgl
             /// （主窗口帧驱动唯一公共入口，由 WorkManager 调用）
             void Render(float deltaTime, const std::function<void(float)> &pre_render);
 
-            /// Mark scene structure (entity/component add/remove) as changed.
-            /// Called automatically by component attach/detach; next Render re-gathers
-            /// stats only when dirty, avoiding a per-frame full entity scan.
-            void MarkSceneStructureDirty() const { render_runner.MarkSceneStructureDirty(); }
-
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
 
             void SetFrameIndex(const uint32_t index);
-            uint32_t GetFrameIndex() const { return render_runner.GetFrameIndex(); }
-
-            int GetActiveMobilityFilter() const { return render_runner.PassScope().GetMobilityFilter(); }
-
-            /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
-
-            /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
-            /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
-            /// `RenderFrameCache`，成员集合天然不同 ⇒ 不得互相覆盖快照。
-            bool IsMainFrameTopologyPass() const
-            {
-                return !IsCurrentPassShadow() && render_runner.PassScope().GetMobilityFilter() < 0;
-            }
 
             /// 声明拓扑变更（写入方调用；见 `TopologyChange` 各类别的注释）
             void MarkTopologyChanged(TopologyChange kind, uint32_t count = 1) const
             {
                 render_runner.GetMainFrameTopology().MarkTopology(kind, count);
-                MarkSceneStructureDirty();
+                render_runner.MarkSceneStructureDirty();
             }
 
             /// 声明动态事实变更（不改拓扑，只需重新发布到 GPU 行）
             void MarkDynamicFactChanged(DynamicFactChange kind, uint32_t count = 1) const
             {
                 render_runner.GetMainFrameTopology().MarkDynamicFact(kind, count);
-            }
-
-            bool IsCurrentPassShadow() const { return render_runner.PassScope().IsShadowPass(); }
-            bool HasShadowOrigin() const { return render_runner.PassScope().HasShadowOrigin(); }
-            const glm::vec3 &GetShadowOrigin() const { return render_runner.PassScope().ShadowOrigin(); }
-
-            void SetScenePipelineMode(ScenePipelineMode mode)
-            {
-                render_runner.SetScenePipelineMode(mode);
-            }
-            ScenePipelineMode GetScenePipelineMode() const { return render_runner.GetScenePipelineMode(); }
-
-            void SetRenderSubmissionSerial(const uint64_t serial)
-            {
-                render_runner.SetRenderSubmissionSerial(serial);
-            }
-            uint64_t GetRenderSubmissionSerial() const
-            {
-                return render_runner.GetRenderSubmissionSerial();
             }
 
             WorldRenderRunner &Runner() { return render_runner; }
@@ -256,24 +219,8 @@ namespace hgl
             WorldRenderEnvironment &Environment() { return render_environment; }
             const WorldRenderEnvironment &Environment() const { return render_environment; }
 
-            hgl::graph::VulkanDevice* GetGPUDevice() { return render_environment.GetGPUDevice(); }
-
-            /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
-            void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_environment.SetRenderTarget(target); }
             void OnSwapchainTargetChanged(hgl::graph::IRenderTarget *target) override;
             void OnRenderTargetResized(hgl::graph::IRenderTarget *target, uint32 width, uint32 height) override;
-
-            /// [唯一权威 getter] 获取本世界绑定的渲染目标。
-            ///
-            /// 应用代码取 RT 一律走此入口。其余入口
-            /// （RenderContext::GetCurrentRenderTarget / AppFramework::GetSwapchainRenderTarget /
-            ///  SwapchainModule::GetRenderTarget / RenderTargetSystem::GetRenderTarget）
-            /// 均为框架内部接线或系统内缓存，不应在应用层直接依赖。
-            hgl::graph::IRenderTarget* GetRenderTarget() { return render_environment.GetRenderTarget(); }
-
-            /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
-            hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return render_runner.GetCurrentRenderCmd(); }
-            void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { render_runner.SetCurrentRenderCmd(cmd); }
 
             /// 本 pass 活跃相机的**槽号**（世界内；PushConstants 的 `camera_row` 由它算出行号）。
             /// 只由本世界的 pass 设置路径（`RenderTo`）写 —— 不做公开 setter，避免出现第二个写者。
@@ -299,8 +246,6 @@ namespace hgl
 
             /// 本世界**生效**的 env profile：显式设置优先，否则取本世界 RT 的 env_profile，再退回
             /// 内置 default。世界表里的 `addr_ambient_env` / `addr_shadow` 按它解析。
-            graph::EnvProfileID GetEnvProfileID() const;
-
             /// 选本世界的 env profile；`take_ownership=true` 表示"本世界创建的"（Shutdown 时归还）。
             void SetEnvProfileID(graph::EnvProfileID id, bool take_ownership = false);
 
@@ -312,15 +257,13 @@ namespace hgl
             /// 本世界生效 profile 的 **ambient provider 模块名**（`ambient_light_provider` 槽的
             /// GLSL 模块；**空 = 用场景渲染模板默认** `indirect_sky_ambient`）。
             ///
-            /// 这是环境光的**算法轴**，与 `GetEnvProfileID()` 指向的**数据轴**
+            /// 这是环境光的**算法轴**，与 `Environment().GetEnvProfileID()` 指向的**数据轴**
             ///（`ambient_env` 段 = IBL 句柄）配对：世界/环境决定两者，材质不再声明。
             /// 写入口在 `EnvironmentSystem::SetAmbientProvider()`（转发到
             /// `EnvironmentManager::SetAmbientProvider`）；渲染侧（`RenderCollectSystem`
             /// 解析材质程序）只**读**这里。
             ///
             /// 返回**引用**：有效期到该 profile 被改/归还为止（一帧内稳定，逐帧现取即可）。
-            const AnsiString& GetAmbientProviderName() const;
-
             // ===== 相机（**世界级资源**：16 槽 × 帧槽，0 号槽恒为本世界默认相机）=====
             //
             // 「相机属于哪个世界 / 哪个槽」的**唯一真源 = 本世界的相机表**（`camera_info_storage`：
@@ -348,29 +291,6 @@ namespace hgl
             /// `Entity*` 版同上（创建必须能改实体 ⇒ 无 `const Entity*` 版）。
             CameraComponent* GetOrCreateCamera(EntityID owner, const AnsiString& name = "Camera");
             CameraComponent* GetOrCreateCamera(Entity* owner, const AnsiString& name = "Camera");
-
-            // ---- A1 车道等待列表 ----
-
-            /// 设定下一次提交的等待列表（RenderTo / 主帧收尾用）
-            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count) { render_runner.SetSubmitWaits(waits,count); }
-            /// 累积本帧离屏 RT 的车道值（主帧提交 await 它们）
-            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value) { render_runner.AddFrameLaneWait(lane,value); }
-            /// 把当前累积复制为下一次提交的等待列表
-            void SetSubmitWaitsFromFrameLanes() { render_runner.SetSubmitWaitsFromFrameLanes(); }
-            /// 提交系统取用等待列表；is_main_frame=true 时同时收尾清空本帧累积
-            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame) { return render_runner.TakeSubmitWaits(count,is_main_frame); }
-
-            /// Graphics context adapter (Phase 2)
-            void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { render_environment.SetGraphicsContext(ctx); }
-            // W7：封装 render_ctx fallback（实现见 Context.cpp——RenderContext
-            // 前向声明，内联体无法调用成员函数）——此前各系统复制三段样板
-            hgl::graph::GraphicsContext* GetGraphicsContext();
-            const hgl::graph::GraphicsContext* GetGraphicsContext() const;
-
-            /// Render context adapter (Phase 2)
-            void SetRenderContext(hgl::graph::RenderContext* ctx) { render_environment.SetRenderContext(ctx); }
-            hgl::graph::RenderContext* GetRenderContext() { return render_environment.GetRenderContext(); }
-            const hgl::graph::RenderContext* GetRenderContext() const { return render_environment.GetRenderContext(); }
 
             /// Asset world registry (Phase 3)
 
@@ -434,9 +354,6 @@ namespace hgl
              *
              * 生产方（如 `OffscreenWorld`）据此判断「刚画的那一帧内容是否完整」。
              */
-            bool HasPendingRenderableResources() const { return render_runner.HasPendingRenderableResources(); }
-
-            RenderSystemCore* GetRenderCore() const { return render_runner.GetRenderCore(); }
         };
     }//namespace ecs
 }//namespace hgl

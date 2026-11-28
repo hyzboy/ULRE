@@ -97,7 +97,7 @@ namespace ulre_example
         VkDrawMeshTasksIndirectCommandEXT commands[grid_size]{};
         auto *indirect = cull->GetIndirectCommandsBuffer();
         if (buckets != expected_buckets || !indirect
-         || !hgl::graph::ReadbackBuffer(world->GetGPUDevice(), indirect->GetVkBuffer(), 0,
+         || !hgl::graph::ReadbackBuffer(world->Environment().GetGPUDevice(), indirect->GetVkBuffer(), 0,
                                         sizeof(commands[0]) * expected_buckets, commands))
             ok = false;
         else

@@ -108,7 +108,7 @@ namespace hgl::ecs
         if (failed || !entity)
             return *this;
 
-        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        hgl::graph::GraphicsContext *gc = world->Environment().GetGraphicsContext();
         if (!gc)
         {
             Fail("WithPrimitiveAssetPath: no GraphicsContext");
@@ -146,7 +146,7 @@ namespace hgl::ecs
             return *this;
         }
 
-        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        hgl::graph::GraphicsContext *gc = world->Environment().GetGraphicsContext();
         if (!gc)
         {
             Fail("WithGeometry: no GraphicsContext");
@@ -231,7 +231,7 @@ namespace hgl::ecs
         if (failed || !entity)
             return *this;
 
-        hgl::graph::GraphicsContext *gc = world->GetGraphicsContext();
+        hgl::graph::GraphicsContext *gc = world->Environment().GetGraphicsContext();
         if (!gc)
         {
             Fail("WithMaterialDataRow: no GraphicsContext");

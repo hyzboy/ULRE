@@ -1438,27 +1438,27 @@ int main(int argc, char** argv)
         {
             // 9A: 默认管线模式为 StandardLitCSM（黄金路径）
             ECSContext ctx;
-            if (ctx.GetScenePipelineMode() != ScenePipelineMode::StandardLitCSM)
+            if (ctx.Runner().GetScenePipelineMode() != ScenePipelineMode::StandardLitCSM)
             {
                 GLogError(u8"Test 9A Failed: default ScenePipelineMode must be StandardLitCSM");
                 return 9;
             }
 
             // 9B: 模式切换与预留场景枚举契约
-            ctx.SetScenePipelineMode(ScenePipelineMode::TopDownRTS);
-            if (ctx.GetScenePipelineMode() != ScenePipelineMode::TopDownRTS)
+            ctx.Runner().SetScenePipelineMode(ScenePipelineMode::TopDownRTS);
+            if (ctx.Runner().GetScenePipelineMode() != ScenePipelineMode::TopDownRTS)
             {
                 GLogError(u8"Test 9B Failed: ScenePipelineMode::TopDownRTS switch failed");
                 return 9;
             }
-            ctx.SetScenePipelineMode(ScenePipelineMode::AerialLowAltitude);
-            if (ctx.GetScenePipelineMode() != ScenePipelineMode::AerialLowAltitude)
+            ctx.Runner().SetScenePipelineMode(ScenePipelineMode::AerialLowAltitude);
+            if (ctx.Runner().GetScenePipelineMode() != ScenePipelineMode::AerialLowAltitude)
             {
                 GLogError(u8"Test 9B Failed: ScenePipelineMode::AerialLowAltitude switch failed");
                 return 9;
             }
-            ctx.SetScenePipelineMode(ScenePipelineMode::Space3D);
-            if (ctx.GetScenePipelineMode() != ScenePipelineMode::Space3D)
+            ctx.Runner().SetScenePipelineMode(ScenePipelineMode::Space3D);
+            if (ctx.Runner().GetScenePipelineMode() != ScenePipelineMode::Space3D)
             {
                 GLogError(u8"Test 9B Failed: ScenePipelineMode::Space3D switch failed");
                 return 9;
@@ -6255,11 +6255,11 @@ int main(int argc, char** argv)
               "§9 M3：每批计数缓冲当 countBuffer 用 ⇒ 必带 INDIRECT_BUFFER（另需 TRANSFER_DST 清零）" },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/cull/GPUCullSystem.cpp"),
-              "if (counters_sync_frame_ != context_->GetFrameIndex())",
+              "if (counters_sync_frame_ != context_->Runner().GetFrameIndex())",
               "§9 M6：Map 读回前的**运行期守卫**（未同步 ⇒ 拒绝返回残影）" },
 
             { "GPUCullSystem.cpp", OS_TEXT("src/ecs/support/cull/GPUCullSystem.cpp"),
-              "counters_sync_frame_ = context_ ? context_->GetFrameIndex() : 0u;",
+              "counters_sync_frame_ = context_ ? context_->Runner().GetFrameIndex() : 0u;",
               "§9 M6：SyncForParityReadback 必须记下已同步帧（守卫的另一半，删任一即红）" },
 
             { "CPUCullReferenceSystem.cpp", OS_TEXT("src/ecs/support/cull/CPUCullReferenceSystem.cpp"),
@@ -7192,7 +7192,7 @@ int main(int argc, char** argv)
               "V7①：创建级联 RT 的循环边界必须是被配置的级联数" },
 
             { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp"),
-              "if (!context->IsCurrentPassShadow())",
+              "if (!context->Runner().PassScope().IsShadowPass())",
               "V7②：影子数据上传点必须按\"本世界自己的帧 RT\"判定（交换链 / 离屏世界主帧都要提交）" },
 
             { "ViewUBOCommitSystem.cpp", OS_TEXT("src/ecs/systems/render/buffer/ViewUBOCommitSystem.cpp"),

@@ -18,7 +18,7 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        auto *render_target = context->GetRenderTarget();
+        auto *render_target = context->Environment().GetRenderTarget();
         if (!render_target)
             return;
 

@@ -37,7 +37,7 @@ namespace hgl
             void SetRenderTarget(graph::IRenderTarget *rt);
 
             /// [系统内缓存] RenderTargetSystem 自身缓存的 RT 引用。
-            /// 应用代码请用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
+            /// 应用代码请用 ecs::ECSContext::Environment().GetRenderTarget()（唯一权威入口）。
             graph::IRenderTarget *GetRenderTarget() const { return render_target; }
 
             void Update(float deltaTime) override;

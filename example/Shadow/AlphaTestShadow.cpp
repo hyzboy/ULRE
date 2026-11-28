@@ -690,7 +690,7 @@ public:
             // 第 45 帧 = 本示例 D1/D3 契约所在的帧 ⇒ readback 必然发生、内容稳定。
             if ((s_digest || s_perframe) && ++s_frame == 45)
             {
-                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->GetRenderTarget() : nullptr );
+                auto * rt = dynamic_cast<graph::SwapchainRenderTarget *>( ecs_context ? ecs_context->Environment().GetRenderTarget() : nullptr );
                 if (!rt)
                 {
                     printf("[ATSSELF] no swapchain RT\n");
@@ -781,7 +781,7 @@ public:
         {
             ++d3_frame;
 
-            auto *main_rt = ecs_context ? ecs_context->GetRenderTarget() : nullptr;
+            auto *main_rt = ecs_context ? ecs_context->Environment().GetRenderTarget() : nullptr;
             d3_noknob = g_d3_noknob;
 
             if (d3_frame == 1)
@@ -913,7 +913,7 @@ public:
         if (!ecs_context)
             return false;
 
-        ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
+        ecs_context->Runner().SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
         light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)

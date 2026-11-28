@@ -209,10 +209,10 @@ namespace hgl::ecs
                 return false;
 
             auto rdbs = world->GetSystem<RenderSceneUBOSystem>();
-            auto *render_context = world->GetRenderContext();
+            auto *render_context = world->Environment().GetRenderContext();
             auto *graphics_context = render_context
                 ? render_context->GetGraphicsContext()
-                : world->GetGraphicsContext();
+                : world->Environment().GetGraphicsContext();
             auto *bindless_mgr = graphics_context
                 ? graphics_context->
                     GetManager<graph::BindlessTextureManager>()
@@ -393,7 +393,7 @@ namespace hgl::ecs
             {
                 row->material_row_gpu     = 0;
 
-                auto *graphics_context = world->GetGraphicsContext();
+                auto *graphics_context = world->Environment().GetGraphicsContext();
                 auto *material_domain = graphics_context
                     ? graphics_context->GetGlobalSSBOBufferRegistry()
                     : nullptr;
@@ -457,7 +457,7 @@ namespace hgl::ecs
         // 问题 8(b)：已物化的共享行，发布行号必须等于身份键的授权行号（未物化哨兵/自有行跳过）。
         MaterialRuntimeTable::VerifyWrittenDataIndexRow(*row, "RenderCollectSystem: 物化发布 data_index_row");
 
-        auto *texture_graphics_context = world->GetGraphicsContext();
+        auto *texture_graphics_context = world->Environment().GetGraphicsContext();
         auto *texture_registry = texture_graphics_context
             ? texture_graphics_context->GetSSBOBufferRegistry()
             : nullptr;
@@ -481,10 +481,10 @@ namespace hgl::ecs
 
         if (texture_registry)
             texture_registry->CollectRetiredMaterialTextureConfigurations(
-                world->GetRenderSubmissionSerial());
+                world->Runner().GetRenderSubmissionSerial());
 
         const uint64_t retire_epoch =
-            static_cast<uint64_t>(world->GetRenderSubmissionSerial())
+            static_cast<uint64_t>(world->Runner().GetRenderSubmissionSerial())
             + graph::MaterialTextureConfigurationRetireEpochDelay;
 
         if (texture_layout.HasReferences())

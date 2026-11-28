@@ -112,7 +112,7 @@ namespace hgl
         // 清屏色唯一权威在渲染目标上（RenderTargetDesc::clear_color）。
         // 写主世界绑定的 RT；world 未就绪时丢弃（Init 前不应设置）。
         if (world)
-            if (auto *rt = world->GetRenderTarget())
+            if (auto *rt = world->Environment().GetRenderTarget())
                 rt->SetClearColor(color);
     }
 
@@ -120,7 +120,7 @@ namespace hgl
     {
         if (world)
         {
-            auto target = world->GetRenderTarget();
+            auto target = world->Environment().GetRenderTarget();
             return target ? &target->GetExtent() : nullptr;
         }
 
@@ -135,7 +135,7 @@ namespace hgl
             if (camera_system)
                 return camera_system->GetViewportInfo();
 
-            auto target = world->GetRenderTarget();
+            auto target = world->Environment().GetRenderTarget();
             return target ? target->GetViewportInfo() : nullptr;
         }
 

@@ -410,7 +410,7 @@ public:
         ++frame_count;
         if (gpu_check && !gpu_check_scheduled && frame_count >= 12u)
         {
-            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->Environment().GetRenderTarget());
             if (!target)
             {
                 GLogError(u8"[GIZMO] GPU check requires a swapchain");
@@ -420,7 +420,7 @@ public:
             target->SetInFrameReadbackHook([this]()
             {
                 if (!CheckGizmoGPU()
-                 || !ReadbackColorTarget(ecs_context->GetRenderTarget(), gizmo_pixels, 0, &gizmo_pixels_info)
+                 || !ReadbackColorTarget(ecs_context->Environment().GetRenderTarget(), gizmo_pixels, 0, &gizmo_pixels_info)
                  || gizmo_pixels.IsEmpty())
                 {
                     GLogError(u8"[GIZMO] GPU validation failed");
@@ -443,12 +443,12 @@ public:
         }
         if (gizmo_hidden && !gpu_check_completed && frame_count == hide_frame + 3u)
         {
-            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->GetRenderTarget());
+            auto *target = dynamic_cast<SwapchainRenderTarget *>(ecs_context->Environment().GetRenderTarget());
             target->SetInFrameReadbackHook([this]()
             {
                 ValueArray<uint8_t> hidden_pixels;
                 TextureReadbackInfo info{};
-                if (!ReadbackColorTarget(ecs_context->GetRenderTarget(), hidden_pixels, 0, &info)
+                if (!ReadbackColorTarget(ecs_context->Environment().GetRenderTarget(), hidden_pixels, 0, &info)
                  || info.width != gizmo_pixels_info.width || info.height != gizmo_pixels_info.height
                  || info.format != gizmo_pixels_info.format || hidden_pixels.GetCount() != gizmo_pixels.GetCount())
                 {

@@ -367,7 +367,7 @@ namespace hgl::ecs
 
         if (!viewport_info)
         {
-            auto *rt = context->GetRenderTarget();
+            auto *rt = context->Environment().GetRenderTarget();
             if (rt)
                 viewport_info = rt->GetViewportInfo();
         }

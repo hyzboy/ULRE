@@ -74,7 +74,7 @@ namespace
         if (!ctx)
             return false;
 
-        auto *device = ctx->GetGPUDevice();
+        auto *device = ctx->Environment().GetGPUDevice();
 
         // Normalize geometry entities and collect model template Shading Groups.
         auto render_collect_system = EnsureSystem<hgl::ecs::RenderCollectSystem>(ctx);
@@ -154,7 +154,7 @@ namespace
         // thin proxy systems directly
         auto text_pipeline = std::make_unique<hgl::ecs::TextRenderPipeline>();
         text_pipeline->SetWorld(ctx);
-        text_pipeline->SetRenderContext(ctx->GetRenderContext());
+        text_pipeline->SetRenderContext(ctx->Environment().GetRenderContext());
         ctx->PipelineRegistry().Register("Text", text_pipeline.release());
         ctx->RegisterSystem<hgl::ecs::TextCollectSystem>();
         ctx->RegisterSystem<hgl::ecs::TextBuildSystem>();
@@ -256,7 +256,7 @@ namespace hgl::ecs
 
         RegisterBuiltinSystemGroupInstallers();
 
-        auto *rc = ctx->GetRenderContext();
+        auto *rc = ctx->Environment().GetRenderContext();
 
         EnsureSystem<ecs::InputSystem>(ctx);
         auto camera_system = EnsureSystem<ecs::CameraSystem>(ctx);
@@ -286,7 +286,7 @@ namespace hgl::ecs
         if (render_target_system)
         {
             render_target_system->SetRenderContext(rc);
-            render_target_system->SetRenderTarget(default_rt ? default_rt : ctx->GetRenderTarget());
+            render_target_system->SetRenderTarget(default_rt ? default_rt : ctx->Environment().GetRenderTarget());
         }
     }
 

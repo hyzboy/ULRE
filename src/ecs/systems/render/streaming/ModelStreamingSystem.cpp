@@ -124,7 +124,7 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+        if (graph::GraphicsContext *gc = context->Environment().GetGraphicsContext())
             gc->PumpMaterialAsyncLoadLane();
     }
 
@@ -135,7 +135,7 @@ namespace hgl::ecs
         if (!context || !stream || !stream->asset)
             return;
 
-        graph::GraphicsContext *gc = context->GetGraphicsContext();
+        graph::GraphicsContext *gc = context->Environment().GetGraphicsContext();
 
         if (!gc)
             return;
@@ -205,7 +205,7 @@ namespace hgl::ecs
 
         if (!load_manager)
         {
-            if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+            if (graph::GraphicsContext *gc = context->Environment().GetGraphicsContext())
                 load_manager = gc->GetLoadedFileManager();
         }
 
@@ -473,7 +473,7 @@ namespace hgl::ecs
             //
             // 车道起不了 / 目录不可枚举 / 调用方关掉预载时这一步立刻放行。
             if (settings.preload_scene_recipes && context)
-                if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+                if (graph::GraphicsContext *gc = context->Environment().GetGraphicsContext())
                     if (gc->IsMaterialAsyncLoadPending())
                         return false;
 
@@ -489,7 +489,7 @@ namespace hgl::ecs
             {
                 stream->mats_resolved = true;
 
-                if (graph::GraphicsContext *gc = context->GetGraphicsContext())
+                if (graph::GraphicsContext *gc = context->Environment().GetGraphicsContext())
                 {
                     std::vector<std::string> names;
                     if (graph::ReadModelPackMaterialNamesFromBytes(

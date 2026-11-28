@@ -141,7 +141,7 @@ public:
     }
 
     /// 本帧槽的表地址（pc_root.addr_global_addresses 的取址来源；未初始化时为 0）。
-    /// 槽号取模 —— 调用方直接送 Context::GetFrameIndex() 或 CameraRow % 槽总数。
+    /// 槽号取模 —— 调用方直接送 Context::Runner().GetFrameIndex() 或 CameraRow % 槽总数。
     uint64_t GetGlobalAddressesAddress(uint32_t frame_slot) const;
 
     /// 按「全局字段 + 该槽的 viewport 地址」组合并写入某帧槽（无变化则跳过）。

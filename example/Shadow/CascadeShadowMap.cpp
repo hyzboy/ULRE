@@ -1132,7 +1132,7 @@ private:
         main_camera->rotation_sensitivity = 0.18f;
 
         camera_system->Update(0.0f);
-        if (auto *main_rt = ecs_context->GetRenderTarget())
+        if (auto *main_rt = ecs_context->Environment().GetRenderTarget())
             camera_system->SetViewportInfo(main_rt->GetViewportInfo());
 
         return true;
@@ -1505,7 +1505,7 @@ public:
 
 
         // 显式声明场景工作流模式（黄金路径：标准 3D 陆地主光级联阴影）
-        ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
+        ecs_context->Runner().SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
         light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)

@@ -198,7 +198,7 @@ namespace hgl
 
             DebugViewController::Reset(this);
 
-            if (auto *device = GetGPUDevice())
+            if (auto *device = Environment().GetGPUDevice())
                 device->WaitIdle();
 
             // Release support pipelines early while graphics managers are still valid.
@@ -266,7 +266,7 @@ namespace hgl
             render_environment.ReleaseOwnedEnvProfile();
 
             // 世界地址表释放（StructView 非拥有 ⇒ buffer 走 BufferManager 归还）
-            if (auto *gc = GetGraphicsContext())
+            if (auto *gc = Environment().GetGraphicsContext())
             {
                 if (auto *bm = gc->GetBufferManager())
                 {
@@ -305,16 +305,6 @@ namespace hgl
             {
                 input_system->EndFrame();
             }
-        }
-
-        hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext()
-        {
-            return render_environment.GetGraphicsContext();
-        }
-
-        const hgl::graph::GraphicsContext* ECSContext::GetGraphicsContext() const
-        {
-            return render_environment.GetGraphicsContext();
         }
 
         void ECSContext::SetFrameIndex(const uint32_t index)
@@ -467,7 +457,7 @@ namespace hgl
 
             system_registry.AddGroupActivity(group);
 
-            EnsureSystemGroupSystems(this, group, GetRenderTarget());
+            EnsureSystemGroupSystems(this, group, Environment().GetRenderTarget());
             SetSystemGroupEnabled(group, true);
         }
 
@@ -509,7 +499,7 @@ namespace hgl
 
         void ECSContext::OnSceneStructureDirty()
         {
-            MarkSceneStructureDirty();
+            render_runner.MarkSceneStructureDirty();
         }
 
         void ECSContext::OnTransformRegistered(TransformID id, bool isMovable)

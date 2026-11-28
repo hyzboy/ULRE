@@ -66,7 +66,7 @@ namespace hgl
         virtual io::EventProcResult OnEvent(const io::EventHeader &header, const uint64 data) override;
 
         /// [框架内部接线] 仅供 AppFramework 初始化/resize 时使用。
-        /// 应用代码要取"当前渲染目标"，请统一用 ecs::ECSContext::GetRenderTarget()（唯一权威 getter）。
+        /// 应用代码要取"当前渲染目标"，请统一用 ecs::ECSContext::Environment().GetRenderTarget()（唯一权威入口）。
         graph::SwapchainRenderTarget *GetSwapchainRenderTarget()
         {
             return sc_module ? sc_module->GetRenderTarget() : nullptr;

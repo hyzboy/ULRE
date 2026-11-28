@@ -130,7 +130,7 @@ namespace hgl
             graph::ShaderProgramManager* frame_material_manager = nullptr;
             graph::RenderPass* frame_render_pass = nullptr;
 
-            /// 当前生效的 RenderPass（取 `world->GetRenderTarget()`，绘制/建管线期都按它判等）
+            /// 当前生效的 RenderPass（取 `world->Environment().GetRenderTarget()`，绘制/建管线期都按它判等）
             graph::RenderPass* ResolveActiveRenderPass() const;
             graph::VulkanDevice* frame_device = nullptr;
             graph::IRenderTarget* frame_render_target = nullptr;

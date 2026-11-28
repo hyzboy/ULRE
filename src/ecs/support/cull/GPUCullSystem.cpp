@@ -162,7 +162,7 @@ namespace hgl::ecs
         if (!context_)
             return false;
             
-        device_ = context_->GetGPUDevice();
+        device_ = context_->Environment().GetGPUDevice();
         if (!device_) 
         {
             return false;  // 设备还没准备好，继续等待
@@ -200,7 +200,7 @@ namespace hgl::ecs
 
     bool GPUCullSystem::CreateComputePipeline()
     {
-        auto* gc = context_->GetGraphicsContext();
+        auto* gc = context_->Environment().GetGraphicsContext();
         if (!gc) 
         {
             GLogError(u8"[GPUCullSystem] CreateComputePipeline: GetGraphicsContext returned null");
@@ -464,7 +464,7 @@ namespace hgl::ecs
 
         // 槽步长在内部算好：本系统按**当前帧槽**给出地址，
         // 所以写表侧（ECSContext::SyncWorldAddresses）不需要知道槽步长。
-        const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
+        const uint32_t slot = context_ ? (context_->Runner().GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
         return expansion_arena_addr_ + uint64_t(slot) * uint64_t(kExpansionSlotBytes);
     }
 
@@ -554,7 +554,7 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        const uint32_t slot = context_->Runner().GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         if (!WaitForCullSlot(slot))
         {
             batch_layout.Abort(pass_index);
@@ -607,7 +607,7 @@ namespace hgl::ecs
             return false;
         }
 
-        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        const uint32_t slot = context_->Runner().GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         if (!batch_tag_cpu_ || batch_tag_cpu_slot_ != slot
             || batch_tag_cpu_pass_ != pass_index || !batch_tag_buffer_)
         {
@@ -656,7 +656,7 @@ namespace hgl::ecs
 
     uint32_t GPUCullSystem::GetBatchCounterByteOffset(uint32_t pass_index, uint32_t batch_index) const
     {
-        const uint32_t slot = context_ ? (context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
+        const uint32_t slot = context_ ? (context_->Runner().GetFrameIndex() % HGL_FRAME_SLOT_TOTAL) : 0u;
         const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
 
         return uint32_t(VkDeviceSize(slot) * slot_bytes
@@ -679,19 +679,19 @@ namespace hgl::ecs
         // 契约（§9 M6）：Map 之前必须 `SyncForParityReadback()` 把队列排到**本帧** dispatch 完成
         // ——Host Coherent ≠ 已执行（异步派发后直接 Map 读到的是上一已定帧的残影：对拍会"全绿"
         // 而数据是旧的）。违反 = 台架接线错 ⇒ 响亮一次 + **不给数据**（返回 null 让调用方跳过）。
-        if (counters_sync_frame_ != context_->GetFrameIndex())
+        if (counters_sync_frame_ != context_->Runner().GetFrameIndex())
         {
             if (!reported_unsynced_map_)
             {
                 reported_unsynced_map_ = true;
                 GLogError(u8"[GPUCullSystem] MapCurrentBatchCounters 未先 SyncForParityReadback"
                           u8"（本帧=%u / 已同步帧=%u）⇒ 读数是残影，拒绝返回（契约 §9 M6）",
-                          context_->GetFrameIndex(), counters_sync_frame_);
+                          context_->Runner().GetFrameIndex(), counters_sync_frame_);
             }
             return nullptr;
         }
 
-        const uint32_t slot = context_->GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
+        const uint32_t slot = context_->Runner().GetFrameIndex() % HGL_FRAME_SLOT_TOTAL;
         const VkDeviceSize slot_bytes = VkDeviceSize(kArenaPasses * kBatchBlockStride) * sizeof(uint32_t);
         const VkDeviceSize block_off  = VkDeviceSize(BatchBlockBase(pass_index)) * sizeof(uint32_t);
 
@@ -725,7 +725,7 @@ namespace hgl::ecs
 
         // 契约（§9 M6）：记下"本帧已同步"，供 `MapCurrentBatchCounters` 校验
         // （台架的 Sync → Map 在同一采样帧内成套执行；跨帧复用即残影）。
-        counters_sync_frame_ = context_ ? context_->GetFrameIndex() : 0u;
+        counters_sync_frame_ = context_ ? context_->Runner().GetFrameIndex() : 0u;
         return true;
     }
 
@@ -802,12 +802,12 @@ namespace hgl::ecs
         if (entity_count == 0) return;
 
         // 获取世界地址和全局地址的设备地址
-        uint32_t frame_slot = context_->GetFrameIndex();
+        uint32_t frame_slot = context_->Runner().GetFrameIndex();
         uint64_t world_addr = context_->GPUResources().GetWorldAddressesAddress(frame_slot);
         if (world_addr == 0) return;
 
         // 全局地址表从 GlobalSSBOBufferRegistry 获取
-        auto* gc = context_->GetGraphicsContext();
+        auto* gc = context_->Environment().GetGraphicsContext();
         if (!gc) return;
         auto* global_registry = gc->GetGlobalSSBOBufferRegistry();
         if (!global_registry) return;
@@ -869,7 +869,7 @@ namespace hgl::ecs
         // 定位"派发写的槽 ≠ 绘制读的槽"（帧内切 RT 时槽会变，而派发每帧只跑一次）。
         if (ULRE_DEBUG_ON(Batch))
             GLogInfo("[T3i][TRACE] dispatch frame_slot=%u(槽=%u) 批=[main:%u, shadow:%u] 相机行=%u",
-                     context_->GetFrameIndex(), batch_slot, batch_layout.BatchCount(0), batch_layout.BatchCount(1), context_->GetActiveCameraRow());
+                     context_->Runner().GetFrameIndex(), batch_slot, batch_layout.BatchCount(0), batch_layout.BatchCount(1), context_->GetActiveCameraRow());
 
         // ── T3.1：写本帧槽的展开竞技场（CPU 侧，Q 之前完成）──
         WriteModelExpansionArena(batch_slot);
@@ -1011,7 +1011,7 @@ namespace hgl::ecs
             if(cull_queue_->WaitLastSubmitFence())
             {
                 // §3-④：fence 已等 ⇒ 本帧可安全读回（供 GetGPUVisibleCount 的自守卫判定）
-                readback_ready_frame_ = context_ ? context_->GetFrameIndex() : 0xFFFFFFFFu;
+                readback_ready_frame_ = context_ ? context_->Runner().GetFrameIndex() : 0xFFFFFFFFu;
                 DumpCullSSBOs("AFTER_DISPATCH");
             }
             else
@@ -1077,7 +1077,7 @@ namespace hgl::ecs
         // 或已 `SyncForParityReadback()`（对拍台架路径）。都不满足 ⇒ 读到的是上一已定帧的残影
         // （Host Coherent ≠ 已执行）⇒ **拒绝返回**（一次性报错 + 返回 0），不把残影当数据。
         {
-            const uint32_t frame = context_ ? context_->GetFrameIndex() : 0xFFFFFFFFu;
+            const uint32_t frame = context_ ? context_->Runner().GetFrameIndex() : 0xFFFFFFFFu;
 
             if (counters_sync_frame_ != frame && readback_ready_frame_ != frame)
             {
@@ -1109,7 +1109,7 @@ namespace hgl::ecs
         if (!context_ || !device_)
             return;
 
-        const uint32_t current_frame = context_->GetFrameIndex();
+        const uint32_t current_frame = context_->Runner().GetFrameIndex();
         const uint32_t current_slot  = current_frame % HGL_FRAME_SLOT_TOTAL;
 
         GLogInfo(u8"========== [SSBO DUMP: %s] frame=%u (slot=%u) ==========",
