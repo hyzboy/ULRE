@@ -1120,7 +1120,7 @@ namespace hgl::ecs
             {
                 world->Runner().GetMainFrameTopology().Snapshot().BuildFromCache(
                     cache,
-                    world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure),
+                    world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(),
                     cache.frame_serial);
             }
             else
@@ -1154,7 +1154,7 @@ namespace hgl::ecs
             const auto &topo_snap = world->Runner().GetMainFrameTopology().Snapshot();
             snapshot.snapshot_ready = topo_snap.IsReady();
             snapshot.snapshot_topology_rev = topo_snap.GetTopologyRevision();
-            snapshot.world_topology_rev = world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision(TopologyChange::EntityStructure);
+            snapshot.world_topology_rev = world->Runner().GetMainFrameTopology().Ledger().GetTopologyRevision();
             snapshot.snapshot_item_count = topo_snap.GetItemCount();
 
             snapshot.dropped_invisible = cache.dropped_invisible;
