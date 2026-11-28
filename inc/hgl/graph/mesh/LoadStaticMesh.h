@@ -27,8 +27,8 @@ namespace hgl::graph
      * `ComposeNodeMatrices` 顺带组合出的派生便利值。
      *
      * 因此装载 ECS 时**不要**对 `worldMatrix` 做 `DecomposeTransform` 再摊平
-     * 层级 —— 应使用 `StaticMeshModelInstance::Instantiate`，它按局部 TRS +
-     * `SetParent` 逐节点建实体，完整保留层级（且自持资产副本，指针不会悬垂）。
+     * 层级 —— `StaticMeshModelInstance` 将 `worldMatrix` 直接烘焙进 ModelPart 行，
+     * CPU 侧只保留一个根实体（且自持资产副本，指针不会悬垂）。
      *
      * 多材质（可选）：`material_recipes` 为按源场景材质下标索引的配方表
      * （glTF `materials[]` 顺序）。每个图元按其 `material_index` 选取配方；

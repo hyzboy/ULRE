@@ -1,6 +1,8 @@
 #include <hgl/ecs/support/assembly/ModelAssemblyStage.h>
 
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/graph/asset/ModelAsset.h>
 #include <hgl/log/Log.h>
 
@@ -41,6 +43,7 @@ namespace hgl::ecs::assembly
     {
         GLogError(u8"ModelRef 装配失败：%s", reason);
 
+        ref.instance.Release();
         ref.failed_reported = true;
         ref.asset = nullptr;        ///< 句柄归 registry；组件不再观察它
 
@@ -102,7 +105,8 @@ namespace hgl::ecs::assembly
 
             if (!ref.instance.InstantiateSkeleton(&context, content.nodes,
                                                   content.root_nodes,
-                                                  ref.skeleton_options))
+                                                  ref.skeleton_options,
+                                                  ref.GetOwner()))
             {
                 FailModelAssembly(ref, "InstantiateSkeleton 失败");
                 return true;
@@ -122,8 +126,20 @@ namespace hgl::ecs::assembly
         // ── 段二：几何（增量挂接，句柄 Ready 时收口）───────────────────
         if (!ref.geometry_done)
         {
+            if (!ref.options.material_rows && provider.resolve)
+            {
+                const graph::GlobalSSBOBinding *rows = nullptr;
+                uint32_t row_count = 0;
+                if (provider.resolve(provider.user, asset, rows, row_count))
+                {
+                    ref.options.material_rows = rows;
+                    ref.options.material_row_count = row_count;
+                    ref.options.rows_by_material_index = true;
+                }
+            }
+
             if (content.GetAssetCount() > 0 &&
-                ref.instance.AttachGeometries(content.assets, content.nodes) &&
+                ref.instance.AttachGeometries(content.assets, content.nodes, ref.options) &&
                 !ref.geometry_reported)
             {
                 ref.geometry_reported = true;
@@ -140,21 +156,6 @@ namespace hgl::ecs::assembly
         // ── 段三：材质（几何收口后一次）────────────────────────────────
         if (!ref.material_done)
         {
-            // 调用方没给行绑定 ⇒ 取宿主注入的来源（流送车道自装配的结果）。
-            // 绑定只在 attach 时被读值，无需长期持有。
-            if (!ref.options.material_rows && provider.resolve)
-            {
-                const graph::GlobalSSBOBinding *rows = nullptr;
-                uint32_t row_count = 0;
-
-                if (provider.resolve(provider.user, asset, rows, row_count))
-                {
-                    ref.options.material_rows          = rows;
-                    ref.options.material_row_count     = row_count;
-                    ref.options.rows_by_material_index = true;
-                }
-            }
-
             if (!ref.instance.AttachMaterials(ref.options))
             {
                 FailModelAssembly(ref, "AttachMaterials 失败（无已挂几何可补材质？）");
@@ -180,4 +181,20 @@ namespace hgl::ecs::assembly
 
         return true;
     }
+
 }//namespace hgl::ecs::assembly
+
+namespace hgl::ecs
+{
+    void ModelRefComponent::OnDetach()
+    {
+        if (Entity *owner = GetOwner())
+            if (GPUModelRefComponent *render_ref =
+                    owner->GetComponent<GPUModelRefComponent>())
+                render_ref->SetTemplateBinding(0u);
+
+        instance.Release(true);
+        asset = nullptr;
+        policy = nullptr;
+    }
+}

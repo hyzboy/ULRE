@@ -4,7 +4,7 @@
 // 组件（`ModelRefComponent`）只描述「我要这个模型」；什么时候允许请求、
 // 每段产物到位时世界侧要做什么，由策略决定。典型需求：
 //   · 「某些资产必须先显示」⇒ `OnBeforeRequest` 返回高优先级，
-//     `OnSkeletonReady` 里立刻做相机对焦/占位；
+//     `OnSkeletonReady` 里立刻按模型包围盒对焦；
 //   · 关卡批量装配 ⇒ 全部回调 no-op（默认基类即可）。
 //
 // 线程契约：所有回调都在 `ModelStreamingSystem::Update`（主线程）内被调用，
@@ -45,13 +45,13 @@ namespace hgl::ecs
             return 0;
         }
 
-        /// 骨架段完成（空壳实体 + Transform 级联已入世界）
+        /// 根锚点就绪（单根实体 + Transform + 模型包围盒）
         virtual void OnSkeletonReady(ModelRefComponent & /*component*/) {}
 
-        /// 几何段完成（本帧有新挂上的 GeometryData）
+        /// 几何段完成（Template/Part/Meshlet 表已构建并绑定到根实体）
         virtual void OnGeometryAttached(ModelRefComponent & /*component*/) {}
 
-        /// 材质段完成（本帧有新写入的 MaterialData 授权记录）
+        /// 材质段完成（模板材质绑定已收敛）
         virtual void OnMaterialAttached(ModelRefComponent & /*component*/) {}
 
         /// 全段落定且句柄 `CommitModel` 就绪 —— 模型可用（只报一次）

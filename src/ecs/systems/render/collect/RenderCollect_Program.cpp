@@ -634,6 +634,10 @@ namespace hgl::ecs
             row->shadow_variant = variant_id;
             row->shadow_cached_normalized_recipe = effective_recipe;
         }
+        else
+        {
+            row->forward_variant = variant_id;
+        }
         if (record->program)
             return record->program;
 

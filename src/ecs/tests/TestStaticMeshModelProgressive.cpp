@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/support/assembly/StaticMeshModelInstance.h>
+#include<hgl/ecs/components/ModelRefComponent.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/log/Log.h>
@@ -6,7 +7,7 @@
 #include<glm/gtc/matrix_transform.hpp>
 
 /**
- * 判据：`StaticMeshModelInstance` 的三段渐进激活（骨架 → 几何 → 材质）。
+ * 判据：`StaticMeshModelInstance` 的三段渐进激活（根锚点 → GPU 模板 → 材质绑定）。
  *
  * 本文件不碰设备：`PrimitiveAsset::IsValid()` 要真几何才成立，所以几何/材质
  * 两段只能验证**守约不崩**那一侧（空资产、错顺序调用、重复释放）。
@@ -94,17 +95,15 @@ namespace
         EXPECT(instance.InstantiateSkeleton(&world, nodes, roots));
         EXPECT(instance.IsInstantiated());
         EXPECT(instance.GetNodeCount() == 2);
+        EXPECT(instance.GetRootEntity().IsValid());
+        EXPECT(world.GetEntity(instance.GetRootEntity()) != nullptr);
+        EXPECT(IsValidTransformID(instance.GetRootTransform()));
 
-        // 骨架阶段不能有任何图元：几何/材质是后面两段的事。
+        // 骨架阶段已经收敛到唯一实体；节点树留在资产/GPU 模板数据中。
+        uint32_t entity_count = 0;
+        world.ForEachAliveEntity([&](const Entity *) { ++entity_count; });
+        EXPECT(entity_count == 1u);
         EXPECT(instance.GetAttachedPrimitiveCount() == 0);
-
-        for (int i = 0; i < 2; ++i)
-        {
-            const EntityID entity = instance.GetNodeEntity(i);
-            EXPECT(entity.IsValid());
-            EXPECT(world.GetEntity(entity) != nullptr);
-            EXPECT(IsValidTransformID(instance.GetNodeTransform(i)));
-        }
 
         // 整体包围盒：根 [-1,1] ∪ 子 [+1,+3] ⇒ x ∈ [-1,3]，y/z ∈ [-1,1]
         BoundingVolumes bounds;
@@ -122,12 +121,64 @@ namespace
         EXPECT(!instance.IsInstantiated());
         EXPECT(instance.GetNodeCount() == 0);
         EXPECT(instance.GetAttachedPrimitiveCount() == 0);
+        EXPECT(!instance.GetRootEntity().IsValid());
+        EXPECT(!IsValidTransformID(instance.GetRootTransform()));
 
         BoundingVolumes cleared;
         EXPECT(!instance.GetSkeletonBounds(cleared));
         EXPECT(cleared.aabb.IsEmpty());
 
         instance.Release();     // 幂等：重复释放不得崩
+    }
+
+    void TestExternalRootEntity()
+    {
+        ECSContext world;
+        Entity *root = world.CreateEntity("ModelRefRoot");
+        EXPECT(root != nullptr);
+        if (!root)
+            return;
+
+        std::vector<StaticMeshNode> nodes;
+        std::vector<int32_t> roots;
+        BuildTwoNodeScene(nodes, roots);
+
+        StaticMeshModelInstance instance;
+        EXPECT(instance.InstantiateSkeleton(
+            &world, nodes, roots, StaticMeshModelInstance::SkeletonOptions{}, root));
+        EXPECT(instance.GetRootEntity() == root->GetEntityID());
+
+        uint32_t entity_count = 0;
+        world.ForEachAliveEntity([&](const Entity *) { ++entity_count; });
+        EXPECT(entity_count == 1u);
+
+        instance.Release();
+        EXPECT(world.GetEntity(root->GetEntityID()) == root);
+        EXPECT(!IsValidTransformID(world.Spatial().GetTransformID(root->GetEntityID())));
+        world.DestroyEntity(root->GetEntityID());
+    }
+
+    void TestModelRefOwnerDetach()
+    {
+        ECSContext world;
+        Entity *root = world.CreateEntity("OwnedModelRefRoot");
+        EXPECT(root != nullptr);
+        if (!root)
+            return;
+        const EntityID root_id = root->GetEntityID();
+
+        ModelRefComponent *model_ref = root->AddComponent<ModelRefComponent>();
+        EXPECT(model_ref != nullptr);
+        if (!model_ref)
+            return;
+
+        std::vector<StaticMeshNode> nodes;
+        std::vector<int32_t> roots;
+        BuildTwoNodeScene(nodes, roots);
+        EXPECT(model_ref->instance.InstantiateSkeleton(
+            &world, nodes, roots, StaticMeshModelInstance::SkeletonOptions{}, root));
+        world.DestroyEntity(root_id);
+        EXPECT(world.GetEntity(root_id) == nullptr);
     }
 
     // ── 判据 2：节点包围盒缺失时不得谎报包围盒 ────────────────────────────
@@ -207,6 +258,8 @@ namespace
         EXPECT(instance.InstantiateSkeleton(&world, nodes, roots));
         EXPECT(instance.IsInstantiated());
         EXPECT(instance.GetNodeCount() == 0);
+        EXPECT(instance.GetRootEntity().IsValid());
+        EXPECT(IsValidTransformID(instance.GetRootTransform()));
 
         BoundingVolumes bounds;
         EXPECT(!instance.GetSkeletonBounds(bounds));
@@ -225,6 +278,8 @@ int main(int argc, char **argv)
     logger::InitLogger(OS_TEXT("TestStaticMeshModelProgressive"));
 
     TestSkeleton();
+    TestExternalRootEntity();
+    TestModelRefOwnerDetach();
     TestSkeletonWithoutBounds();
     TestAttachGuards();
     TestEmptyScene();

@@ -22,7 +22,7 @@ namespace hgl
 namespace hgl::ecs
 {
     /**
-     * 场景流送系统 —— 把「一个 URI」变成「可以立刻实例化进 ECS 的图元 + 节点树」。
+     * 场景流送系统 —— 把「一个 URI」变成「可以收敛为单根实体与 GPU 模型模板的节点/图元数据」。
      *
      * ## 为什么需要它
      *
@@ -39,7 +39,7 @@ namespace hgl::ecs
      * ③ AcquireOneFrame()           本帧最多发起 kMaxSubmitPerFrame 个新句柄的取流
      * ④ Advance()                   推进状态机（含配方门禁）
      * ⑤ LoadedFileManager::Collect() 回收已归零的文件引用
-     * ⑥ InstantiateModelRefs()      装配段：推进所有 ModelRefComponent 三段实例化
+     * ⑥ InstantiateModelRefs()      装配段：推进所有 ModelRefComponent 的根/模板/材质段
      * ```
      *
      * ## 取流通道（全部经由 `LoadedFileManager`）
@@ -169,9 +169,9 @@ namespace hgl::ecs
          * 组件表为空 ⇒ 立即返回（零开销）。每帧对每个未终态的组件至多推进一段：
          *   · 无句柄且未请求 ⇒ 询问 `ModelLoadPolicy::OnBeforeRequest`（负值暂缓），
          *     通过后 `RequestModelAsset(uri)` 挂回组件；
-         *   · 骨架：节点产物到位 ⇒ `InstantiateSkeleton`（一次）；
-         *   · 几何：图元产物到位 ⇒ 增量 `AttachGeometries`，句柄 `Ready` 时收口；
-         *   · 材质：几何收口后 ⇒ `AttachMaterials`（一次）；
+         *   · 根：节点产物到位 ⇒ 复用 ModelRef owner 创建一个根锚点；
+         *   · 模板：所有图元几何到位 ⇒ 构建 GPU Template/Part/Meshlet 表；
+         *   · 材质：模板绑定就绪后 ⇒ `AttachMaterials` 收口；
          *   · 句柄 `Ready` 且三段完成 ⇒ `OnModelReady`（一次）；任何失败 ⇒
          *     `OnModelFailed`（一次）并清句柄引用，不再重试。
          */

@@ -1,14 +1,19 @@
-﻿// StaticMeshModelInstance.cpp —— .model 场景 → ECS 实例化
-//
-// 数据流约定（见头文件说明）：节点局部 TRS 与 parentIndex 层级是唯一真源，
-// 全程不做矩阵反分解；资产复制进实例自持的 ManagedArray 以保证指针稳定。
+// StaticMeshModelInstance.cpp — .model 场景 → 单根 ECS 实体 + GPU 模型模板
 
 #include <hgl/ecs/support/assembly/StaticMeshModelInstance.h>
+#include <hgl/ecs/components/GPUModelRefComponent.h>
 #include <hgl/ecs/core/Context.h>
-#include <hgl/ecs/components/GeometryData.h>
-#include <hgl/ecs/support/material/MaterialAuthoringSideTable.h>
+#include <hgl/ecs/core/entity/Entity.h>
+#include <hgl/ecs/support/material/MaterialRuntimeTable.h>
+#include <hgl/ecs/support/material/MaterialVariantTable.h>
+#include <hgl/ecs/support/material/ModelTemplateBuilder.h>
 #include <hgl/ecs/support/transform/TransformAccessor.h>
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/geo/VKGeometry.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/log/Log.h>
+#include <hgl/mtl/MaterialResolver.h>
+#include <hgl/mtl/ScenePassProfileResolver.h>
 #include <glm/gtc/quaternion.hpp>
 
 DEFINE_LOGGER_MODULE(StaticMeshModel)
@@ -18,45 +23,87 @@ namespace hgl::ecs
 {
     namespace
     {
-        /// 单位变换（多图元派生子实体用）
-        const glm::vec3  kUnitPos(0.0f, 0.0f, 0.0f);
-        const glm::quat  kUnitRot(1.0f, 0.0f, 0.0f, 0.0f);
-        const glm::vec3  kUnitScale(1.0f, 1.0f, 1.0f);
-    }//anonymous namespace
+        const math::Vector3f kUnitPosition(0.0f, 0.0f, 0.0f);
+        const math::Quatf kUnitRotation(1.0f, 0.0f, 0.0f, 0.0f);
+        const math::Vector3f kUnitScale(1.0f, 1.0f, 1.0f);
+
+        graph::mtl::ShaderProgramPurpose GetForwardPurpose(
+            const graph::PrimitiveVariantPurpose purpose)
+        {
+            switch (purpose)
+            {
+            case graph::PrimitiveVariantPurpose::DepthOnly:
+                return graph::mtl::ShaderProgramPurpose::DepthOnly;
+            case graph::PrimitiveVariantPurpose::ShadowCaster:
+                return graph::mtl::ShaderProgramPurpose::ShadowDepth;
+            default:
+                return graph::mtl::ShaderProgramPurpose::ForwardColor;
+            }
+        }
+    }
 
     StaticMeshModelInstance::~StaticMeshModelInstance()
     {
         Release();
     }
 
-    void StaticMeshModelInstance::Release()
+    void StaticMeshModelInstance::Release(const bool root_entity_is_destroying)
     {
-        // 顺序敏感：先销毁实体（GeometryData 仍引用 owned_assets 里的副本），
-        // 再释放资产副本。
-        if (world)
+        if (world && root_entity.IsValid())
         {
-            for (ecs::EntityID entity : extra_entities)
-                world->DestroyEntity(entity);
-            for (const NodeRecord &record : node_records)
+            ecs::Entity *root = world->GetEntity(root_entity);
+            if (root)
             {
-                if (record.entity.IsValid())
-                    world->DestroyEntity(record.entity);
+                if (auto *model_ref = root->GetComponent<GPUModelRefComponent>())
+                    if (model_ref->GetTemplateID() == model_template_id)
+                        model_ref->SetTemplateBinding(0u);
+
+                if (owns_root_entity)
+                {
+                    world->DestroyEntity(root_entity);
+                }
+                else if (!root_entity_is_destroying)
+                {
+                    if (ecs::IsValidTransformID(root_transform))
+                        world->Spatial().DestroyTransform(root_transform);
+
+                    const ecs::BoundingBoxAccessor bounds =
+                        world->Spatial().GetBoundingBoxByEntity(root_entity);
+                    if (bounds.IsValid())
+                        world->Spatial().DestroyBoundingBox(bounds.GetID());
+                }
             }
         }
-        extra_entities.clear();
-        node_records.clear();
-        primitive_records.clear();
-        attached_per_node.clear();
+
+        if (world && model_template_id != 0u)
+        {
+            graph::GraphicsContext *graphics =
+                world->Environment().GetGraphicsContext();
+            graph::GlobalSSBOBufferRegistry *registry =
+                graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
+            if (!DestroyMultiMaterialModelTemplate(registry, world, model_template_id))
+                FLogError(u8"Release: GPU 模型模板注销失败（template=%u）",
+                          model_template_id);
+        }
+
         owned_assets.Clear();
         skeleton_bounds.Clear();
         skeleton_bounds_valid = false;
+        source_node_count = 0;
+        attached_primitive_count = 0;
+        model_template_id = 0;
+        root_entity = ecs::EntityID::Invalid();
+        root_transform = ecs::INVALID_TRANSFORM_ID;
+        owns_root_entity = false;
         world = nullptr;
     }
 
-    bool StaticMeshModelInstance::InstantiateSkeleton(ecs::ECSContext                  *ctx,
-                                                      const std::vector<graph::StaticMeshNode> &nodes,
-                                                      const std::vector<int32_t>        &root_nodes,
-                                                      const SkeletonOptions             &options)
+    bool StaticMeshModelInstance::InstantiateSkeleton(
+        ecs::ECSContext *ctx,
+        const std::vector<graph::StaticMeshNode> &nodes,
+        const std::vector<int32_t> &root_nodes,
+        const SkeletonOptions &options,
+        ecs::Entity *existing_root)
     {
         if (world)
         {
@@ -68,80 +115,56 @@ namespace hgl::ecs
             FLogError(u8"InstantiateSkeleton: ECSContext 为空");
             return false;
         }
+        if (existing_root
+            && ctx->GetEntity(existing_root->GetEntityID()) != existing_root)
+        {
+            FLogError(u8"InstantiateSkeleton: 外部根实体不属于该 ECS 世界");
+            return false;
+        }
 
         world = ctx;
-        node_records.assign(nodes.size(), NodeRecord{});
-        attached_per_node.assign(nodes.size(), 0);
-        skeleton_mobility = options.mobility;
-        (void)root_nodes; // 层级完全由 parentIndex 决定；根集合仅作入参兼容
+        source_node_count = static_cast<int>(nodes.size());
+        owns_root_entity = existing_root == nullptr;
+        root_entity = existing_root
+            ? existing_root->GetEntityID()
+            : ecs::EntityID::Invalid();
+        (void)root_nodes;
 
-        // 1) 每节点一个实体 + Transform：局部 TRS 直取节点真源字段。
-        //    先按 Movable 建行写入，再切到目标移动性，避开 Static 行
-        //    「渲染消费后再写」的 D4 一次性告警路径。
-        for (size_t i = 0; i < nodes.size(); ++i)
+        if (!existing_root)
         {
-            const graph::StaticMeshNode &node = nodes[i];
-
-            ecs::Entity *entity = world->CreateEntity<ecs::Entity>(
-                node.name.empty() ? "SceneNode" : node.name.c_str());
+            ecs::Entity *entity =
+                world->CreateEntity<ecs::Entity>("StaticMeshModelRoot");
             if (!entity)
             {
-                FLogError(u8"InstantiateSkeleton: 节点实体创建失败（index=%zu）", i);
+                FLogError(u8"InstantiateSkeleton: 根实体创建失败");
                 Release();
                 return false;
             }
-            NodeRecord &record = node_records[i];
-            record.entity = entity->GetEntityID();
-
-            ecs::TransformID transform_id =
-                world->Spatial().CreateTransform(record.entity, ecs::Mobility::Movable);
-            if (!ecs::IsValidTransformID(transform_id))
-            {
-                FLogError(u8"InstantiateSkeleton: 节点 Transform 创建失败（index=%zu）", i);
-                Release();
-                return false;
-            }
-            record.transform = transform_id;
-
-            ecs::TransformAccessor transform = world->Spatial().GetTransform(transform_id);
-            if (!transform.IsValid())
-            {
-                FLogError(u8"InstantiateSkeleton: 节点 Transform 句柄无效（index=%zu）", i);
-                Release();
-                return false;
-            }
-            if (node.hasTRS)
-                transform.SetLocalTRS(node.translation, node.rotation, node.scale);
-            else
-                transform.SetLocalTRS(kUnitPos, kUnitRot, kUnitScale);
-            transform.SetMobility(options.mobility);
+            root_entity = entity->GetEntityID();
         }
 
-        // 2) 父子层级：按 parentIndex 还原（加载器保证父先于子）。
-        for (size_t i = 0; i < nodes.size(); ++i)
+        root_transform = world->Spatial().GetTransformID(root_entity);
+        const bool created_transform = !ecs::IsValidTransformID(root_transform);
+        if (created_transform)
+            root_transform = world->Spatial().CreateTransform(root_entity, ecs::Mobility::Movable);
+        if (!ecs::IsValidTransformID(root_transform))
         {
-            const int32_t parent = nodes[i].parentIndex;
-            if (parent < 0)
-                continue;
-            if (parent >= static_cast<int32_t>(nodes.size()))
-            {
-                FLogError(u8"InstantiateSkeleton: 父下标越界（node=%zu, parent=%d）", i, parent);
-                Release();
-                return false;
-            }
-            if (!ecs::IsValidTransformID(node_records[i].transform)
-                || !ecs::IsValidTransformID(node_records[parent].transform))
-            {
-                FLogError(u8"InstantiateSkeleton: 父/子 Transform 缺失（node=%zu）", i);
-                Release();
-                return false;
-            }
-            ecs::TransformAccessor child = world->Spatial().GetTransform(node_records[i].transform);
-            child.SetParent(node_records[parent].transform);
+            FLogError(u8"InstantiateSkeleton: 根 Transform 创建失败");
+            Release();
+            return false;
         }
 
-        // 3) 骨架包围盒：节点包围盒是 pack 里的真源，与几何是否上传无关，
-        //    所以空壳阶段就能给出正确对焦范围（不然要等第一个图元落地才敢定位相机）。
+        ecs::TransformAccessor transform = world->Spatial().GetTransform(root_transform);
+        if (!transform.IsValid())
+        {
+            FLogError(u8"InstantiateSkeleton: 根 Transform 句柄无效");
+            Release();
+            return false;
+        }
+        if (created_transform || owns_root_entity)
+            transform.SetLocalTRS(kUnitPosition, kUnitRotation, kUnitScale);
+        transform.SetMobility(options.mobility);
+
         math::AABB merged_box;
         merged_box.Clear();
         bool any_box = false;
@@ -153,254 +176,324 @@ namespace hgl::ecs
             merged_box.Merge(node.nodeBounds.aabb.Transformed(node.worldMatrix));
             any_box = true;
         }
+
         if (any_box)
         {
             skeleton_bounds.SetFromAABB(merged_box);
             skeleton_bounds_valid = true;
+            world->Spatial().GetOrCreateBoundingBox(root_entity).SetLocalBounds(merged_box);
         }
 
-        FLogInfo(u8"InstantiateSkeleton: 骨架就绪（节点 %zu，包围盒 %s）",
+        FLogInfo(u8"InstantiateSkeleton: 单根模型锚点就绪（模型节点 %zu，包围盒 %s）",
                  nodes.size(), any_box ? "有效" : "缺失");
         return true;
     }
 
-    bool StaticMeshModelInstance::AttachGeometries(const std::vector<graph::PrimitiveAsset> &assets,
-                                                    const std::vector<graph::StaticMeshNode> &nodes)
+    bool StaticMeshModelInstance::BuildTemplate(
+        const std::vector<graph::StaticMeshNode> &nodes,
+        const Options &options)
     {
-        if (!world)
-        {
-            FLogError(u8"AttachGeometries: 世界未就绪，请先 InstantiateSkeleton()");
+        if (!world || !root_entity.IsValid() || model_template_id != 0u)
             return false;
-        }
-        if (node_records.size() != nodes.size())
-        {
-            FLogError(u8"AttachGeometries: 节点数与骨架不一致（骨架 %zu / 入参 %zu）",
-                      node_records.size(), nodes.size());
-            return false;
-        }
-        if (attached_per_node.size() != nodes.size())
-            attached_per_node.assign(nodes.size(), 0);
 
-        // 资产副本按需追加：ManagedArray 追加不移动既有元素，指针保持稳定。
+        graph::GraphicsContext *graphics =
+            world->Environment().GetGraphicsContext();
+        graph::GlobalSSBOBufferRegistry *registry =
+            graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
+        MaterialRuntimeTable *runtime_table = world->RenderData().RuntimeMaterials();
+        MaterialVariantTable *variant_table = world->RenderData().Variants();
+        if (!graphics || !registry || !runtime_table || !variant_table)
+        {
+            FLogError(u8"BuildTemplate: GraphicsContext 或材质运行期表未就绪");
+            return false;
+        }
+
+        ValueArray<ModelTemplatePartInput> parts;
+        ValueArray<MaterialRuntimeRowID> acquired_rows;
+        uint32_t mount_order = 0;
+        uint32_t meshlet_geometry_count = 0;
+        uint64_t total_meshlet_count = 0;
+
+        auto release_acquired_rows = [&]()
+        {
+            for (int i = 0; i < acquired_rows.GetCount(); ++i)
+                runtime_table->Release(acquired_rows[i]);
+            acquired_rows.Clear();
+        };
+
+        for (const graph::StaticMeshNode &node : nodes)
+        {
+            for (const int32_t primitive_index : node.primitiveIndices)
+            {
+                if (primitive_index < 0
+                    || primitive_index >= owned_assets.GetCount())
+                {
+                    FLogError(u8"BuildTemplate: 图元索引越界（index=%d）", primitive_index);
+                    release_acquired_rows();
+                    return false;
+                }
+
+                const graph::PrimitiveAsset *asset = owned_assets.At(primitive_index);
+                graph::Geometry *geometry = asset ? asset->GetGeometry() : nullptr;
+                const graph::PrimitiveVariant *variant =
+                    asset ? asset->GetDefaultVariant() : nullptr;
+                if (!asset || !asset->IsGeometryReady() || !geometry
+                    || !variant || !variant->material_recipe)
+                {
+                    FLogWarning(u8"BuildTemplate: 图元几何或配方尚未就绪（index=%d）",
+                                primitive_index);
+                    release_acquired_rows();
+                    return false;
+                }
+
+                if (!geometry->EnsureMeshDrawParams(registry, graphics->GetDevice()))
+                {
+                    FLogError(u8"BuildTemplate: Geometry 全局池注册失败（index=%d）",
+                              primitive_index);
+                    release_acquired_rows();
+                    return false;
+                }
+                if (asset->GetPrimitiveType() == graph::PrimitiveType::Triangles
+                    && geometry->GetMeshletCount() == 0u)
+                {
+                    FLogError(u8"BuildTemplate: 三角形 Geometry 缺少 Meshlet 数据（index=%d）",
+                              primitive_index);
+                    release_acquired_rows();
+                    return false;
+                }
+                if (geometry->GetMeshletCount() != 0u)
+                {
+                    ++meshlet_geometry_count;
+                    total_meshlet_count += geometry->GetMeshletCount();
+                }
+
+                graph::mtl::MaterialRecipe recipe = *variant->material_recipe;
+                graph::GlobalSSBOBinding material_binding =
+                    recipe.material_ssbo_binding;
+                if (options.material_rows && options.material_row_count > 0)
+                {
+                    const uint32_t row_index =
+                        ResolveMaterialRowIndex(*asset, options, mount_order);
+                    material_binding = options.material_rows[row_index];
+                }
+                if (material_binding.IsValid())
+                    recipe.material_ssbo_binding = material_binding;
+
+                const uint32_t data_index = recipe.material_ssbo_binding.IsValid()
+                    ? recipe.material_ssbo_binding.data_index
+                    : 0u;
+                const AnsiString &ambient_provider =
+                    world->Environment().GetAmbientProviderName();
+                const char *ambient_name = ambient_provider.IsEmpty()
+                    ? graph::mtl::kAmbientLightProviderNone
+                    : ambient_provider.c_str();
+                const uint64_t build_context =
+                    graph::mtl::HashMaterialProgramBuildContext(
+                        asset->GetPrimitiveType(),
+                        &geometry->GetGeometryVertexFormat(),
+                        graphics->GetPhysicalDeviceProfile(),
+                        GetForwardPurpose(variant->purpose),
+                        ambient_name);
+                const uint64_t recipe_hash =
+                    graph::mtl::HashMaterialRecipe(recipe);
+                const MaterialRuntimeKey key{
+                    build_context, recipe_hash, data_index};
+                const MaterialRuntimeRowID row_id = runtime_table->Intern(key);
+                if (row_id == INVALID_MATERIAL_RUNTIME_ROW_ID)
+                {
+                    FLogError(u8"BuildTemplate: MaterialRuntimeTable 容量不足");
+                    release_acquired_rows();
+                    return false;
+                }
+                acquired_rows.Add(row_id);
+
+                MaterialRuntimeRow *runtime_row = runtime_table->GetMutable(row_id);
+                if (!runtime_row)
+                {
+                    FLogError(u8"BuildTemplate: MaterialRuntimeRow 登记后不可读取");
+                    release_acquired_rows();
+                    return false;
+                }
+                if (runtime_row->cached_effective_recipe_hash == 0u)
+                {
+                    runtime_row->recipe_hash = recipe_hash;
+                    runtime_row->cached_normalized_recipe = recipe;
+                    runtime_row->cached_effective_recipe = recipe;
+                    runtime_row->cached_effective_recipe_hash = recipe_hash;
+                }
+                if (runtime_row->data_index_row == uint32_t(-1))
+                    runtime_row->data_index_row = data_index;
+
+                ModelTemplatePartInput part;
+                part.geometry = geometry;
+                part.primitive_type = asset->GetPrimitiveType();
+                part.local_matrix = node.worldMatrix;
+                if (node.boundsValid)
+                    part.local_bounds = node.nodeBounds.aabb;
+                else
+                    part.local_bounds.Clear();
+                part.material.runtime_row = row_id;
+                part.material.material_id = data_index;
+                part.material.texture_id =
+                    runtime_row->material_texture_configuration.IsValid()
+                        ? runtime_row->material_texture_configuration.row_index
+                        : 0u;
+                part.material.can_cast_shadow = true;
+                part.material.is_opaque = true;
+                parts.Add(part);
+                ++mount_order;
+            }
+        }
+
+        if (parts.IsEmpty())
+        {
+            FLogError(u8"BuildTemplate: 模型没有可绘制图元");
+            release_acquired_rows();
+            return false;
+        }
+
+        ModelTemplateBuildStatus status = ModelTemplateBuildStatus::Failed;
+        const uint32_t template_id = BuildMultiMaterialModelTemplate(
+            registry, world, parts.GetData(),
+            static_cast<uint32_t>(parts.GetCount()), &status);
+        release_acquired_rows();
+        if (template_id == graph::ssbo::kInvalidModelTemplateID)
+        {
+            FLogError(u8"BuildTemplate: 多材质 GPU 模型模板构建失败（status=%u）",
+                      static_cast<uint32_t>(status));
+            return false;
+        }
+
+        ecs::Entity *root = world->GetEntity(root_entity);
+        GPUModelRefComponent *model_ref =
+            root ? root->GetComponent<GPUModelRefComponent>() : nullptr;
+        if (!model_ref && root)
+            model_ref = root->AddComponent<GPUModelRefComponent>();
+        if (!model_ref)
+        {
+            FLogError(u8"BuildTemplate: 根实体无法挂载 GPUModelRefComponent");
+            DestroyMultiMaterialModelTemplate(registry, world, template_id);
+            return false;
+        }
+
+        model_template_id = template_id;
+        model_ref->SetTemplateBinding(model_template_id);
+        attached_primitive_count = parts.GetCount();
+        FLogInfo(u8"BuildTemplate: 单根实体绑定 GPU 模型（template=%u, parts=%d, meshlet_geometries=%u, meshlets=%llu）",
+                 model_template_id, attached_primitive_count, meshlet_geometry_count,
+                 static_cast<unsigned long long>(total_meshlet_count));
+        return true;
+    }
+
+    bool StaticMeshModelInstance::AttachGeometries(
+        const std::vector<graph::PrimitiveAsset> &assets,
+        const std::vector<graph::StaticMeshNode> &nodes,
+        const Options &options)
+    {
+        if (!world || !root_entity.IsValid())
+        {
+            FLogError(u8"AttachGeometries: 根实体未就绪，请先 InstantiateSkeleton()");
+            return false;
+        }
+        if (nodes.size() != static_cast<size_t>(source_node_count))
+        {
+            FLogError(u8"AttachGeometries: 节点数与骨架不一致（骨架 %d / 入参 %zu）",
+                      source_node_count, nodes.size());
+            return false;
+        }
+        if (model_template_id != 0u)
+            return false;
+
         for (int i = owned_assets.GetCount(); i < static_cast<int>(assets.size()); ++i)
         {
-            if (!owned_assets.Create(assets[i]))
+            if (!owned_assets.Create(assets[static_cast<size_t>(i)]))
             {
                 FLogError(u8"AttachGeometries: 资产副本分配失败（index=%d）", i);
                 return false;
             }
         }
 
-        bool attached_any = false;
-
-        for (size_t i = 0; i < nodes.size(); ++i)
+        bool all_geometry_ready = true;
+        for (const graph::StaticMeshNode &node : nodes)
         {
-            const graph::StaticMeshNode &node = nodes[i];
-            const int pi_count = static_cast<int>(node.primitiveIndices.size());
-
-            for (int pos = attached_per_node[i]; pos < pi_count; ++pos)
+            for (const int32_t primitive_index : node.primitiveIndices)
             {
-                const int32_t primitive_index = node.primitiveIndices[pos];
-
                 if (primitive_index < 0
                     || primitive_index >= owned_assets.GetCount())
                 {
-                    // 资产还没到（流送中是常态）：本节点停在这里，下次接着来。
-                    break;
-                }
-
-                graph::PrimitiveAsset *asset = owned_assets.At(primitive_index);
-                if (!asset || !asset->IsValid())
-                    break;
-
-                ecs::Entity *entity = world->GetEntity(node_records[i].entity);
-
-                if (entity && world->GetGeometryData(entity))
-                {
-                    // 节点实体已被首图元占用 ⇒ 后续图元派生子实体。
-                    entity = nullptr;
-                }
-
-                if (!entity)
-                {
-                    // 一实体一 GeometryData：额外图元挂到单位变换子实体上，
-                    // 子实体置于节点之下，保持正确的世界变换。
-                    AnsiString child_name =
-                        AnsiString("SceneNodePrim_")
-                        + AnsiString::numberOf(static_cast<unsigned>(primitive_records.size()));
-                    ecs::Entity *child_entity =
-                        world->CreateEntity<ecs::Entity>(child_name.c_str());
-                    if (!child_entity)
-                    {
-                        FLogError(u8"AttachGeometries: 派生图元实体创建失败（node=%zu）", i);
-                        return false;
-                    }
-                    ecs::TransformID child_transform = world->Spatial().CreateTransform(
-                        child_entity->GetEntityID(), ecs::Mobility::Movable);
-                    if (!ecs::IsValidTransformID(child_transform))
-                    {
-                        FLogError(u8"AttachGeometries: 派生图元 Transform 创建失败（node=%zu）", i);
-                        return false;
-                    }
-                    ecs::TransformAccessor child_accessor =
-                        world->Spatial().GetTransform(child_transform);
-                    child_accessor.SetLocalTRS(kUnitPos, kUnitRot, kUnitScale);
-                    child_accessor.SetParent(node_records[i].transform);
-                    child_accessor.SetMobility(skeleton_mobility);
-                    extra_entities.push_back(child_entity->GetEntityID());
-                    entity = child_entity;
-                }
-
-                ecs::GeometryData *geometry_data =
-                    world->GetOrCreateGeometryData(entity);
-                if (!geometry_data)
-                {
-                    FLogError(u8"AttachGeometries: GeometryData 创建失败（node=%zu）", i);
+                    FLogError(u8"AttachGeometries: 图元索引越界（index=%d）",
+                              primitive_index);
                     return false;
                 }
-                geometry_data->SetPrimitiveAsset(asset);
-                geometry_data->SetPrimitiveVariantIndex(0);
 
-                PrimitiveRecord record;
-                record.asset_index = primitive_index;
-                record.entity      = entity->GetEntityID();
-                primitive_records.push_back(record);
-
-                attached_per_node[i] = pos + 1;
-                attached_any = true;
+                const graph::PrimitiveAsset *asset = owned_assets.At(primitive_index);
+                if (!asset || !asset->IsGeometryReady())
+                {
+                    all_geometry_ready = false;
+                    continue;
+                }
             }
         }
 
-        if (attached_any)
-        {
-            FLogInfo(u8"AttachGeometries: 已挂几何 %d 个（派生实体 %zu）",
-                     GetAttachedPrimitiveCount(), extra_entities.size());
-        }
-        return attached_any;
+        if (!all_geometry_ready)
+            return false;
+
+        return BuildTemplate(nodes, options);
     }
 
     bool StaticMeshModelInstance::AttachMaterials(const Options &options)
     {
-        if (!world)
-        {
-            FLogError(u8"AttachMaterials: 世界未就绪，请先 InstantiateSkeleton()");
-            return false;
-        }
-        if (!options.material_rows || options.material_row_count == 0)
-            return false;
-
-        bool attached_any = false;
-        bool all_bound    = true;
-
-        for (size_t k = 0; k < primitive_records.size(); ++k)
-        {
-            const PrimitiveRecord &record = primitive_records[k];
-            if (!record.entity.IsValid())
-            {
-                all_bound = false;
-                continue;
-            }
-
-            ecs::Entity *entity = world->GetEntity(record.entity);
-            if (!entity)
-            {
-                all_bound = false;
-                continue;
-            }
-
-            // 幂等：已绑过**数据行**的图元不再重绑（重启流送时也不会把行号打乱）。
-            // 注意判据是「有行」而不是「有组件」—— 渲染侧每帧收集会给带几何的实体
-            // 建出空的 `MaterialData`，据此跳过会让材质永远绑不上。
-            if (ecs::MaterialData *existing = world->RenderData().GetMaterialData(entity))
-                if (existing->HasDataResource())
-                    continue;
-
-            const graph::PrimitiveAsset *asset = owned_assets.At(record.asset_index);
-            if (!asset)
-            {
-                all_bound = false;
-                continue;
-            }
-
-            const uint32_t row = ResolveMaterialRowIndex(
-                *asset, options, static_cast<uint32_t>(k));
-
-            ecs::MaterialData::MaterialDataAuthoringResource resource{};
-            resource = options.material_rows[row];
-
-            ecs::MaterialData *material_data = world->RenderData().GetOrCreateMaterialData(entity);
-            if (!material_data || !material_data->SetDataResource(resource))
-            {
-                FLogError(u8"AttachMaterials: 材质行绑定失败（图元 #%zu, row=%u）", k, row);
-                return false;
-            }
-            attached_any = true;
-        }
-
-        if (attached_any)
-            FLogInfo(u8"AttachMaterials: 已挂材质 %d 个", GetAttachedPrimitiveCount());
-
-        // 「没有新绑」不等于失败：渐进通路里可能每个图元都已经绑过行。
-        // 只有仍有图元没绑上行时才算没做完。
-        return all_bound;
+        (void)options;
+        return world && root_entity.IsValid() && model_template_id != 0u;
     }
 
-    bool StaticMeshModelInstance::Instantiate(ecs::ECSContext                  *ctx,
-                                              const std::vector<graph::PrimitiveAsset> &assets,
-                                              const std::vector<graph::StaticMeshNode> &nodes,
-                                              const std::vector<int32_t>        &root_nodes,
-                                              const Options                     &options)
+    bool StaticMeshModelInstance::Instantiate(
+        ecs::ECSContext *ctx,
+        const std::vector<graph::PrimitiveAsset> &assets,
+        const std::vector<graph::StaticMeshNode> &nodes,
+        const std::vector<int32_t> &root_nodes,
+        const Options &options)
     {
         SkeletonOptions skeleton_options;
         skeleton_options.mobility = options.mobility;
-
         if (!InstantiateSkeleton(ctx, nodes, root_nodes, skeleton_options))
             return false;
 
-        if (!AttachGeometries(assets, nodes))
+        if (!AttachGeometries(assets, nodes, options))
         {
-            // 同步通路里「一个图元都没挂上」等同于失败：渐进通路才允许空壳停留。
-            if (GetAttachedPrimitiveCount() <= 0 && !assets.empty())
-            {
-                FLogError(u8"Instantiate: 没有任何图元被挂载");
-                Release();
-                return false;
-            }
+            FLogError(u8"Instantiate: GPU 模型模板未能构建");
+            Release();
+            return false;
         }
 
-        if (options.material_rows && options.material_row_count > 0)
+        if (!AttachMaterials(options))
         {
-            if (!AttachMaterials(options))
-            {
-                FLogError(u8"Instantiate: 材质绑定失败");
-                Release();
-                return false;
-            }
+            FLogError(u8"Instantiate: 模型模板材质绑定未完成");
+            Release();
+            return false;
         }
 
-        FLogInfo(u8"Instantiate: 场景实例化完成（节点 %zu，图元 %d，派生图元实体 %zu，资产副本 %d）",
-                 nodes.size(), GetAttachedPrimitiveCount(),
-                 extra_entities.size(), owned_assets.GetCount());
-
+        FLogInfo(u8"Instantiate: 单根模型实例化完成（节点 %d，图元 %d，template=%u）",
+                 source_node_count, attached_primitive_count, model_template_id);
         return true;
     }
 
-    uint32_t StaticMeshModelInstance::ResolveMaterialRowIndex(const graph::PrimitiveAsset &asset,
-                                                              const Options &options,
-                                                              uint32_t mount_order)
+    uint32_t StaticMeshModelInstance::ResolveMaterialRowIndex(
+        const graph::PrimitiveAsset &asset,
+        const Options &options,
+        const uint32_t mount_order)
     {
         if (options.material_row_count == 0)
-            return 0;
+            return 0u;
 
         if (options.rows_by_material_index)
         {
-            const int32_t mat_index = asset.GetMaterialIndex();
-            if (mat_index >= 0
-                && static_cast<uint32_t>(mat_index) < options.material_row_count)
-                return static_cast<uint32_t>(mat_index);
+            const int32_t material_index = asset.GetMaterialIndex();
+            if (material_index >= 0
+                && static_cast<uint32_t>(material_index) < options.material_row_count)
+                return static_cast<uint32_t>(material_index);
         }
 
         return mount_order % options.material_row_count;
     }
-
-}//namespace hgl::ecs
+}

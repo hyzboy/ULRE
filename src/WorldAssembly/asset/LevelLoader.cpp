@@ -206,7 +206,9 @@ namespace hgl::graph
     {
         if (world)
             for (int i = 0; i < nodes.GetCount(); ++i)
-                if (nodes[i]->entity_id.IsValid())
+                if (nodes[i]->model_instance.IsInstantiated())
+                    nodes[i]->model_instance.Release();
+                else if (nodes[i]->entity_id.IsValid())
                     world->DestroyEntity(nodes[i]->entity_id);
 
         if (geometry_manager)
@@ -395,33 +397,17 @@ namespace hgl::graph
                     return false;
                 }
 
-                // wrapper 实体承载 level 里给节点的 TRS；pack 内部根节点保留自身
-                // 局部变换，只把父级挂到 wrapper 上。可见性沿祖先链级联。
-                ecs::RenderableBuilder builder(world, node_spec.name.c_str());
-                builder.WithTransform(trs.position, trs.rotation, trs.scale, trs.mobility);
-                ecs::Entity *entity = builder.Build();
-                if (!entity)
+                runtime->entity_id = runtime->model_instance.GetRootEntity();
+                ecs::TransformAccessor model_transform =
+                    world->Spatial().GetTransform(runtime->model_instance.GetRootTransform());
+                if (!runtime->entity_id.IsValid() || !model_transform.IsValid())
                 {
-                    MLogError(LevelLoader, "Instantiate: model wrapper entity creation failed");
+                    MLogError(LevelLoader, "Instantiate: model root transform is unavailable");
                     out_instance.Release();
                     return false;
                 }
-
-                runtime->entity_id = entity->GetEntityID();
-                ecs::TransformAccessor wrapper_transform =
-                    world->Spatial().GetTransformByEntity(runtime->entity_id);
-                if (wrapper_transform.IsValid())
-                {
-                    for (size_t root_index = 0; root_index < model_roots.size(); ++root_index)
-                    {
-                        ecs::TransformAccessor root_transform =
-                            world->Spatial().GetTransformByEntity(
-                                runtime->model_instance.GetNodeEntity(model_roots[root_index]));
-                        if (root_transform.IsValid())
-                            root_transform.SetParent(wrapper_transform.GetID());
-                    }
-                }
-
+                model_transform.SetLocalTRS(trs.position, trs.rotation, trs.scale);
+                model_transform.SetMobility(trs.mobility);
                 world->Spatial().SetEntityVisible(runtime->entity_id, node_spec.visible);
                 continue;
             }

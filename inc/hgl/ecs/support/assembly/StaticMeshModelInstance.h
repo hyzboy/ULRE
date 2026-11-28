@@ -21,6 +21,7 @@ namespace hgl
     namespace ecs
     {
         class ECSContext;
+        class Entity;
 
         /**
          * @brief 把 `LoadModelAsPrimitiveAssets` /
@@ -29,30 +30,26 @@ namespace hgl
          * 与 `LevelLoader::LevelInstance`（spec 场景）对称，这一条通路服务
          * `.model` MiniPack 场景。实例化规则：
          *
-         * - **每个节点一个实体 + Transform**：局部 TRS 直取 `.model` 的
-         *   TRSTable 真源（`node.hasTRS` 时），不做任何矩阵反分解；
-         *   父子层级按 `parentIndex` 用 `SetParent` 完整还原。
-         * - **图元挂载**：节点的首个有效图元直接挂在节点实体上；
-         *   其余图元创建单位变换子实体挂在节点实体之下（一实体一 GeometryData）。
-         * - **资产安全**：`assets` 被逐个复制进实例自持的 `ManagedArray`
-         *   （堆上单对象，地址稳定），`GeometryData` 只引用实例持有的副本 ——
-         *   调用方装载完即可丢弃自己的容器，不存在 vector 搬迁悬垂。
+         * - **单根实体**：只保留 Gameplay 锚点 Entity + Transform；节点矩阵与图元
+         *   直接打包进 GPU ModelTemplate/ModelPart 行。
+         * - **零子节点实体**：CPU 不为模型节点、图元或 Meshlet 创建实体。
+         * - **资产安全**：`assets` 被复制到实例自持的 `ManagedArray`，
+         *   供模板构建阶段稳定访问 PrimitiveAsset 与 Geometry。
          *
          * 生命周期：`Release()`（或析构）先销毁实体、后释放资产副本；
          * 在实例存续期间不得销毁其引用的 Geometry/Recipe 等底层资源。
          *
          * **渐进激活**：场景走异步流送时，节点拓扑、几何、材质是三个不同时刻
-         * 才到位的东西。`Instantiate()` 是一次性三合一（同步通路继续用它），
+         * 才到位的东西。`Instantiate()` 是同步通路的一次性 root + GPU 模板构建，
          * 需要渐进时按顺序单独调用：
          *
          * | 时刻 | 调用 | 世界侧效果 |
          * | --- | --- | --- |
-         * | 发起加载后立刻 | `InstantiateSkeleton()` | 空壳实体 + Transform 级联 + 骨架包围盒 |
-         * | 图元几何到位 | `AttachGeometries()` | 逐个图元挂 `GeometryData` |
-         * | 材质行到位 | `AttachMaterials()` | 为已挂几何补 `MaterialData` |
+         * | 发起加载后立刻 | `InstantiateSkeleton()` | 单根实体 + Transform + 模型包围盒 |
+         * | 图元几何到位 | `AttachGeometries()` | 构建 Template/Part/Meshlet 表并挂 GPUModelRef |
+         * | 材质行到位 | `AttachMaterials()` | 完成模板材质绑定状态 |
          *
-         * 三段都幂等：重复调用只挂此前缺的部分，已挂的不动。中间态（只有骨架、
-         * 有几何无材质）必须是可渲染的合法状态 —— 渲染侧靠占位纹理保底。
+         * 各段幂等；几何未全部到位时不创建半模板。
          */
         class StaticMeshModelInstance
         {
@@ -80,30 +77,20 @@ namespace hgl
             };
 
         private:
-            struct NodeRecord
-            {
-                ecs::EntityID    entity   = ecs::EntityID::Invalid();
-                ecs::TransformID transform = ecs::INVALID_TRANSFORM_ID;
-            };
-
-            /// 已挂上 GeometryData 的图元 —— `AttachMaterials` 按这份顺序补材质，
-            /// 挂载序号（轮转模式的行下标）就是这里的位置。
-            struct PrimitiveRecord
-            {
-                int32_t       asset_index = -1;
-                ecs::EntityID entity      = ecs::EntityID::Invalid();
-            };
-
             ecs::ECSContext *world = nullptr;
             ManagedArray<graph::PrimitiveAsset> owned_assets;   ///< 稳定指针的资产副本（逐项 new）
-            std::vector<NodeRecord> node_records;        ///< 与入参 nodes 下标一一对应
-            std::vector<ecs::EntityID> extra_entities;   ///< 多图元节点派生的子实体
-            std::vector<PrimitiveRecord> primitive_records; ///< 已挂几何的图元（挂载顺序）
-            std::vector<int32_t> attached_per_node;      ///< 每个节点已处理到的 primitiveIndices 位置
+            ecs::EntityID root_entity = ecs::EntityID::Invalid();
+            ecs::TransformID root_transform = ecs::INVALID_TRANSFORM_ID;
+            uint32_t model_template_id = 0;
+            int source_node_count = 0;
+            int attached_primitive_count = 0;
+            bool owns_root_entity = false;
 
             math::BoundingVolumes skeleton_bounds;             ///< 骨架阶段算出的整体包围盒
             bool            skeleton_bounds_valid = false;
-            ecs::Mobility   skeleton_mobility = ecs::Mobility::Static; ///< 派生图元子实体沿用
+
+            bool BuildTemplate(const std::vector<graph::StaticMeshNode> &nodes,
+                               const Options &options);
 
         public:
             StaticMeshModelInstance() = default;
@@ -113,9 +100,8 @@ namespace hgl
             StaticMeshModelInstance &operator=(const StaticMeshModelInstance &) = delete;
 
             /**
-             * @brief 实例化整棵场景树；任何一步失败即回滚全部并返回 false。
-             * @note 允许 `assets` 中含未声明条目（无效下标会被跳过并记日志），
-             *       但节点必须至少有 Transform；世界池耗尽视为失败。
+             * @brief 创建单根实体并把完整场景树打包为 GPU 模型模板。
+             * @note 几何未就绪、材质运行期行无效或 GPU 池耗尽时整体失败。
              */
             bool Instantiate(ecs::ECSContext               *world,
                              const std::vector<graph::PrimitiveAsset> &assets,
@@ -124,36 +110,27 @@ namespace hgl
                              const Options                     &options = {});
 
             /// 销毁全部实体并释放资产副本（幂等）
-            void Release();
+            void Release(bool root_entity_is_destroying = false);
 
             /**
-             * @brief 渐进激活第一段：只建节点实体 + Transform 级联，不挂图元/材质。
-             *
-             * 实体先入世界，相机即可凭 `GetSkeletonBounds()` 自动对焦 —— 画面立刻
-             * 有正确的空场景（而非白屏），几何/材质随后热更新补上。
-             * @note 成功后 `IsInstantiated()` 为真但 `GetAttachedPrimitiveCount()` 为 0。
+             * @brief 渐进激活第一段：创建或复用唯一根实体，并预计算模型包围盒。
+             * @note 可传入 ModelRefComponent 的 owner 作为 root，避免额外请求实体。
              */
             bool InstantiateSkeleton(ecs::ECSContext                  *world,
                                      const std::vector<graph::StaticMeshNode> &nodes,
                                      const std::vector<int32_t>        &root_nodes,
-                                     const SkeletonOptions             &options = {});
+                                     const SkeletonOptions             &options = {},
+                                     ecs::Entity                       *root_entity = nullptr);
 
             /**
-             * @brief 渐进激活第二段：为已到位的图元挂 `GeometryData`。
-             *
-             * 每节点按 `primitiveIndices` 顺序推进，遇到资产副本尚未落地
-             * （下标 ≥ assets.size() 或 `!IsValid()`）的图元就停在该节点，
-             * 下次调用再接着推进 —— 因此 `assets` 可以是逐步变长的快照。
-             * @return 任一新挂上即 true；全部无可挂（或世界未就绪）返回 false。
+             * @brief 几何全部就绪后构建 Template/Part/Meshlet 表，并绑定 GPUModelRef。
+             * @return 模板本次建成返回 true；仍有几何流送时返回 false。
              */
             bool AttachGeometries(const std::vector<graph::PrimitiveAsset> &assets,
-                                  const std::vector<graph::StaticMeshNode> &nodes);
+                                  const std::vector<graph::StaticMeshNode> &nodes,
+                                  const Options &options = {});
 
-            /**
-             * @brief 渐进激活第三段：为已挂几何的图元补 `MaterialData`。
-             * @note 需先 `AttachGeometries()` 建出图元顺序；重复调用只补空的那部分。
-             *       材质下标取自实例自持的资产副本，因此无需再传 `assets`。
-             */
+            /// 模板构建时已把材质行装入 Part/绑定表；该入口用于装配阶段完成通知。
             bool AttachMaterials(const Options &options = {});
 
             bool IsInstantiated() const { return world != nullptr; }
@@ -161,7 +138,7 @@ namespace hgl
             /// 已挂上几何的图元数（0 表示仍是空壳）
             int GetAttachedPrimitiveCount() const
             {
-                return static_cast<int>(primitive_records.size());
+                return attached_primitive_count;
             }
 
             /**
@@ -183,19 +160,10 @@ namespace hgl
                 return true;
             }
 
-            int GetNodeCount() const { return static_cast<int>(node_records.size()); }
-
-            ecs::EntityID GetNodeEntity(int node_index) const
-            {
-                return node_index >= 0 && node_index < static_cast<int>(node_records.size())
-                     ? node_records[node_index].entity : ecs::EntityID::Invalid();
-            }
-
-            ecs::TransformID GetNodeTransform(int node_index) const
-            {
-                return node_index >= 0 && node_index < static_cast<int>(node_records.size())
-                     ? node_records[node_index].transform : ecs::INVALID_TRANSFORM_ID;
-            }
+            int GetNodeCount() const { return source_node_count; }
+            ecs::EntityID GetRootEntity() const { return root_entity; }
+            ecs::TransformID GetRootTransform() const { return root_transform; }
+            uint32_t GetModelTemplateID() const { return model_template_id; }
 
             /// 实例持有的资产副本（`GeometryData` 引用的即这些指针）
             const graph::PrimitiveAsset *GetOwnedAsset(int asset_index) const

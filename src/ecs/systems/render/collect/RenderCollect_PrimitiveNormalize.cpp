@@ -20,14 +20,79 @@
 #include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/graph/mesh/GeometryDataBuffer.h>
 #include <hgl/graph/core/GraphicsContext.h>
-#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/module/GlobalSSBOBufferRegistry.h>
+#include <hgl/graph/ssbo/ModelTemplateRows.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs
 {
     using namespace hgl::ecs::detail::render_collect;
+
+    namespace
+    {
+        bool SyncTemplatePartMaterialFacts(
+            ECSContext *world,
+            const uint32_t template_id,
+            const uint32_t group_index,
+            const MaterialRuntimeRow *runtime_row)
+        {
+            if (!world || !runtime_row)
+                return false;
+
+            graph::GraphicsContext *graphics =
+                world->Environment().GetGraphicsContext();
+            graph::GlobalSSBOBufferRegistry *registry =
+                graphics ? graphics->GetGlobalSSBOBufferRegistry() : nullptr;
+            if (!registry)
+                return false;
+
+            const graph::ssbo::ModelTemplateRow *template_row =
+                registry->GetTypedRow<graph::ssbo::ModelTemplateRow>(
+                    graph::GlobalSSBOType::ModelTemplatePool, template_id);
+            if (!template_row)
+                return false;
+
+            const uint32_t material_id =
+                runtime_row->data_index_row == uint32_t(-1)
+                    ? 0u : runtime_row->data_index_row;
+            const uint32_t texture_id =
+                runtime_row->material_texture_configuration.IsValid()
+                    ? runtime_row->material_texture_configuration.row_index
+                    : 0u;
+
+            for (uint32_t part_index = 0;
+                 part_index < template_row->part_count;
+                 ++part_index)
+            {
+                const graph::ssbo::ModelPartRow *part =
+                    registry->GetTypedRow<graph::ssbo::ModelPartRow>(
+                        graph::GlobalSSBOType::ModelPartPool,
+                        template_row->part_offset + part_index);
+                if (!part
+                    || part->shading_group != group_index
+                    || (part->part_flags & graph::ssbo::kModelPartFlagHasMaterial) == 0u
+                    || (part->material_id == material_id
+                        && part->texture_id == texture_id))
+                    continue;
+
+                graph::ssbo::ModelPartRow updated = *part;
+                updated.material_id = material_id;
+                updated.texture_id = texture_id;
+                if (!registry->Write(
+                        graph::GlobalSSBOType::ModelPartPool,
+                        template_row->part_offset + part_index,
+                        updated))
+                {
+                    GLogError(u8"模板部件材质行回填失败 template=%u part=%u",
+                              template_id, part_index);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
 
     bool RenderCollectSystem::EnsurePrimitiveModelTemplate(Entity *entity)
     {
@@ -50,9 +115,21 @@ namespace hgl::ecs
                 {
                     const auto id = binding->groups[g].runtime_row;
                     auto *row = runtime ? runtime->GetMutable(id) : nullptr;
-                    if (!row || row->cached_effective_recipe.textures.empty()
-                     || materialization.IsTemplateTextureRefreshed(id))
+                    if (!row || materialization.IsTemplateTextureRefreshed(id))
                         continue;
+
+                    const bool needs_materialization =
+                        !row->cached_effective_recipe.textures.empty()
+                        || row->cached_effective_recipe.material_ssbo_binding.IsValid();
+                    if (!needs_materialization)
+                        continue;
+
+                    if (!EnsureTemplateGroupProgram(
+                            world, world->RenderData().Variants(), runtime,
+                            id, false, binding->groups[g].primitive_type,
+                            binding->groups[g].vertex_format))
+                        return false;
+
                     const auto old_hash = row->material_texture_configuration_hash;
                     MaterialRuntimeSlot slot;
                     slot.row = id;
@@ -61,6 +138,15 @@ namespace hgl::ecs
                     materialization.MarkTemplateTextureRefreshed(id);
                     if (old_hash != row->material_texture_configuration_hash)
                         world->MarkTopologyChanged(TopologyChange::MaterialBinding);
+                }
+                for (int g = 0; g < binding->groups.GetCount(); ++g)
+                {
+                    const MaterialRuntimeRow *row =
+                        runtime ? runtime->Get(binding->groups[g].runtime_row) : nullptr;
+                    if (row && !SyncTemplatePartMaterialFacts(
+                                   world, ref->GetTemplateID(),
+                                   static_cast<uint32_t>(g), row))
+                        return false;
                 }
                 return true;
             }
