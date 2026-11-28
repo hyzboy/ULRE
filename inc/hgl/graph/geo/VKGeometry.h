@@ -5,6 +5,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/graph/geo/MeshletGeometryData.h>
 
 namespace hgl::graph{
 
@@ -82,6 +83,14 @@ protected:
 
     uint32_t            geometry_id = 0;
     GlobalSSBOBufferRegistry *mesh_draw_params_pool = nullptr;
+    MeshletGeometryData meshlet_data;
+    uint32_t meshlet_descriptor_offset = 0;
+    uint32_t meshlet_bounds_offset = 0;
+    uint32_t meshlet_vertex_offset = 0;
+    uint32_t meshlet_triangle_offset = 0;
+    uint32_t meshlet_count = 0;
+    uint32_t meshlet_vertex_count = 0;
+    uint32_t meshlet_triangle_count = 0;
 
 public:
 
@@ -90,6 +99,9 @@ public:
     void                RefreshGeometryAABBRow();
 
     uint32_t            GetGeometryID() const { return geometry_id; }
+    uint32_t            GetMeshletOffset() const { return meshlet_descriptor_offset; }
+    uint32_t            GetMeshletCount() const { return meshlet_count; }
+    bool                SetMeshletData(const MeshletGeometryData &data);
     const GlobalSSBOBufferRegistry *GetMeshDrawParamsRegistry() const { return mesh_draw_params_pool; }
     void                SetGeometryID(uint32_t id) { geometry_id = id; }
 

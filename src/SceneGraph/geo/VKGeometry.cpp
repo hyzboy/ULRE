@@ -25,15 +25,46 @@ Geometry::~Geometry()
 {
     LogVerbose("~Geometry: "+geometry_name);
 
-    if (mesh_draw_params_pool && geometry_id != 0
-     && mesh_draw_params_pool->IsActive(GlobalSSBOType::MeshDrawParams, geometry_id))
+    if (mesh_draw_params_pool)
     {
-        mesh_draw_params_pool->ReleaseID(geometry_id);
-        geometry_id = 0;
-        mesh_draw_params_pool = nullptr;
+        if (meshlet_count != 0)
+        {
+            mesh_draw_params_pool->ReleaseRowRange(
+                GlobalSSBOType::MeshletDescriptorPool,
+                meshlet_descriptor_offset,
+                meshlet_count);
+            mesh_draw_params_pool->ReleaseRowRange(
+                GlobalSSBOType::MeshletBoundsPool,
+                meshlet_bounds_offset,
+                meshlet_count);
+            mesh_draw_params_pool->ReleaseRowRange(
+                GlobalSSBOType::MeshletVertexPool,
+                meshlet_vertex_offset,
+                meshlet_vertex_count);
+            mesh_draw_params_pool->ReleaseRowRange(
+                GlobalSSBOType::MeshletTrianglePool,
+                meshlet_triangle_offset,
+                meshlet_triangle_count);
+        }
+
+        if (geometry_id != 0
+         && mesh_draw_params_pool->IsActive(GlobalSSBOType::MeshDrawParams, geometry_id))
+            mesh_draw_params_pool->ReleaseID(geometry_id);
     }
 
+    geometry_id = 0;
+    mesh_draw_params_pool = nullptr;
+
     SAFE_CLEAR(geometry_data);
+}
+
+bool Geometry::SetMeshletData(const MeshletGeometryData &data)
+{
+    if (geometry_id != 0 || !data.IsValid())
+        return false;
+
+    meshlet_data = data;
+    return true;
 }
 
 const VkDeviceSize Geometry::GetVertexCount()const
@@ -143,6 +174,7 @@ bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevi
         return false;
 
     mesh_draw_params_pool = pool;
+    const bool acquired_geometry_id = geometry_id == 0;
 
     mtl::MeshDrawParams params{};
     params.index_base = static_cast<uint32_t>(GetFirstIndex());
@@ -198,6 +230,131 @@ bool Geometry::RegisterMeshDrawParams(GlobalSSBOBufferRegistry *pool, VulkanDevi
     {
         if (!pool->Write(geometry_id, params))
             return false;
+    }
+
+    if (!meshlet_data.descriptors.IsEmpty())
+    {
+        if (!meshlet_data.IsValid())
+        {
+            GLogError("[Geometry] Meshlet data is malformed: %s", geometry_name.c_str());
+            if (acquired_geometry_id)
+            {
+                pool->ReleaseID(GlobalSSBOType::MeshDrawParams, geometry_id);
+                geometry_id = 0;
+                mesh_draw_params_pool = nullptr;
+            }
+            return false;
+        }
+
+        const uint32_t descriptor_count =
+            static_cast<uint32_t>(meshlet_data.descriptors.GetCount());
+        const uint32_t vertex_count =
+            static_cast<uint32_t>(meshlet_data.vertices.GetCount());
+        const uint32_t triangle_count =
+            static_cast<uint32_t>(meshlet_data.triangles.GetCount());
+
+        const uint32_t descriptor_offset =
+            pool->AcquireRowRange(GlobalSSBOType::MeshletDescriptorPool, descriptor_count);
+        const uint32_t bounds_offset =
+            descriptor_offset == uint32_t(-1) ? uint32_t(-1)
+            : pool->AcquireRowRange(GlobalSSBOType::MeshletBoundsPool, descriptor_count);
+        const uint32_t vertex_offset =
+            bounds_offset == uint32_t(-1) ? uint32_t(-1)
+            : pool->AcquireRowRange(GlobalSSBOType::MeshletVertexPool, vertex_count);
+        const uint32_t triangle_offset =
+            vertex_offset == uint32_t(-1) ? uint32_t(-1)
+            : pool->AcquireRowRange(GlobalSSBOType::MeshletTrianglePool, triangle_count);
+
+        if (descriptor_offset == uint32_t(-1)
+            || bounds_offset == uint32_t(-1)
+            || vertex_offset == uint32_t(-1)
+            || triangle_offset == uint32_t(-1))
+        {
+            if (descriptor_offset != uint32_t(-1))
+                pool->ReleaseRowRange(GlobalSSBOType::MeshletDescriptorPool, descriptor_offset, descriptor_count);
+            if (bounds_offset != uint32_t(-1))
+                pool->ReleaseRowRange(GlobalSSBOType::MeshletBoundsPool, bounds_offset, descriptor_count);
+            if (vertex_offset != uint32_t(-1))
+                pool->ReleaseRowRange(GlobalSSBOType::MeshletVertexPool, vertex_offset, vertex_count);
+            if (triangle_offset != uint32_t(-1))
+                pool->ReleaseRowRange(GlobalSSBOType::MeshletTrianglePool, triangle_offset, triangle_count);
+            if (acquired_geometry_id)
+            {
+                pool->ReleaseID(GlobalSSBOType::MeshDrawParams, geometry_id);
+                geometry_id = 0;
+                mesh_draw_params_pool = nullptr;
+            }
+            GLogError("[Geometry] Meshlet pool capacity exhausted: %s", geometry_name.c_str());
+            return false;
+        }
+
+        hgl::ValueArray<ssbo::MeshletDescriptorRow> upload_descriptors;
+        upload_descriptors.Resize(static_cast<int>(descriptor_count));
+        bool valid_offsets = true;
+        for (uint32_t i = 0; i < descriptor_count; ++i)
+        {
+            const ssbo::MeshletDescriptorRow &source =
+                meshlet_data.descriptors[static_cast<int>(i)];
+            const uint64_t global_vertex_offset =
+                uint64_t(vertex_offset) + source.vertex_offset;
+            const uint64_t global_triangle_offset =
+                uint64_t(triangle_offset) + source.triangle_offset;
+            const uint64_t global_bounds_index =
+                uint64_t(bounds_offset) + source.bounds_index;
+            if (global_vertex_offset > 0xFFFFFFFFu
+                || global_triangle_offset > 0xFFFFFFFFu
+                || global_bounds_index > 0xFFFFFFFFu)
+            {
+                valid_offsets = false;
+                break;
+            }
+
+            upload_descriptors[static_cast<int>(i)] = source;
+            upload_descriptors[static_cast<int>(i)].vertex_offset =
+                static_cast<uint32_t>(global_vertex_offset);
+            upload_descriptors[static_cast<int>(i)].triangle_offset =
+                static_cast<uint32_t>(global_triangle_offset);
+            upload_descriptors[static_cast<int>(i)].bounds_index =
+                static_cast<uint32_t>(global_bounds_index);
+        }
+
+        const bool uploaded = valid_offsets
+            && pool->WriteRowRange(GlobalSSBOType::MeshletDescriptorPool,
+                                   descriptor_offset, upload_descriptors.GetData(), descriptor_count)
+            && pool->WriteRowRange(GlobalSSBOType::MeshletBoundsPool,
+                                   bounds_offset, meshlet_data.bounds.GetData(), descriptor_count)
+            && pool->WriteRowRange(GlobalSSBOType::MeshletVertexPool,
+                                   vertex_offset, meshlet_data.vertices.GetData(), vertex_count)
+            && pool->WriteRowRange(GlobalSSBOType::MeshletTrianglePool,
+                                   triangle_offset, meshlet_data.triangles.GetData(), triangle_count);
+
+        if (!uploaded)
+        {
+            pool->ReleaseRowRange(GlobalSSBOType::MeshletDescriptorPool, descriptor_offset, descriptor_count);
+            pool->ReleaseRowRange(GlobalSSBOType::MeshletBoundsPool, bounds_offset, descriptor_count);
+            pool->ReleaseRowRange(GlobalSSBOType::MeshletVertexPool, vertex_offset, vertex_count);
+            pool->ReleaseRowRange(GlobalSSBOType::MeshletTrianglePool, triangle_offset, triangle_count);
+            if (acquired_geometry_id)
+            {
+                pool->ReleaseID(GlobalSSBOType::MeshDrawParams, geometry_id);
+                geometry_id = 0;
+                mesh_draw_params_pool = nullptr;
+            }
+            GLogError("[Geometry] Meshlet pool upload failed: %s", geometry_name.c_str());
+            return false;
+        }
+
+        meshlet_descriptor_offset = descriptor_offset;
+        meshlet_bounds_offset = bounds_offset;
+        meshlet_vertex_offset = vertex_offset;
+        meshlet_triangle_offset = triangle_offset;
+        meshlet_count = descriptor_count;
+        meshlet_vertex_count = vertex_count;
+        meshlet_triangle_count = triangle_count;
+        meshlet_data.descriptors.ClearAndDeallocate();
+        meshlet_data.bounds.ClearAndDeallocate();
+        meshlet_data.vertices.ClearAndDeallocate();
+        meshlet_data.triangles.ClearAndDeallocate();
     }
 
     // ── 一号双表：AABB 行与 MeshDrawParams 行同 ID 索引，经唯一写入口刷新 ──

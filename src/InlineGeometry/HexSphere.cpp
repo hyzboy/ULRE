@@ -110,6 +110,7 @@ namespace hgl::graph::inline_geometry
         for(const auto &v:verts)
         {
             pos->Write(v);
+            pc->RecordMeshletPosition(v.x, v.y, v.z);
 
             if(nrm2u8.IsValid())
             {

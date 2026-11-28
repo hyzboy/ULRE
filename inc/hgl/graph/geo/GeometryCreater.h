@@ -8,6 +8,7 @@
 #include<hgl/vk/buffer/IndexBuffer.h>
 #include<hgl/vk/buffer/BufferMemory.h>
 #include<hgl/graph/geo/GeometryVertexFormat.h>
+#include<hgl/graph/geo/MeshletGeometryData.h>
 
 namespace hgl::graph{
 class BufferManager;
@@ -164,6 +165,9 @@ protected:
     uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
     IndexBuffer *   ibo;              ///<索引缓冲区
+    hgl::ValueArray<float> meshlet_positions;
+    hgl::ValueArray<uint32_t> meshlet_indices;
+    bool meshlet_build_enabled = true;
 
     BufferAllocPolicy buffer_policy=BufferAllocPolicy::GPUOnly;
 
@@ -213,6 +217,8 @@ public: //顶点缓冲区
         VertexAttribBuffer * GetVAB (const VertexSemantic semantic,const VkFormat format=VK_FORMAT_UNDEFINED);       ///<获取VAB用于TypedArrayView
 
         bool            WriteVAB    (const VertexSemantic semantic,const VkFormat format,const void *data);           ///<直接写入顶点属性数据
+        void            RecordMeshletPosition(float x, float y, float z);
+        void            SetMeshletBuildEnabled(bool enabled) { meshlet_build_enabled = enabled; }
 
         /**
          * 创建带偏移的 TypedArrayView（自动使用VDM子分配的正确范围）

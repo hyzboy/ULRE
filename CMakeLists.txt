@@ -210,6 +210,7 @@ find_package(toml11 CONFIG REQUIRED)
 target_link_libraries(ULRE.Debug              PRIVATE toml11::toml11)
 target_link_libraries(ULRE.ShaderMaterialData PRIVATE toml11::toml11)
 target_link_libraries(ULRE.SceneGraph         PRIVATE toml11::toml11)
+target_link_libraries(ULRE.SceneGraph         PRIVATE meshoptimizer)
 
 # ── nlohmann_json：Debug Bridge 协议解析与诊断 JSON 序列化（经 CMUtil JsonTool）──
 #

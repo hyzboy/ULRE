@@ -49,6 +49,8 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("BoundingBox",8,24,IndexType::U32))
             return(nullptr);
 
+        pc->SetMeshletBuildEnabled(false);
+
         if(!pc->WriteVAB(VAN::Position,VF_V3F,points))
             return(nullptr);
 
@@ -96,7 +98,10 @@ namespace hgl::graph::inline_geometry
 
             for(uint i=0;i<=row;i++)
                 for(uint j=0;j<=col;j++)
+                {
                     vertex->Write(j,i);
+                    pc->RecordMeshletPosition(static_cast<float>(j), static_cast<float>(i), 0.0f);
+                }
         }
 
         {

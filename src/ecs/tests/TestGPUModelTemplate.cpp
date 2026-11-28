@@ -23,6 +23,7 @@
 #include <hgl/graph/ssbo/InstanceCustomData.h>
 #include <hgl/graph/ssbo/MeshletRows.h>
 #include <hgl/graph/ssbo/ModelTemplateRows.h>
+#include <hgl/graph/geo/MeshletGeometryData.h>
 #include <hgl/graph/ssbo/SSBOTypes.h>
 #include <hgl/graph/ubo/GlobalAddresses.h>
 #include <hgl/graph/ubo/ModelExpansionArena.h>
@@ -235,6 +236,45 @@ namespace
                  && custom_tint.custom_color.w == 0.5f);
 
         return ok;
+    }
+
+    bool TestMeshletGeometryDataBuild()
+    {
+        const float positions[] =
+        {
+            0.0f, 0.0f, 0.0f,
+            1.0f, 0.0f, 0.0f,
+            1.0f, 1.0f, 0.0f,
+            0.0f, 1.0f, 0.0f
+        };
+        const uint32_t indices[] = { 0u, 1u, 2u, 0u, 2u, 3u };
+
+        MeshletGeometryData data;
+        if (!BuildMeshletGeometryData(positions, 4, indices, 6, data)
+            || data.descriptors.GetCount() != 1
+            || data.bounds.GetCount() != 1
+            || data.vertices.GetCount() != 4
+            || data.triangles.GetCount() != 2)
+            return false;
+
+        const ssbo::MeshletDescriptorRow &descriptor = data.descriptors[0];
+        if ((descriptor.packed_counts & 0xFFu) != 4u
+            || ((descriptor.packed_counts >> 8) & 0xFFu) != 2u
+            || descriptor.bounds_index != 0u)
+            return false;
+
+        for (int i = 0; i < data.triangles.GetCount(); ++i)
+        {
+            const uint32_t packed = data.triangles[i].packed_indices;
+            if ((packed & 0xFFu) >= 4u
+                || ((packed >> 8) & 0xFFu) >= 4u
+                || ((packed >> 16) & 0xFFu) >= 4u)
+                return false;
+        }
+
+        const auto &bounds = data.bounds[0];
+        return bounds.center_radius.w >= 0.0f
+            && bounds.cone_axis_cutoff_packed != 0u;
     }
 
     bool TestCustomColorModulation()
@@ -574,9 +614,12 @@ namespace
 
     bool TestSourceContracts()
     {
-        AnsiString registry_src, cull_src, mgr_src, stage_head_src, interstage_writer_src, surface_src, orient_src;
+        AnsiString registry_src, geometry_src, loader_src, cull_src, mgr_src;
+        AnsiString stage_head_src, interstage_writer_src, surface_src, orient_src;
 
         if (!ReadSource(OS_TEXT("src/SceneGraph/module/GlobalSSBOBufferRegistry.cpp"), registry_src)
+            || !ReadSource(OS_TEXT("src/SceneGraph/geo/VKGeometry.cpp"), geometry_src)
+            || !ReadSource(OS_TEXT("src/SceneGraph/geo/GeometryLoader.cpp"), loader_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/descriptor/ecs/entity_gpu_cull.glsl"), cull_src)
             || !ReadSource(OS_TEXT("src/SceneGraph/asset/ModelTemplateManager.cpp"), mgr_src)
             || !ReadSource(OS_TEXT("ShaderLibrary/module/stage/stage_common_head.glsl"), stage_head_src)
@@ -623,6 +666,23 @@ namespace
             registry_src, kMeshletPoolTokens, sizeof(kMeshletPoolTokens) / sizeof(kMeshletPoolTokens[0]));
         const bool meshlet_addresses = ContainsInOrder(
             registry_src, kMeshletAddressTokens, sizeof(kMeshletAddressTokens) / sizeof(kMeshletAddressTokens[0]));
+        static const char *const kMeshletUploadTokens[] =
+        {
+            "AcquireRowRange(GlobalSSBOType::MeshletDescriptorPool",
+            "AcquireRowRange(GlobalSSBOType::MeshletBoundsPool",
+            "AcquireRowRange(GlobalSSBOType::MeshletVertexPool",
+            "AcquireRowRange(GlobalSSBOType::MeshletTrianglePool",
+            "WriteRowRange(GlobalSSBOType::MeshletDescriptorPool",
+            "WriteRowRange(GlobalSSBOType::MeshletBoundsPool",
+            "WriteRowRange(GlobalSSBOType::MeshletVertexPool",
+            "WriteRowRange(GlobalSSBOType::MeshletTrianglePool"
+        };
+        const bool meshlet_uploads = ContainsInOrder(
+            geometry_src, kMeshletUploadTokens,
+            sizeof(kMeshletUploadTokens) / sizeof(kMeshletUploadTokens[0]));
+        const bool loader_meshlet_support =
+            ContainsToken(loader_src, "ReadMeshletData")
+            && ContainsToken(loader_src, "BuildMeshletGeometryData");
 
         // 展开侧：桶号 = 组基址 + 槽号（"部件 ⇒ 素材桶"的唯一公式；阶段 1 组基址来自二级表）。
         const bool bucket_formula = ContainsToken(cull_src,
@@ -678,6 +738,8 @@ namespace
             { part_addr, "部件池 BDA 地址必须在全局地址表回填" },
             { meshlet_pools, "四个 Meshlet 全局池必须按 ABI 行宽和容量登记" },
             { meshlet_addresses, "四个 Meshlet 池 BDA 必须回填全局地址表" },
+            { meshlet_uploads, "Geometry 注册时必须申请并写入四类 Meshlet 池区间" },
+            { loader_meshlet_support, "GeometryLoader 必须读取预烘焙 Meshlet 并支持缺失时构建" },
             { bucket_formula, "展开侧桶号必须 = 组基址 + part.bucket_slot" },
             { group_table,    "展开侧必须经二级组表按 part.shading_group 取组基址" },
             { part_material,  "部件自带材质必须按 HasMaterial 标志显式选择" },
@@ -722,6 +784,7 @@ int main()
     hgl::logger::InitLogger(OS_TEXT("TestGPUModelTemplate"));
 
     Check(TestRowLayout(), "行布局（宽/对齐/字段偏移）");
+    Check(TestMeshletGeometryDataBuild(), "meshoptimizer Meshlet 构建与打包");
     Check(TestDefaultsAndConstants(), "默认值与常量口径");
     Check(TestCustomColorModulation(), "自定义颜色与透明度调制");
     Check(TestPrevTransformResolution(), "上一帧矩阵寻址与运动差分");

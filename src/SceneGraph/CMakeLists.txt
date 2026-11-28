@@ -191,7 +191,8 @@ set(SG_RENDER_FILES ${SG_RENDER_CORE_FILES}
 # ============================================================================
 
 set(SG_GEO_CORE_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
-${SG_INCLUDE_PATH}/geo/VertexDataManager.h
+                        ${SG_INCLUDE_PATH}/geo/MeshletGeometryData.h
+                        ${SG_INCLUDE_PATH}/geo/VertexDataManager.h
                         ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
                         ${SG_INCLUDE_PATH}/geo/GeometryVertexFormat.h
                         ${SG_INCLUDE_PATH}/geo/AttributeCompatibility.h
@@ -203,6 +204,7 @@ ${SG_INCLUDE_PATH}/geo/VertexDataManager.h
                         ${SG_INCLUDE_PATH}/geo/Extruded.h
                         ${SG_INCLUDE_PATH}/geo/Wall.h
                         geo/VKGeometry.cpp
+                        geo/MeshletGeometryData.cpp
                         geo/VertexDataManager.cpp
                         geo/VKGeometryData.cpp
                         geo/AttributeCompatibilityRegistry.cpp

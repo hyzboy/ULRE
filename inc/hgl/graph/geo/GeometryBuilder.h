@@ -45,6 +45,7 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteVertex(float x, float y, float z)
         {
+            creater->RecordMeshletPosition(x, y, z);
             if(accessor_position_2i16.IsValid())
                 accessor_position_2i16->Write(FloatToI16(x), FloatToI16(y));   // 2D：z 分量丢弃（RG16i）
             else if(accessor_position.IsValid())

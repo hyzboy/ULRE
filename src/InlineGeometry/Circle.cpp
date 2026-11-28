@@ -74,6 +74,7 @@ namespace hgl::graph::inline_geometry
         bool has_index = pc->hasIndex();
 
         if(!pc->Init("Circle",vertex_count,has_index ? vertex_count : 0))return(nullptr);
+        pc->SetMeshletBuildEnabled(false);
 
         auto vertex = pc->GetTypedArrayView<TypedArrayView3f>(VAN::Position);
         auto color  = pc->GetTypedArrayView<TypedArrayView4f>(VAN::Color);

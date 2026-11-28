@@ -381,7 +381,8 @@ namespace
     bool ReadIndicesData(hgl::io::minipack::MiniPackReader *mpr,
                          GeometryData *geo_data,
                          const GeometryHeader &header,
-                         const OSString &filename)
+                         const OSString &filename,
+                         ValueArray<uint32_t> *meshlet_indices)
     {
         if(header.indexStride!=1 && header.indexStride!=2 && header.indexStride!=4)
         {
@@ -442,7 +443,193 @@ namespace
             return false;
         }
 
+        if (meshlet_indices)
+        {
+            meshlet_indices->Clear();
+            meshlet_indices->Add(idx.data(), static_cast<int>(header.indexCount));
+        }
+
         return true;
+    }
+
+    bool ReadMeshletData(hgl::io::minipack::MiniPackReader *mpr,
+                         const OSString &filename,
+                         const uint32_t geometry_vertex_count,
+                         MeshletGeometryData &out,
+                         bool &has_meshlets)
+    {
+        constexpr uint32_t kFileDescriptorBytes = 16;
+        constexpr uint32_t kFileBoundsBytes = 48;
+
+#pragma pack(push, 1)
+        struct FileMeshletDescriptor
+        {
+            uint32_t vertex_offset;
+            uint32_t triangle_offset;
+            uint8_t vertex_count;
+            uint8_t triangle_count;
+            uint16_t reserved16;
+            uint32_t reserved32;
+        };
+        struct FileMeshletBounds
+        {
+            float center[3];
+            float radius;
+            float cone_apex[3];
+            float cone_axis[3];
+            float cone_cutoff;
+            int8_t cone_axis_s8[3];
+            int8_t cone_cutoff_s8;
+        };
+#pragma pack(pop)
+        static_assert(sizeof(FileMeshletDescriptor) == kFileDescriptorBytes);
+        static_assert(sizeof(FileMeshletBounds) == kFileBoundsBytes);
+
+        const int32_t descriptor_file = mpr->FindFile(AnsiStringView("meshlets"));
+        const int32_t vertex_file = mpr->FindFile(AnsiStringView("meshlet_vertices"));
+        const int32_t triangle_file = mpr->FindFile(AnsiStringView("meshlet_triangles"));
+        const int32_t bounds_file = mpr->FindFile(AnsiStringView("meshlet_bounds"));
+        has_meshlets = descriptor_file >= 0 || vertex_file >= 0
+                    || triangle_file >= 0 || bounds_file >= 0;
+        if (!has_meshlets)
+            return true;
+
+        if (descriptor_file < 0 || vertex_file < 0
+            || triangle_file < 0 || bounds_file < 0)
+        {
+            MLogError(LoadGeometry, OS_TEXT("Meshlet 数据段不完整：") + filename);
+            return false;
+        }
+
+        const uint32_t descriptor_bytes = mpr->GetFileLength(descriptor_file);
+        const uint32_t vertex_bytes = mpr->GetFileLength(vertex_file);
+        const uint32_t triangle_bytes = mpr->GetFileLength(triangle_file);
+        const uint32_t bounds_bytes = mpr->GetFileLength(bounds_file);
+        if (descriptor_bytes == 0 || descriptor_bytes % kFileDescriptorBytes != 0
+            || vertex_bytes == 0 || vertex_bytes % sizeof(uint32_t) != 0
+            || triangle_bytes == 0 || triangle_bytes % 3 != 0
+            || bounds_bytes == 0 || bounds_bytes % kFileBoundsBytes != 0
+            || bounds_bytes / kFileBoundsBytes != descriptor_bytes / kFileDescriptorBytes)
+        {
+            MLogError(LoadGeometry, OS_TEXT("Meshlet 数据段尺寸无效：") + filename);
+            return false;
+        }
+        if (descriptor_bytes > 0x7FFFFFFFu || vertex_bytes > 0x7FFFFFFFu
+            || triangle_bytes > 0x7FFFFFFFu || bounds_bytes > 0x7FFFFFFFu)
+        {
+            MLogError(LoadGeometry, OS_TEXT("Meshlet 数据段超过 CPU 容器可寻址范围：") + filename);
+            return false;
+        }
+
+        ValueArray<uint8_t> descriptor_data;
+        ValueArray<uint8_t> vertex_data;
+        ValueArray<uint8_t> triangle_data;
+        ValueArray<uint8_t> bounds_data;
+        descriptor_data.Resize(static_cast<int>(descriptor_bytes));
+        vertex_data.Resize(static_cast<int>(vertex_bytes));
+        triangle_data.Resize(static_cast<int>(triangle_bytes));
+        bounds_data.Resize(static_cast<int>(bounds_bytes));
+        if (mpr->ReadFile(descriptor_file, descriptor_data.GetData(), 0, descriptor_bytes) != descriptor_bytes
+            || mpr->ReadFile(vertex_file, vertex_data.GetData(), 0, vertex_bytes) != vertex_bytes
+            || mpr->ReadFile(triangle_file, triangle_data.GetData(), 0, triangle_bytes) != triangle_bytes
+            || mpr->ReadFile(bounds_file, bounds_data.GetData(), 0, bounds_bytes) != bounds_bytes)
+        {
+            MLogError(LoadGeometry, OS_TEXT("无法读取 Meshlet 数据段：") + filename);
+            return false;
+        }
+
+        const uint32_t descriptor_count = descriptor_bytes / kFileDescriptorBytes;
+        const uint32_t vertex_count = vertex_bytes / sizeof(uint32_t);
+        const uint32_t triangle_count = triangle_bytes / 3;
+        if (descriptor_count > 0x7fffffffu || vertex_count > 0x7fffffffu
+            || triangle_count > 0x7fffffffu)
+        {
+            MLogError(LoadGeometry, OS_TEXT("Meshlet 数据段超过可寻址范围：") + filename);
+            return false;
+        }
+
+        out.descriptors.Resize(static_cast<int>(descriptor_count));
+        out.bounds.Resize(static_cast<int>(descriptor_count));
+        out.vertices.Resize(static_cast<int>(vertex_count));
+        out.triangles.Resize(static_cast<int>(triangle_count));
+        const auto *source_descriptors =
+            reinterpret_cast<const FileMeshletDescriptor *>(descriptor_data.GetData());
+        const auto *source_vertices =
+            reinterpret_cast<const uint32_t *>(vertex_data.GetData());
+        const auto *source_bounds =
+            reinterpret_cast<const FileMeshletBounds *>(bounds_data.GetData());
+
+        for (uint32_t i = 0; i < descriptor_count; ++i)
+        {
+            const FileMeshletDescriptor &source = source_descriptors[i];
+            if (source.vertex_count == 0 || source.vertex_count > 64
+                || source.triangle_count == 0 || source.triangle_count > 124
+                || uint64_t(source.vertex_offset) + source.vertex_count > vertex_count
+                || uint64_t(source.triangle_offset) + source.triangle_count > triangle_count)
+            {
+                MLogError(LoadGeometry, OS_TEXT("Meshlet 描述符越界或计数无效：") + filename);
+                out.Clear();
+                return false;
+            }
+
+            for (uint32_t vertex = 0; vertex < source.vertex_count; ++vertex)
+            {
+                if (source_vertices[source.vertex_offset + vertex] >= geometry_vertex_count)
+                {
+                    MLogError(LoadGeometry, OS_TEXT("Meshlet 顶点映射超出 Geometry 范围：") + filename);
+                    out.Clear();
+                    return false;
+                }
+            }
+
+            for (uint32_t triangle = 0; triangle < source.triangle_count; ++triangle)
+            {
+                const uint32_t byte_offset = (source.triangle_offset + triangle) * 3u;
+                if (triangle_data[static_cast<int>(byte_offset)] >= source.vertex_count
+                    || triangle_data[static_cast<int>(byte_offset + 1u)] >= source.vertex_count
+                    || triangle_data[static_cast<int>(byte_offset + 2u)] >= source.vertex_count)
+                {
+                    MLogError(LoadGeometry, OS_TEXT("Meshlet 三角形局部索引越界：") + filename);
+                    out.Clear();
+                    return false;
+                }
+            }
+
+            ssbo::MeshletDescriptorRow &descriptor = out.descriptors[static_cast<int>(i)];
+            descriptor.vertex_offset = source.vertex_offset;
+            descriptor.triangle_offset = source.triangle_offset;
+            descriptor.bounds_index = i;
+            descriptor.packed_counts =
+                uint32_t(source.vertex_count) | (uint32_t(source.triangle_count) << 8);
+
+            const FileMeshletBounds &source_bound = source_bounds[i];
+            ssbo::MeshletBoundsRow &bound = out.bounds[static_cast<int>(i)];
+            bound.center_radius = math::Vector4f(source_bound.center[0],
+                                                 source_bound.center[1],
+                                                 source_bound.center[2],
+                                                 source_bound.radius);
+            bound.cone_apex[0] = source_bound.cone_apex[0];
+            bound.cone_apex[1] = source_bound.cone_apex[1];
+            bound.cone_apex[2] = source_bound.cone_apex[2];
+            bound.cone_axis_cutoff_packed =
+                uint32_t(static_cast<uint8_t>(source_bound.cone_axis_s8[0]))
+                | (uint32_t(static_cast<uint8_t>(source_bound.cone_axis_s8[1])) << 8)
+                | (uint32_t(static_cast<uint8_t>(source_bound.cone_axis_s8[2])) << 16)
+                | (uint32_t(static_cast<uint8_t>(source_bound.cone_cutoff_s8)) << 24);
+        }
+
+        for (uint32_t i = 0; i < vertex_count; ++i)
+            out.vertices[static_cast<int>(i)].vertex_index = source_vertices[i];
+        for (uint32_t i = 0; i < triangle_count; ++i)
+        {
+            const uint32_t byte_index = i * 3;
+            out.triangles[static_cast<int>(i)].packed_indices =
+                uint32_t(triangle_data[static_cast<int>(byte_index)])
+                | (uint32_t(triangle_data[static_cast<int>(byte_index + 1)]) << 8)
+                | (uint32_t(triangle_data[static_cast<int>(byte_index + 2)]) << 16);
+        }
+
+        return out.IsValid();
     }
 
     // Orchestrate reading attributes and indices into GeometryData
@@ -450,7 +637,9 @@ namespace
                           GeometryData *geo_data,
                           const GeometryVertexFormat &geometry_vertex_format,
                           const GeometryHeader &header,
-                          const OSString &filename)
+                          const OSString &filename,
+                          ValueArray<float> &meshlet_positions,
+                          ValueArray<uint32_t> &meshlet_indices)
     {
         if(!geo_data)
         {
@@ -466,11 +655,42 @@ namespace
 
             if(!ReadAttributesVBO(mpr, geo_data, geometry_vertex_format, header, file_attributes, filename))
                 return false;
+
+            for (int i = 0; i < file_attributes.GetCount(); ++i)
+            {
+                const FileAttribute &attribute = file_attributes[i];
+                if (attribute.semantic != VertexSemantic::Position
+                    || attribute.entry_index < 0)
+                    continue;
+
+                if (attribute.format == VK_FORMAT_R32G32B32_SFLOAT)
+                {
+                    AutoDeleteArray<float> source(header.vertexCount * 3u);
+                    const uint32_t bytes = header.vertexCount * 3u * sizeof(float);
+                    if (mpr->ReadFile(attribute.entry_index, source.data(), 0, bytes) != bytes)
+                        return false;
+                    meshlet_positions.Add(source.data(), static_cast<int>(header.vertexCount * 3u));
+                }
+                else if (attribute.format == VK_FORMAT_R32G32B32A32_SFLOAT)
+                {
+                    AutoDeleteArray<float> source(header.vertexCount * 4u);
+                    const uint32_t bytes = header.vertexCount * 4u * sizeof(float);
+                    if (mpr->ReadFile(attribute.entry_index, source.data(), 0, bytes) != bytes)
+                        return false;
+                    for (uint32_t vertex = 0; vertex < header.vertexCount; ++vertex)
+                    {
+                        meshlet_positions.Add(source[vertex * 4u]);
+                        meshlet_positions.Add(source[vertex * 4u + 1u]);
+                        meshlet_positions.Add(source[vertex * 4u + 2u]);
+                    }
+                }
+                break;
+            }
         }
 
         if(header.indexCount>0)
         {
-            if(!ReadIndicesData(mpr, geo_data, header, filename))
+            if(!ReadIndicesData(mpr, geo_data, header, filename, &meshlet_indices))
                 return false;
         }
 
@@ -480,21 +700,16 @@ namespace
 
 static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVertexFormat &geometry_vertex_format,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
 {
-    // meshlet 几何：本引擎**不支持**（2026-10-05 拍板，相关代码已整体删除）。
-    // 在**创建任何对象之前**拒绝（旧写法在 new 之后 delete，析构了尚未进入正常生命周期的
-    // DeviceMemory ⇒ 8 条 [DESTROY-WARNING]）；调用方既有的失败路径（MLogError + nullptr）
-    // 会把它当作"几何加载失败"处理 ⇒ 不会用错口径把 meshlet 数当 X 顶点组数画出去。
-    if (mpr->FindFile(AnsiStringView("meshlets")) >= 0
-     || mpr->FindFile(AnsiStringView("meshlet_vertices")) >= 0
-     || mpr->FindFile(AnsiStringView("meshlet_triangles")) >= 0)
-    {
-        MLogError(LoadGeometry, OS_TEXT("本引擎不支持 meshlet 几何（资产含 meshlets 表）：") + debug_name);
-        return(nullptr);
-    }
-
     // 1) Read GeometryHeader
     GeometryHeader header{};
     if(!ReadGeometryHeader(mpr, header, debug_name))
+        return nullptr;
+
+    MeshletGeometryData meshlet_data;
+    bool has_prebuilt_meshlets = false;
+    if (header.primitiveType == static_cast<uint8_t>(PrimitiveType::Triangles)
+        && !ReadMeshletData(mpr, debug_name, header.vertexCount,
+                            meshlet_data, has_prebuilt_meshlets))
         return nullptr;
 
     // 2) Read BoundingVolumes
@@ -520,10 +735,50 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVerte
     }
 
     // 4) Read attributes and indices into GeometryData
-    if(!ReadGeometryData(mpr, geo_data, geometry_vertex_format, header, debug_name))
+    ValueArray<float> meshlet_positions;
+    ValueArray<uint32_t> meshlet_indices;
+    if(!ReadGeometryData(mpr, geo_data, geometry_vertex_format, header, debug_name,
+                         meshlet_positions, meshlet_indices))
     {
         delete geo_data;
         return nullptr;
+    }
+
+    if (header.primitiveType == static_cast<uint8_t>(PrimitiveType::Triangles)
+        && !has_prebuilt_meshlets)
+    {
+        if (meshlet_positions.GetCount() != static_cast<int>(header.vertexCount * 3u))
+        {
+            MLogError(LoadGeometry, OS_TEXT("三角形几何缺少可构建 Meshlet 的 3D POSITION：") + debug_name);
+            delete geo_data;
+            return nullptr;
+        }
+
+        ValueArray<uint32_t> generated_indices;
+        if (header.indexCount == 0)
+        {
+            if (header.vertexCount == 0 || header.vertexCount % 3u != 0)
+            {
+                MLogError(LoadGeometry, OS_TEXT("非索引三角形几何顶点数无效：") + debug_name);
+                delete geo_data;
+                return nullptr;
+            }
+            generated_indices.Resize(static_cast<int>(header.vertexCount));
+            for (uint32_t i = 0; i < header.vertexCount; ++i)
+                generated_indices[static_cast<int>(i)] = i;
+            meshlet_indices = generated_indices;
+        }
+
+        if (!BuildMeshletGeometryData(meshlet_positions.GetData(),
+                                      header.vertexCount,
+                                      meshlet_indices.GetData(),
+                                      static_cast<uint32_t>(meshlet_indices.GetCount()),
+                                      meshlet_data))
+        {
+            MLogError(LoadGeometry, OS_TEXT("无法为三角形几何构建 Meshlet：") + debug_name);
+            delete geo_data;
+            return nullptr;
+        }
     }
 
     const U8String geo_name=ToU8String(debug_name);
@@ -538,6 +793,12 @@ static Geometry *LoadGeometryFromReader(VulkanDevice *device,const GeometryVerte
     }
 
     geometry->SetBoundingVolumes(bounding_volumes);
+    if (meshlet_data.IsValid() && !geometry->SetMeshletData(meshlet_data))
+    {
+        MLogError(LoadGeometry, OS_TEXT("无法绑定 Meshlet 数据到几何体：") + debug_name);
+        delete geometry;
+        return nullptr;
+    }
 
     return geometry;
 }
