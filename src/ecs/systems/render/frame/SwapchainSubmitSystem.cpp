@@ -6,7 +6,7 @@
 namespace hgl::ecs
 {
     SwapchainSubmitSystem::SwapchainSubmitSystem(const std::string& name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderSubmit);
     }

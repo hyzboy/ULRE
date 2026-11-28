@@ -17,7 +17,7 @@
 namespace hgl::ecs
 {
     MainLightShadowSystem::MainLightShadowSystem(const std::string &name)
-        : System(name)
+        : RenderSystem(name)
         , shadow_controller()
         , shadow_enabled(false)
     {

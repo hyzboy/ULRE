@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/ecs/core/system/System.h>
+#include <hgl/ecs/systems/render/RenderSystem.h>
 #include <hgl/ecs/support/pipeline/RenderPipelineBase.h>
 
 namespace hgl::ecs
@@ -21,14 +21,14 @@ namespace hgl::ecs
      *   1. Implement GetPipeline(context) - return the specific pipeline
      *   2. Override the appropriate On*() method for their phase
      */
-    class RenderPipelineSystem : public System
+    class RenderPipelineSystem : public RenderSystem
     {
     protected:
         OBJECT_LOGGER
 
     public:
         explicit RenderPipelineSystem(const std::string& name = "RenderPipelineSystem")
-            : System(name) {}
+            : RenderSystem(name) {}
 
         virtual ~RenderPipelineSystem() = default;
 

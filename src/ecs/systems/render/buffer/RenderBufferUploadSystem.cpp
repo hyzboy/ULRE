@@ -10,7 +10,7 @@
 namespace hgl::ecs
 {
     RenderBufferUploadSystem::RenderBufferUploadSystem(const std::string& name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderBufferUpload);
     }

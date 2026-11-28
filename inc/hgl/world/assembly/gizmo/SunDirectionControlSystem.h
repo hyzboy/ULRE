@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/world/assembly/gizmo/GizmoTypes.h>
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/ecs/support/transform/TransformAccessor.h>
 #include<memory>
 
@@ -16,7 +16,7 @@ namespace hgl
 
 namespace hgl::graph{
 
-class SunDirectionControlSystem : public hgl::ecs::System
+class SunDirectionControlSystem : public hgl::ecs::RenderSystem
 {
 private:
     GizmoECS *gizmo = nullptr;

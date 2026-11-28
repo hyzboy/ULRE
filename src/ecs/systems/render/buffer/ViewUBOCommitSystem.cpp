@@ -6,7 +6,7 @@
 namespace hgl::ecs
 {
     ViewUBOCommitSystem::ViewUBOCommitSystem(const std::string &name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderBufferCommit);
     }

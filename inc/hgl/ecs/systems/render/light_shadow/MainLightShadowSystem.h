@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/ecs/support/storage/CameraSlotGuard.h>
 #include<hgl/graph/ubo/ShadowInfo.h>
 #include<hgl/graph/render/RenderTargetDesc.h>
@@ -36,7 +36,7 @@ namespace hgl
          *   光源域（`LightSystem`）对本系统零依赖。见
          *   `doc/future/lighting-shadow-domain-split-plan.md` §3。
          */
-        class MainLightShadowSystem : public System
+        class MainLightShadowSystem : public RenderSystem
         {
         private:
 

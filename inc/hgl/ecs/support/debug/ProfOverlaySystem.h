@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/type/String.h>
 
 #include<vector>
@@ -55,7 +55,7 @@ namespace hgl
          * - 打开/重新显示时**立即**出一版骨架（数值为 0），随后 `kWarmupFrames`
          *   帧就用真实数据替换，避免慢帧率下"按了没反应"的错觉。
          */
-        class ProfOverlaySystem : public System
+        class ProfOverlaySystem : public RenderSystem
         {
         public:
             static constexpr int kMaxLines     = 48;   ///< 文本行池容量

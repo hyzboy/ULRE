@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
 #include<cstdint>
@@ -39,7 +39,7 @@ namespace hgl::ecs
      *   2. 材质化注册：纹理 bindless handle 登记（RegisterTextureResource，被
      *      RenderCollectSystem 消费）。
      */
-    class RenderSceneUBOSystem : public System
+    class RenderSceneUBOSystem : public RenderSystem
     {
     private:
 

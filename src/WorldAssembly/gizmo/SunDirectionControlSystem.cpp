@@ -16,7 +16,7 @@
 namespace hgl::graph{
 
 SunDirectionControlSystem::SunDirectionControlSystem()
-    : hgl::ecs::System("SunDirectionControlSystem")
+    : hgl::ecs::RenderSystem("SunDirectionControlSystem")
 {
     SetExecutionPhase(hgl::ecs::ExecutionPhase::TickPostCamera);
 }

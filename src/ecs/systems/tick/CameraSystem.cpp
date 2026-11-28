@@ -257,9 +257,9 @@ namespace hgl::ecs
     }
 
     CameraSystem::CameraSystem(ECSContext* ctx)
-        : input_system(nullptr)
+        : world(ctx)
+        , input_system(nullptr)
     {
-        SetContext(ctx);
         // Set system type and properties
         SetExecutionPhase(ExecutionPhase::TickCamera);
 
@@ -362,12 +362,12 @@ namespace hgl::ecs
 
     void CameraSystem::Update(float deltaTime)
     {
-        if (!context)
+        if (!world)
             return;
 
         if (!viewport_info)
         {
-            auto *rt = context->Environment().GetRenderTarget();
+            auto *rt = world->Environment().GetRenderTarget();
             if (rt)
                 viewport_info = rt->GetViewportInfo();
         }
@@ -375,7 +375,7 @@ namespace hgl::ecs
         // 获取InputSystem（首次调用时查找）
         if (!input_system)
         {
-            input_system = context->GetSystem<InputSystem>().get();
+            input_system = world->GetSystem<InputSystem>().get();
         }
 
         // pass 级相机覆盖（RenderTo(request.camera) 期间）：只处理覆盖相机，
@@ -384,10 +384,10 @@ namespace hgl::ecs
         {
             // 契约（doc/world-addresses-and-camera-model-plan.md §6.6②）：pass 相机必须属于**被渲染的世界**。
             // 跨世界相机 = 项目 bug ⇒ fail-fast 拒绝（它的槽号是别的世界的行空间，发出去就是错数据）。
-            if (override_camera->world_owner && override_camera->world_owner != context)
+            if (override_camera->world_owner && override_camera->world_owner != world)
             {
                 GLogError("[CameraSystem] pass 相机 \"%s\" 属于另一个世界（world_owner=%p，本世界=%p）——拒绝使用",
-                          override_camera->GetName().c_str(), override_camera->world_owner, static_cast<const void*>(context));
+                          override_camera->GetName().c_str(), override_camera->world_owner, static_cast<const void*>(world));
                 return;
             }
 
@@ -435,7 +435,7 @@ namespace hgl::ecs
             BindCameraResources(camera_comp, is_main);
 
             // 只有主相机响应玩家输入，从属相机跳过输入；常驻 fallback 不是实体相机，不吃输入
-            if (is_main && !context->RenderData().IsFallbackCamera(camera_comp))
+            if (is_main && !world->RenderData().IsFallbackCamera(camera_comp))
                 ProcessInput(camera_comp, deltaTime);
 
             // 更新局部坐标系
@@ -459,8 +459,8 @@ namespace hgl::ecs
         // `shared_ptr` 钉在组件上的原因之一）。相机 ≤16/世界 ⇒ 这一份拷贝无意义开销。
         ValueArray<CameraComponent *> cameras;
 
-        if (context)
-            context->GetComponents<CameraComponent>(cameras);
+        if (world)
+            world->GetComponents<CameraComponent>(cameras);
 
         return std::vector<CameraComponent *>(cameras.begin(), cameras.end());
     }
@@ -645,7 +645,7 @@ namespace hgl::ecs
             return;
 
         // 槽号问**世界**（相机槽是世界资源，组件不再自持槽号）
-        const uint32_t camera_slot = context ? context->RenderData().GetCameraSlot(camera) : CameraComponent::kInvalidSlot;
+        const uint32_t camera_slot = world ? world->RenderData().GetCameraSlot(camera) : CameraComponent::kInvalidSlot;
 
         // 槽未认领（未分配 / 槽耗尽）：**不发布**——按未分配哨兵算出的行号会越界（甚至落进别的世界）。
         // 不静默：一次性告警（每帧刷屏没意义，判据是"这个相机根本没进 GPU"）。
@@ -661,7 +661,7 @@ namespace hgl::ecs
             return;
         }
 
-        auto *storage = context ? context->RenderData().CameraRows() : nullptr;
+        auto *storage = world ? world->RenderData().CameraRows() : nullptr;
         if (!storage || !storage->IsReady())
             return;
 
@@ -683,10 +683,10 @@ namespace hgl::ecs
         // 只认领**槽**（不碰 viewport —— 本函数也会在离屏 pass 的设置阶段被调用，
         // 那时 viewport_info 是离屏 RT 的，绑上去会污染主帧投影）。
         for (CameraComponent *camera : cameras)
-            context->RenderData().EnsureCameraSlot(camera, camera == default_camera);
+            world->RenderData().EnsureCameraSlot(camera, camera == default_camera);
 
         if (default_camera)
-            context->RenderData().EnsureCameraSlot(default_camera, true);
+            world->RenderData().EnsureCameraSlot(default_camera, true);
 
         for (CameraComponent *camera : cameras)
             PublishCamera(camera, frame_slot);
@@ -712,11 +712,11 @@ namespace hgl::ecs
         // §3-⑥（2026-10-11）：三级解析的**纯读**部分（doc/world-addresses-and-camera-model-plan.md §3）。
         // 只做选择：不改 0 号槽归属、不生成 fallback。认领版 `SelectMainCamera` 复用本函数 ⇒
         // 两条公开口不会各有一套解析逻辑（否则又是"两份真值"）。
-        if (!context)
+        if (!world)
             return nullptr;
 
         // ① 0 号槽的默认相机仍在 ⇒ 沿用：跨帧稳定，不因集合顺序/新增相机而抖动换相机。
-        if (auto *def = context->RenderData().GetDefaultCamera())
+        if (auto *def = world->RenderData().GetDefaultCamera())
         {
             for (CameraComponent *camera : cameras)
             {
@@ -749,7 +749,7 @@ namespace hgl::ecs
         // ④ 没有**实体相机**：当前 0 号槽宿主就是生效相机（常驻 fallback / 系统内建相机 —— 它们
         // 不经实体组件注册，`CollectCameras()` 看不到）⇒ 纯读返回它；世界连 0 号槽都空 ⇒ nullptr。
         // （认领版在此之后才补"没有就生成常驻 fallback"。）
-        return context->RenderData().GetDefaultCamera();
+        return world->RenderData().GetDefaultCamera();
     }
 
     CameraComponent* CameraSystem::SelectMainCamera(const std::vector<CameraComponent *> &cameras)
@@ -760,9 +760,9 @@ namespace hgl::ecs
         CameraComponent *selected = SelectMainCameraPure(cameras);
 
         if (!selected)
-            return context ? context->RenderData().EnsureFallbackCamera() : nullptr;     // ④
+            return world ? world->RenderData().EnsureFallbackCamera() : nullptr;     // ④
 
-        if (context && context->RenderData().GetDefaultCamera() == selected)
+        if (world && world->RenderData().GetDefaultCamera() == selected)
             return selected;                                                // ①
 
         return ClaimDefaultCamera(selected);                                // ②/③
@@ -777,7 +777,7 @@ namespace hgl::ecs
         // T2-c：槽账目按**宿主弱引用**计占用期 ⇒ 认领时必须交出同一控制块的 shared_ptr。
         // 相机的宿主就是它所在类型化池行内的那一份（实体相机）或世界/系统持有的那一份
         // ⇒ 用 `weak_from_this().lock()` 取回，**不新建控制块**（新建 = 立即失效的错误宿主）。
-        if (camera && context)
+        if (camera && world)
         {
             auto owner = camera->weak_from_this().lock();
 
@@ -788,7 +788,7 @@ namespace hgl::ecs
                 return nullptr;
             }
 
-            context->RenderData().SetDefaultCamera(owner);
+            world->RenderData().SetDefaultCamera(owner);
         }
 
         return camera;
@@ -816,16 +816,16 @@ namespace hgl::ecs
             camera->viewport_info = viewport_info;
 
         // 相机槽是**世界**资源（16 槽 × 帧槽、0 号槽恒为默认相机）：认领/升格一律走世界访问器
-        context->RenderData().EnsureCameraSlot(camera, is_default);
+        world->RenderData().EnsureCameraSlot(camera, is_default);
     }
 
     void CameraSystem::MarkAllCameraMatricesDirty()
     {
-        if (!context)
+        if (!world)
             return;
 
         ValueArray<CameraComponent *> cameras;
-        context->GetComponents<CameraComponent>(cameras);
+        world->GetComponents<CameraComponent>(cameras);
 
         for (CameraComponent *camera : cameras)
         {

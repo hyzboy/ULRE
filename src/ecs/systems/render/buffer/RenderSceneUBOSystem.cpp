@@ -71,7 +71,7 @@ namespace hgl::ecs
     }
 
     RenderSceneUBOSystem::RenderSceneUBOSystem(const std::string& name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderFrameSync);
     }

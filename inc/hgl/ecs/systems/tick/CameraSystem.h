@@ -80,6 +80,7 @@ namespace hgl
         {
         private:
 
+            ECSContext* world = nullptr;
             InputSystem* input_system;
 
             CameraInputState input_state;
@@ -109,6 +110,9 @@ namespace hgl
 
             CameraSystem(ECSContext* ctx = nullptr);
             ~CameraSystem() override = default;
+
+            void SetWorld(ECSContext* w) { world = w; }
+            ECSContext* GetWorld() const { return world; }
 
             void Update(float deltaTime) override;
 

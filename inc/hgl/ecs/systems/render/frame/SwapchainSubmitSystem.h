@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 
 namespace hgl
 {
@@ -17,7 +17,7 @@ namespace hgl::ecs
      *
      * Submits the frame to the render target (swapchain present).
      */
-    class SwapchainSubmitSystem : public System
+    class SwapchainSubmitSystem : public RenderSystem
     {
     private:
 

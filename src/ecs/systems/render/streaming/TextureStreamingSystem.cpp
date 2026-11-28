@@ -266,7 +266,7 @@ namespace hgl::ecs
     }
 
     TextureStreamingSystem::TextureStreamingSystem()
-        :System("TextureStreamingSystem")
+        :RenderSystem("TextureStreamingSystem")
     {
         // 必须早于引擎自己的 UpdateUploadQueue（见头文件说明）。
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);

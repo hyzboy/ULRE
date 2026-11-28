@@ -6,7 +6,7 @@
 namespace hgl::ecs
 {
     LightSystem::LightSystem(const std::string &name)
-        : System(name)
+        : RenderSystem(name)
     {
         // 与 EnvironmentSystem / MainLightShadowSystem 同阶段：本帧渲染设置之前（光源行在
         // prepass 的阴影解算与主帧绘制之前写妥）。

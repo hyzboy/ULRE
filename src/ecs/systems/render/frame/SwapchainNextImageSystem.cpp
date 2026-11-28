@@ -6,7 +6,7 @@
 namespace hgl::ecs
 {
     SwapchainNextImageSystem::SwapchainNextImageSystem(const std::string& name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderSwapchainNextImage);
     }

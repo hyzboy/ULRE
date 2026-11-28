@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/graph/asset/ModelAsset.h>
 #include<hgl/graph/mesh/ModelStreaming.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
@@ -78,7 +78,7 @@ namespace hgl::ecs
      * 自己的约定。因此调用方必须在请求场景之前 `SetBuildSettings(...)`；
      * 未设定时句柄直接失败并给出原因，而不是静默画出一个没有材质的场景。
      */
-    class ModelStreamingSystem final : public System
+    class ModelStreamingSystem final : public RenderSystem
     {
         class StreamHandler;
 

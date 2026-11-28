@@ -28,7 +28,7 @@ namespace
 }
 
 TransformGizmoSystem::TransformGizmoSystem()
-    : hgl::ecs::System("TransformGizmoSystem")
+    : hgl::ecs::RenderSystem("TransformGizmoSystem")
     , default_mode(GizmoMode::MoveWorld)
 {
     SetExecutionPhase(hgl::ecs::ExecutionPhase::TickPostCamera);

@@ -22,7 +22,7 @@
 namespace hgl::ecs
 {
     EnvironmentSystem::EnvironmentSystem(const std::string &name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
     }

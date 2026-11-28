@@ -384,6 +384,7 @@ set(ECS_RENDER_HEADERS
     "support/storage/LightRowTable.h"
     "support/text/TextRenderPipeline.h"
     "support/transform/TransformAssignmentBuffer.h"
+    "systems/render/RenderSystem.h"
     "systems/render/collect/RenderCollectSystem.h"
     "systems/render/frame/RenderSystemCore.h"
     "systems/render/light_shadow/ColorPaletteSystem.h"

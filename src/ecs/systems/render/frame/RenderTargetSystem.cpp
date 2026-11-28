@@ -7,7 +7,7 @@
 namespace hgl::ecs
 {
     RenderTargetSystem::RenderTargetSystem(const std::string &name)
-        : System(name)
+        : RenderSystem(name)
     {
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/ecs/core/entity/EntityHandle.h>
 #include<hgl/ecs/systems/render/light_shadow/SkyEnvironmentConfig.h>
 #include<hgl/graph/asset/PrimitiveAsset.h>
@@ -36,7 +36,7 @@ namespace hgl
          *   `sky_atmosphere.glsl` 内常量；`addr_sky` 同步退出世界表）⇒ 天空外观的编辑入口不复存在。
          *   见 `doc/future/lighting-shadow-domain-split-plan.md` §3。
          */
-        class EnvironmentSystem : public System
+        class EnvironmentSystem : public RenderSystem
         {
         private:
 

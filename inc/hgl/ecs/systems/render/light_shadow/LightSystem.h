@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/graph/ubo/LightRow.h>
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>
@@ -25,7 +25,7 @@ namespace hgl
          * 写路径一律经 `LightRowTable::SetRow`（**值变才标脏** ⇒ 静态光参数零重传；
          * 逐帧改的光参数随帧槽上行到设备镜像的每一份）。
          */
-        class LightSystem : public System
+        class LightSystem : public RenderSystem
         {
         public:
 

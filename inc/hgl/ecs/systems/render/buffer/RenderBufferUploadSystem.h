@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 
 namespace hgl
 {
@@ -23,7 +23,7 @@ namespace hgl::ecs
      *
      * Replaces the old BufferUpdateQueue + BufferCommitQueue two-queue system.
      */
-    class RenderBufferUploadSystem : public System
+    class RenderBufferUploadSystem : public RenderSystem
     {
     private:
 

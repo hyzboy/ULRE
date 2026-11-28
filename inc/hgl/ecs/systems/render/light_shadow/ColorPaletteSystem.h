@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/vk/buffer/StructView.h>
 #include<hgl/graph/ubo/ColorPalette.h>
 #include<hgl/color/Color4f.h>
@@ -23,7 +23,7 @@ namespace hgl
          * 懒创建 buffer、dirty 追踪、地址注册进全局地址表
          *（global_addresses.addr_color_palette）；内容原地更新，地址不变。
          */
-        class ColorPaletteSystem : public System
+        class ColorPaletteSystem : public RenderSystem
         {
         private:
 

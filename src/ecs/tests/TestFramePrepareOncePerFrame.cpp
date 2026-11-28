@@ -59,11 +59,9 @@ int main()
 
     ECSContext ctx;
     auto context_probe = ctx.RegisterSystem<ContextBindingProbeSystem>();
-    if (!context_probe
-        || context_probe->GetCoreContext() != &ctx
-        || context_probe->GetContext() != &ctx)
+    if (!context_probe || context_probe->GetCoreContext() != &ctx)
     {
-        GLogError(u8"Test Failed: ECSContext system registration must bind core and render contexts explicitly");
+        GLogError(u8"Test Failed: ECSContext system registration must bind the core context");
         return 1;
     }
 

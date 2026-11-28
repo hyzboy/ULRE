@@ -71,8 +71,8 @@ namespace hgl::ecs
 
     public:
 
-        void SetWorld(ECSContext *w) { world = w; SetContext(w); }
-        ECSContext *GetWorld() const { return world ? world : context; }
+        void SetWorld(ECSContext *w) { world = w; }
+        ECSContext *GetWorld() const { return world; }
 
         void Initialize() override;
         void Shutdown() override;

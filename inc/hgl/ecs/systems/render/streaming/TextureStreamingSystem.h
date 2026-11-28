@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/graph/module/TextureLoadCommitter.h>
 #include<hgl/type/String.h>
 
@@ -53,7 +53,7 @@ namespace hgl::ecs
      * （避免坏文件每帧重读磁盘刷屏）；该图元持续不渲染，并留下 error 日志。
      * 需要重试时由调用方 `ClearAsyncRequest()` 把它放回待办集合。
      */
-    class TextureStreamingSystem final : public System
+    class TextureStreamingSystem final : public RenderSystem
     {
         class StreamHandler;
 

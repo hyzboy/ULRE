@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/ecs/core/system/System.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 
 namespace hgl
 {
@@ -27,7 +27,7 @@ namespace hgl
          * - 这些 UBO 均为 host-visible 持久映射，Update() 直写可见，
          *   无需经过 RenderBufferUploadSystem 的设备级 StagedBuffer 扫描
          */
-        class ViewUBOCommitSystem : public System
+        class ViewUBOCommitSystem : public RenderSystem
         {
         public:
 

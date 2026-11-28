@@ -81,7 +81,7 @@ namespace hgl::ecs
     };
 
     ModelStreamingSystem::ModelStreamingSystem()
-        : System("ModelStreamingSystem")
+        : RenderSystem("ModelStreamingSystem")
     {
         // 与纹理/几何流送同相位：必须早于引擎的显存提交队列推进，
         // 否则本帧拿到的字节要等下一帧才可能变成可画的图元。

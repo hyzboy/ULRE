@@ -311,7 +311,7 @@ namespace hgl::ecs
     }
 
     GeometryStreamingSystem::GeometryStreamingSystem()
-        :System("GeometryStreamingSystem")
+        :RenderSystem("GeometryStreamingSystem")
     {
         // 必须早于渲染收集（见头文件说明）。
         SetExecutionPhase(ExecutionPhase::RenderPreBeginFrame);

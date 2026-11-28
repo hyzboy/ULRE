@@ -8,6 +8,8 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/JoltPhysicsSystem.h>
+#include<hgl/ecs/systems/render/RenderSystem.h>
 #include<hgl/graph/module/GlobalSSBOBufferRegistry.h>
 #include<hgl/ecs/components/ShadowProxy.h>
 #include<hgl/ecs/components/GeometryData.h>
@@ -77,8 +79,21 @@ namespace hgl
         void ECSContext::ConfigureSystem(System *system)
         {
             ECSCoreContext::ConfigureSystem(system);
-            if (system)
-                system->SetContext(this);
+            if (auto *render_sys = dynamic_cast<RenderSystem *>(system))
+            {
+                if (!render_sys->GetContext())
+                    render_sys->SetContext(this);
+            }
+            if (auto *camera = dynamic_cast<CameraSystem *>(system))
+            {
+                if (!camera->GetWorld())
+                    camera->SetWorld(this);
+            }
+            if (auto *physics = dynamic_cast<JoltPhysicsSystem *>(system))
+            {
+                if (!physics->GetWorld())
+                    physics->SetWorld(this);
+            }
         }
 
         bool ECSContext::Initialize(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target)
