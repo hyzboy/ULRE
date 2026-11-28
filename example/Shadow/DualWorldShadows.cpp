@@ -373,7 +373,6 @@ private:
             if (!child_world->RegisterSystem<ViewUBOCommitSystem>())
                 return LogStageFail("CreateOffscreenWorld", "register ViewUBOCommitSystem failed");
 
-        child_world->SetResourceNamePrefix("DualWorldShadows:Child");
 
         // ── 子世界场景：地面 + 3 个 caster（Movable ⇒ 进 cascade 0 的 caster 集）──
         if (!BuildWorldScene(child_world, "child"))
@@ -475,7 +474,6 @@ public:
         if (!ecs_context)
             return LogStageFail("Init", "ECS context is null");
 
-        ecs_context->SetResourceNamePrefix("DualWorldShadows:MainScene");
 
         selfcheck = (std::getenv("DWS_SELFCHECK") != nullptr);
 

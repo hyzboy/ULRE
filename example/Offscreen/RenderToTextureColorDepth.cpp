@@ -699,7 +699,6 @@ public:
         if (!ecs_context)
             return LogStageFail("App::Init", "ECS context is null");
 
-        ecs_context->SetResourceNamePrefix("RTTColorDepth:MainScene");
 
         auto light_system = ecs_context->GetSystem<LightSystem>();
         if (!light_system)

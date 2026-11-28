@@ -5,9 +5,7 @@
 #include<hgl/ecs/core/entity/Object.h>
 #include<hgl/ecs/core/entity/Entity.h>
 #include<hgl/ecs/core/system/System.h>
-#include<hgl/ecs/core/system/SystemGroupActivity.h>
 #include<hgl/ecs/core/system/SystemRegistry.h>
-#include<hgl/ecs/core/FrameLaneWaitSet.h>
 #include<hgl/ecs/core/RenderPassScopeState.h>
 #include<hgl/ecs/core/MainFrameTopologyState.h>
 #include<hgl/ecs/core/AdaptiveRenderGraphCache.h>
@@ -112,10 +110,6 @@ namespace hgl
             friend struct RenderPassSetupTestAccess;
             // 实体索引的 CPU 渲染派生表；Shutdown 先清理实体，再销毁此状态域。
             WorldEntityRenderState entity_render_state;
-            uint64_t render_diagnostic_world_id = 0;
-
-            // Component-driven system-group activity tracking（A2：枚举 + O(1) 数组，热路径无字符串）
-            SystemGroupActivity system_group_activity;
 
             // 空间域聚合状态（变换槽位与行存储、包围盒行存储、可见性集合）
             WorldSpatialState spatial_state;
@@ -135,22 +129,6 @@ namespace hgl
 
             /// GPU 设备（从旧集中式入口迁移来）
             WorldRenderEnvironment render_environment;
-
-            // ---- A1 车道等待列表（per-frame，见 RenderOptions.h 的车道说明）----
-
-            /// 帧提交等待列表：纯状态机，无世界/设备依赖
-            FrameLaneWaitSet lane_waits;
-
-            /// 静态场景 revision：任何 Static transform 被检出变更时递增（A3）。
-            /// 消费方（如 EnvironmentSystem 的静态级联阴影缓存）记录上次消费值，
-            /// 与当前值不等即知"静态场景已变"，做对应的缓存失效。只增不减。
-            uint64_t static_scene_revision = 0;
-
-            /// Graphics context adapter (Phase 2) - now raw pointer
-
-            /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
-            /// Used by systems when creating GPU resources for better leak tracking
-            AnsiString resource_name_prefix;
 
         private:
 
@@ -224,13 +202,10 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return render_runner.GetFrameIndex(); }
-            uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
 
             int GetActiveMobilityFilter() const { return render_runner.PassScope().GetMobilityFilter(); }
 
             /// Static transform 变更检出时递增（由 TransformSystem 调用；A3 静态缓存失效链）
-            void BumpStaticSceneRevision() { ++static_scene_revision; }
-            uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
             /// 本 pass 是否有资格充当「主帧」（与 P1 资格判定的谓词完全一致）：
             /// 非阴影 pass 且无移动性过滤。阴影/过滤 pass 与主帧共用同一份
@@ -377,13 +352,13 @@ namespace hgl
             // ---- A1 车道等待列表 ----
 
             /// 设定下一次提交的等待列表（RenderTo / 主帧收尾用）
-            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count) { lane_waits.SetSubmitWaits(waits,count); }
+            void SetSubmitWaits(const graph::SemaphoreSubmit *waits,uint32_t count) { render_runner.SetSubmitWaits(waits,count); }
             /// 累积本帧离屏 RT 的车道值（主帧提交 await 它们）
-            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value) { lane_waits.AddFrameLaneWait(lane,value); }
+            void AddFrameLaneWait(graph::Semaphore *lane,uint64_t value) { render_runner.AddFrameLaneWait(lane,value); }
             /// 把当前累积复制为下一次提交的等待列表
-            void SetSubmitWaitsFromFrameLanes() { lane_waits.SetSubmitWaitsFromFrameLanes(); }
+            void SetSubmitWaitsFromFrameLanes() { render_runner.SetSubmitWaitsFromFrameLanes(); }
             /// 提交系统取用等待列表；is_main_frame=true 时同时收尾清空本帧累积
-            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame) { return lane_waits.TakeSubmitWaits(count,is_main_frame); }
+            const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count,bool is_main_frame) { return render_runner.TakeSubmitWaits(count,is_main_frame); }
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { render_environment.SetGraphicsContext(ctx); }
@@ -401,12 +376,6 @@ namespace hgl
 
             WorldRenderPipelineRegistry& PipelineRegistry() { return render_pipeline_registry; }
             const WorldRenderPipelineRegistry& PipelineRegistry() const { return render_pipeline_registry; }
-
-            /// Resource naming prefix for hierarchical GPU resource tracking
-            /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
-            void SetResourceNamePrefix(const AnsiString& prefix) { resource_name_prefix = prefix; }
-            void SetResourceNamePrefix(const char* prefix) { resource_name_prefix = prefix; }
-            const AnsiString& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             // ── ECSCoreContext 实体变更钩子实现 ──
             void OnEntityDestroyed(EntityID id) override;
@@ -458,14 +427,6 @@ namespace hgl
             /// 启用/禁用某个系统组的全部系统（A2：按枚举 O(1)，不查字符串）
             void SetSystemGroupEnabled(SystemGroupID group, bool enabled) override;
 
-            /// 该组的安装器是否已在本世界跑过（A2：枚举）
-            bool IsSystemGroupInstalled(SystemGroupID group) const;
-
-            /// 标记该组已安装（幂等）；组快照不在此建立，由 SetSystemGroupEnabled 首次启用时惰性重建
-            void MarkSystemGroupInstalled(SystemGroupID group);
-
-            /// 重置组件驱动的组状态（计数 / 已安装 / 快照）—— 世界 Shutdown 用
-            void ResetComponentDrivenGroups();
 
         public:
             /**

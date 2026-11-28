@@ -15,7 +15,7 @@ namespace hgl::ecs
         if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
         {
             context->RenderData().InvalidateEntityRuntimePipeline(owner->GetEntityID());
-            context->BumpStaticSceneRevision();
+            context->Spatial().BumpStaticSceneRevision();
         }
     }
 
@@ -26,7 +26,7 @@ namespace hgl::ecs
 
         max_cast_distance = distance;
         if (auto *context = owner ? owner->GetContextAs<ECSContext>() : nullptr)
-            context->BumpStaticSceneRevision();
+            context->Spatial().BumpStaticSceneRevision();
     }
 
     ShadowProxy *GetShadowProxy(Entity *owner)

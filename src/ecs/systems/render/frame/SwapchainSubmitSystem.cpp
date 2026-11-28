@@ -25,7 +25,8 @@ namespace hgl::ecs
         // A1：等待列表由 RenderTo 按当前 RT 语义准备
         //     （离屏 pass 等主帧车道；主帧等本帧各离屏 RT 的车道值）
         uint32_t wait_count = 0;
-        const graph::SemaphoreSubmit *waits = context->TakeSubmitWaits(wait_count, render_target->IsSwapchain());
+        const graph::SemaphoreSubmit *waits = context->Runner().TakeSubmitWaits(
+            wait_count, render_target->IsSwapchain());
 
             last_submit_ok = render_target->Submit(waits, wait_count);
         if (!last_submit_ok)

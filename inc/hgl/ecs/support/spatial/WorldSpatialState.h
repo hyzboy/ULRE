@@ -7,6 +7,7 @@
 #include <hgl/ecs/support/cull/BoundingBoxAccessor.h>
 #include <hgl/ecs/support/cull/VisibilityDataStorage.h>
 #include <hgl/type/Smart.h>
+#include <cstdint>
 
 namespace hgl::ecs
 {
@@ -45,6 +46,7 @@ namespace hgl::ecs
         IWorldSpatialObserver* observer = nullptr;
 
         TransformSlotTable transform_slots;
+        uint64_t static_scene_revision = 0;
         bool transform_slot_overflow_warned = false;    ///< 段预算用尽：一次性告警闩
         bool transform_row_move_warned = false;        ///< Mobility 换边（行号移动）：一次性告警闩
         uint32_t transform_row_move_count = 0;         ///< 换边次数（可观测）
@@ -78,6 +80,8 @@ namespace hgl::ecs
         bool TryGetTransformSlot(TransformID id, bool movable, uint32_t &out_slot) const;
         uint32_t GetLiveTransformCount(bool movable) const;
         uint32_t GetTransformRowMoveCount() const { return transform_row_move_count; }
+        void BumpStaticSceneRevision() { ++static_scene_revision; }
+        uint64_t GetStaticSceneRevision() const { return static_scene_revision; }
 
         bool RegisterTransform(TransformID id, bool isMovable);
         bool MigrateTransform(TransformID id, bool toMovable);

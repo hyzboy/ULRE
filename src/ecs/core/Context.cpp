@@ -42,7 +42,6 @@
 #include<hgl/ecs/systems/render/buffer/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
-#include<hgl/sync/Mutex.h>
 #include<hgl/time/Time.h>
 #include<algorithm>
 #include<cstdlib>
@@ -53,25 +52,12 @@ namespace hgl
 {
     namespace ecs
     {
-        namespace
-        {
-            uint64_t NextRenderDiagnosticWorldID()
-            {
-                static hgl::Mutex mutex;
-                static uint64_t next_id=0;
-                hgl::MutexLock lock(&mutex);
-                return ++next_id;
-            }
-        }
-
         ECSContext::ECSContext(const AnsiString& name)
             : ECSCoreContext(name)
             , render_data(&render_environment, &render_runner, name, this)
             , gpu_resources(&render_environment, &entity_render_state, &render_data, name)
             , render_runner(this)
         {
-            render_diagnostic_world_id=NextRenderDiagnosticWorldID();
-
             // 空间域初始化（绑定 CoreContext/World 指针并注册观察者）
             spatial_state.Initialize(this, this);
 
@@ -236,7 +222,7 @@ namespace hgl
                 ClearComponentPools();
                 system_registry.ClearElementIndex();
                 system_registry.ClearDependencies();
-                ResetComponentDrivenGroups();
+                system_registry.ResetComponentDrivenGroups();
                 spatial_state.Clear();
 
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing material batches");
@@ -259,7 +245,7 @@ namespace hgl
             ClearEntities();
 
             ClearComponentPools();
-            ResetComponentDrivenGroups();
+            system_registry.ResetComponentDrivenGroups();
             spatial_state.Clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
@@ -479,7 +465,7 @@ namespace hgl
             if (group == SystemGroupID::None)
                 return;
 
-            system_group_activity.Add(group);
+            system_registry.AddGroupActivity(group);
 
             EnsureSystemGroupSystems(this, group, GetRenderTarget());
             SetSystemGroupEnabled(group, true);
@@ -495,7 +481,7 @@ namespace hgl
             if (group == SystemGroupID::None)
                 return;
 
-            if (system_group_activity.Remove(group))
+            if (system_registry.RemoveGroupActivity(group))
                 SetSystemGroupEnabled(group, false);
         }
 
@@ -547,7 +533,7 @@ namespace hgl
             if (Entity *entity = GetEntity(id))
                 entity_render_state.EntityGPU().VerifyAfterWrite(entity, "ECSContext::OnEntityVisibilityChanged");
             MarkDynamicFactChanged(DynamicFactChange::Visibility);
-            BumpStaticSceneRevision();
+            spatial_state.BumpStaticSceneRevision();
         }
 
         void ECSContext::OnTransformMembershipChanged(TransformID)

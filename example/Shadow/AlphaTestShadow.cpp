@@ -913,7 +913,6 @@ public:
         if (!ecs_context)
             return false;
 
-        ecs_context->SetResourceNamePrefix("AlphaTestShadow:MainScene");
         ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);
 
         light_system = ecs_context->GetSystem<LightSystem>();

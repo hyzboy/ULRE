@@ -179,11 +179,11 @@ namespace
         EXPECT(material->GetAuthoredGeneration() == authored + 1);
         auto *shadow = e1->AddComponent<ShadowProxy>();
         EXPECT(shadow);
-        const auto shadow_revision = ctx.GetStaticSceneRevision();
+        const auto shadow_revision = ctx.Spatial().GetStaticSceneRevision();
         shadow->SetMaxDistance(25.0f);
-        EXPECT(ctx.GetStaticSceneRevision() == shadow_revision + 1);
+        EXPECT(ctx.Spatial().GetStaticSceneRevision() == shadow_revision + 1);
         shadow->SetMaxDistance(25.0f);
-        EXPECT(ctx.GetStaticSceneRevision() == shadow_revision + 1);
+        EXPECT(ctx.Spatial().GetStaticSceneRevision() == shadow_revision + 1);
         geometry->SetPrimitiveVariantPurpose(graph::PrimitiveVariantPurpose::DepthOnly);
         EXPECT(material->GetAuthoredGeneration() == authored + 1);
         GPUModelRefComponent *ref = e1->AddComponent<GPUModelRefComponent>();

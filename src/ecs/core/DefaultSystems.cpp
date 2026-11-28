@@ -297,7 +297,7 @@ namespace hgl::ecs
 
         EnsureCoreEcsSystems(ctx, default_rt);
 
-        if (ctx->IsSystemGroupInstalled(group))
+        if (ctx->GetSystemRegistry().IsSystemGroupInstalled(group))
             return true;
 
         auto& registry = SystemGroupRegistry::Get();
@@ -306,7 +306,7 @@ namespace hgl::ecs
         if (!installed)
             return false;
 
-        ctx->MarkSystemGroupInstalled(group);
+        ctx->GetSystemRegistry().MarkSystemGroupInstalled(group);
         return true;
     }
 

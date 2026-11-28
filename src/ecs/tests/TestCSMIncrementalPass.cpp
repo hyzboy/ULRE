@@ -1572,7 +1572,7 @@ int main(int argc, char** argv)
             // 9D: A3 静态场景 revision 失效链契约。
             // 静态级联滚动缓存的"静态"前提由该链兜底：TransformSystem 在
             // SubmitTransformUpdates 检出 Static transform 变更 → 递增
-            // ECSContext::static_scene_revision → MainLightShadowSystem 的阴影
+            // WorldSpatialState::static_scene_revision → MainLightShadowSystem 的阴影
             // prepass 比对消费并 InvalidateStaticCache。历史教训：失效钩子
             // 曾只有 API（InvalidateStaticCache 零调用者），静态缓存默认
             // "场景永不变"——相机静止时移走静态物体，旧阴影挂在原地。
@@ -1584,7 +1584,7 @@ int main(int argc, char** argv)
                     return 9;
                 }
 
-                const uint64_t revision_base = ctx.GetStaticSceneRevision();
+                const uint64_t revision_base = ctx.Spatial().GetStaticSceneRevision();
 
                 auto e_static = ctx.CreateEntity<Entity>("TestStaticMover");
                 auto tf_static = ctx.Spatial().GetTransform(ctx.Spatial().CreateTransform(e_static->GetEntityID(), Mobility::Static));
@@ -1595,7 +1595,7 @@ int main(int argc, char** argv)
                 // revision 永不递增」的缺陷；本用例现在就是那条缺陷的判据。
                 tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
-                if (ctx.GetStaticSceneRevision() == revision_base)
+                if (ctx.Spatial().GetStaticSceneRevision() == revision_base)
                 {
                     GLogError(u8"Test 9D Failed: moving a Static transform must bump static_scene_revision "
                               u8"(static cascade cache would keep stale depth forever)");
@@ -1605,7 +1605,7 @@ int main(int argc, char** argv)
                 // 稳态：无变更的重复提交不得继续递增（否则每帧全量重建静态级联）
                 tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
-                if (ctx.GetStaticSceneRevision() != revision_base + 1)
+                if (ctx.Spatial().GetStaticSceneRevision() != revision_base + 1)
                 {
                     GLogError(u8"Test 9D Failed: unchanged scene must not keep bumping static_scene_revision");
                     return 9;
@@ -1613,14 +1613,14 @@ int main(int argc, char** argv)
 
                 // 批 1.1 B4：**删除静态实体**同样必须通知静态缓存失效（静态集合变了）。
                 // 历史用例只覆盖"移动"，删除路径完全没测（revision 不动 ⇒ 阴影残留）。
-                const uint64_t revision_before_delete = ctx.GetStaticSceneRevision();
+                const uint64_t revision_before_delete = ctx.Spatial().GetStaticSceneRevision();
 
                 ctx.DestroyEntity(e_static->GetEntityID());
 
                 tf_sys->Update(0.0f);
                 tf_sys->SubmitTransformUpdates();
 
-                if (ctx.GetStaticSceneRevision() == revision_before_delete)
+                if (ctx.Spatial().GetStaticSceneRevision() == revision_before_delete)
                 {
                     GLogError(u8"Test 9D Failed: destroying a Static entity must bump static_scene_revision "
                               u8"(removing a caster leaves its stale shadows in the cache)");
@@ -1646,7 +1646,7 @@ int main(int argc, char** argv)
                             env_src.Strcat(chunk, static_cast<int>(got));
                     }
                     if (!env_src.Contains("InvalidateStaticCache()")
-                     || !env_src.Contains("GetStaticSceneRevision()"))
+                     || !env_src.Contains("Spatial().GetStaticSceneRevision()"))
                     {
                         GLogError(u8"Test 9D Failed: RenderMainLightShadowPass must consume static_scene_revision "
                                   u8"and call InvalidateStaticCache (static cache invalidation chain severed)");
@@ -4675,7 +4675,7 @@ int main(int argc, char** argv)
               "void ECSContext::SetSystemGroupEnabled(SystemGroupID group, bool enabled)",
               "启用/禁用改回按名查找（热路径又重新字符串哈希）" },
             { "Context.cpp", OS_TEXT("src/ecs/core/Context.cpp"),
-              "system_group_activity.Add(group)",
+              "system_registry.AddGroupActivity(group)",
               "注册路径不再走枚举计数（热路径改回字符串）" },
             // 禁复活：字符串形态（含注释——needle 是全文本匹配）
             { "ComponentRow.h", OS_TEXT("inc/hgl/ecs/core/entity/ComponentRow.h"),

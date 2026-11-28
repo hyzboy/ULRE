@@ -261,7 +261,7 @@ namespace hgl::ecs
                 // 是"缓存有效期内静态物体不动"，此检出点是其唯一权威信号源；
                 // EnvironmentSystem 在 RenderPreBeginFrame 比对消费（同帧失效，
                 // 当帧 prepass 即重建）。
-                world->BumpStaticSceneRevision();
+                world->Spatial().BumpStaticSceneRevision();
 
                 // 批 1.1 B4：消费掉本次序号（重复提交不再递增 —— 静态级联不会每帧全量重建）
                 last_static_change_seq = static_change_seq;

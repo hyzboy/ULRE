@@ -122,7 +122,7 @@ namespace hgl::ecs
 
         // A3：以 Enable 时刻的 revision 为消费基线，避免启用后第一帧立即
         // 多做一次静态级联全量重建。
-        consumed_static_scene_revision = context ? context->GetStaticSceneRevision() : 0;
+        consumed_static_scene_revision = context ? context->Spatial().GetStaticSceneRevision() : 0;
 
         // 影随光（T6b）：在主光行上落「投阴影 + 机制 = CSM + 资源索引 0（本世界唯一一份影子数据）」。
         // 光行是影子的**归属方**（阴影从属于光源），本系统只是机制的执行者。
@@ -199,8 +199,8 @@ namespace hgl::ecs
 
         if (context)
         {
-            context->BumpStaticSceneRevision();
-            consumed_static_scene_revision = context->GetStaticSceneRevision();
+            context->Spatial().BumpStaticSceneRevision();
+            consumed_static_scene_revision = context->Spatial().GetStaticSceneRevision();
         }
     }
 
@@ -257,7 +257,7 @@ namespace hgl::ecs
         // 相机静止时缓存的旧深度永不刷新。
         if (context)
         {
-            const uint64_t revision = context->GetStaticSceneRevision();
+            const uint64_t revision = context->Spatial().GetStaticSceneRevision();
             if (revision != consumed_static_scene_revision)
             {
                 shadow_controller->InvalidateStaticCache();

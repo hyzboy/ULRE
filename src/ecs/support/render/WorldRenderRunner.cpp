@@ -29,6 +29,7 @@
 #include <hgl/time/Time.h>
 #include <hgl/common/DebugChannel.h>
 #include <hgl/log/Log.h>
+#include <hgl/sync/Mutex.h>
 
 namespace hgl::ecs
 {
@@ -47,6 +48,14 @@ namespace hgl::ecs
         };
 
         PrepassTimingAccum g_prepass_timing;
+
+        uint64_t NextRenderDiagnosticWorldID()
+        {
+            static hgl::Mutex mutex;
+            static uint64_t next_id = 0;
+            hgl::MutexLock lock(&mutex);
+            return ++next_id;
+        }
 
         inline uint64_t PrepassTimingNow()
         {
@@ -134,6 +143,7 @@ namespace hgl::ecs
 
     WorldRenderRunner::WorldRenderRunner(ECSContext *ctx)
         : context(ctx)
+        , render_diagnostic_world_id(NextRenderDiagnosticWorldID())
     {
     }
 
@@ -440,7 +450,7 @@ namespace hgl::ecs
                 if (main_value > 0)
                 {
                     const graph::SemaphoreSubmit main_wait = graph::SemaphoreSubmit::Wait(main_lane, main_value);
-                    context->SetSubmitWaits(&main_wait, 1);
+                    SetSubmitWaits(&main_wait, 1);
 
                     static bool s_a1_wait_logged = false;
                     if (!s_a1_wait_logged)
@@ -613,9 +623,9 @@ namespace hgl::ecs
             probe_down_ns = PrepassTimingNow() - probe_down_begin;
 
         if (ok)
-            context->AddFrameLaneWait(rt->GetLane(), rt->GetLaneValue());
+            AddFrameLaneWait(rt->GetLane(), rt->GetLaneValue());
 
-        context->SetSubmitWaitsFromFrameLanes();
+        SetSubmitWaitsFromFrameLanes();
 
         if (probe_t0 != 0)
         {

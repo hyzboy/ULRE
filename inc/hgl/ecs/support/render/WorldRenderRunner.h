@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/core/system/System.h>
+#include <hgl/ecs/core/FrameLaneWaitSet.h>
 #include <hgl/ecs/core/render/RenderPassRequest.h>
 #include <hgl/ecs/core/render/RenderFrameCache.h>
 #include <hgl/ecs/core/render/ScenePipelineMode.h>
@@ -44,6 +45,8 @@ namespace hgl::ecs
         AutoDelete<RenderSystemCore> render_core;
         RenderFrameCache render_frame_cache;
         uint32_t frame_index = 0;
+        FrameLaneWaitSet lane_waits;
+        uint64_t render_diagnostic_world_id = 0;
         uint64_t render_submission_serial = 0;
         graph::RenderCmdBuffer *current_render_cmd = nullptr;
 
@@ -58,6 +61,15 @@ namespace hgl::ecs
 
         uint32_t GetFrameIndex() const { return frame_index; }
         void SetFrameIndex(uint32_t index) { frame_index = index; }
+        uint64_t GetRenderDiagnosticWorldID() const { return render_diagnostic_world_id; }
+
+        void SetSubmitWaits(const graph::SemaphoreSubmit *waits, uint32_t count)
+        { lane_waits.SetSubmitWaits(waits, count); }
+        void AddFrameLaneWait(graph::Semaphore *lane, uint64_t value)
+        { lane_waits.AddFrameLaneWait(lane, value); }
+        void SetSubmitWaitsFromFrameLanes() { lane_waits.SetSubmitWaitsFromFrameLanes(); }
+        const graph::SemaphoreSubmit *TakeSubmitWaits(uint32_t &count, bool is_main_frame)
+        { return lane_waits.TakeSubmitWaits(count, is_main_frame); }
 
         uint64_t GetRenderSubmissionSerial() const { return render_submission_serial; }
         void SetRenderSubmissionSerial(uint64_t s) { render_submission_serial = s; }

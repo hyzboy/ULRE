@@ -75,7 +75,7 @@ namespace hgl::ecs
         }
 
         // 绝不在此注册系统（会动正被迭代的渲染执行列表）⇒ 只依赖宿主已装好的 Text 组。
-        if (!context->IsSystemGroupInstalled(SystemGroupID::Text))
+        if (!context->GetSystemRegistry().IsSystemGroupInstalled(SystemGroupID::Text))
         {
             static bool s_warned = false;
             if (!s_warned)

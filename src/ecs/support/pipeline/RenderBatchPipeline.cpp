@@ -1133,7 +1133,7 @@ namespace hgl::ecs
         {
             hgl::graph::FrameDebugger::PipelineInspectionSnapshot snapshot{};
             snapshot.valid = true;
-            snapshot.world_id = world->GetRenderDiagnosticWorldID();
+            snapshot.world_id = world->Runner().GetRenderDiagnosticWorldID();
             snapshot.frame_serial = cache.frame_serial;
             snapshot.collect_available = true;
             snapshot.collect_complete = !cache.fast_path_engaged;

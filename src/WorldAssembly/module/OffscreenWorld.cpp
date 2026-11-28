@@ -108,8 +108,6 @@ namespace hgl::graph
         if(!world_)
             return false;
 
-        world_->SetResourceNamePrefix(desc.resource_prefix);
-
         if(render_context_)
             world_->SetRenderContext(render_context_);
 

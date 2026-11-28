@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/system/System.h>
 #include<hgl/ecs/core/system/SystemScheduleState.h>
+#include <hgl/ecs/core/system/SystemGroupActivity.h>
 #include<hgl/ecs/support/storage/ComponentTypeTable.h>
 #include<hgl/type/PtrArray.h>
 #include<hgl/type/String.h>
@@ -48,6 +49,7 @@ namespace hgl::ecs
 
         /// 按组系统快照（使启用/禁用走 O(1) 数组；注册系统时失效，下次启用时重建）
         PtrArray<std::shared_ptr<System>> group_systems[kSystemGroupCount];
+        SystemGroupActivity group_activity;
 
         // 执行顺序（缓存）：更新系统和渲染系统分开
         PtrArray<OrderedSystem> tick_system_order;
@@ -101,11 +103,31 @@ namespace hgl::ecs
         /// 启用/禁用组内所有系统：有快照走快照，否则从元素索引重建
         void SetGroupEnabled(SystemGroupID group, bool enabled);
 
-        /// 清空全部组快照（世界 ResetComponentDrivenGroups 用）
+        /// 清空按组系统快照
         void ClearGroupSnapshots()
         {
             for (uint32_t g = 0; g < kSystemGroupCount; ++g)
                 group_systems[g].Clear();
+        }
+
+        void AddGroupActivity(SystemGroupID group) { group_activity.Add(group); }
+        bool RemoveGroupActivity(SystemGroupID group) { return group_activity.Remove(group); }
+
+        bool IsSystemGroupInstalled(SystemGroupID group) const
+        {
+            return group != SystemGroupID::None && group_activity.IsInstalled(group);
+        }
+
+        void MarkSystemGroupInstalled(SystemGroupID group)
+        {
+            if (group != SystemGroupID::None)
+                group_activity.MarkInstalled(group);
+        }
+
+        void ResetComponentDrivenGroups()
+        {
+            group_activity.Reset();
+            ClearGroupSnapshots();
         }
 
         /// 清两分类映射 + 两执行列表（系统共享引用在此释放；元素索引/快照仍持引用）

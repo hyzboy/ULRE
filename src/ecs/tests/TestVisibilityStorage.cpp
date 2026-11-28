@@ -65,7 +65,7 @@ int main(int argc, char** argv)
         }
 
         const auto initial_revision = world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility);
-        const auto initial_shadow_revision = world.GetStaticSceneRevision();
+        const auto initial_shadow_revision = world.Spatial().GetStaticSceneRevision();
         world.Spatial().SetEntityVisible(id,false);
         if (world.Spatial().IsEntityVisible(id) || !world.Spatial().Visibility()->IsDirectlyInvisible(id))
         {
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
         world.Spatial().SetEntityVisible(id,false);
         if (hidden_revision != initial_revision + 1
             || world.Runner().GetMainFrameTopology().Ledger().GetDynamicFactRevision(DynamicFactChange::Visibility) != hidden_revision
-            || world.GetStaticSceneRevision() != initial_shadow_revision + 1)
+            || world.Spatial().GetStaticSceneRevision() != initial_shadow_revision + 1)
             return 10;
 
         if (world.Spatial().Visibility()->GetInvisibleCount() != 1)

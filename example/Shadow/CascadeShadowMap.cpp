@@ -1503,7 +1503,6 @@ public:
         if (!ecs_context)
             return false;
 
-        ecs_context->SetResourceNamePrefix("CascadeShadowMap:MainScene");
 
         // 显式声明场景工作流模式（黄金路径：标准 3D 陆地主光级联阴影）
         ecs_context->SetScenePipelineMode(ScenePipelineMode::StandardLitCSM);

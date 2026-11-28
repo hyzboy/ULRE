@@ -82,7 +82,7 @@ namespace hgl
 
             // A3：静态级联滚动缓存（CSM 1..N）的失效钩子。
             // 静态物体的 L2W 变更已由 TransformSystem 检出并经
-            // ECSContext::static_scene_revision 自动触发；本 API 供引擎外信号
+            // WorldSpatialState::static_scene_revision 自动触发；本 API 供引擎外信号
             // 使用——运行时新增/删除静态物体、替换其材质/贴图等不经
             // TransformSystem 的变更，调用后下一帧静态级联全量重建。
             void InvalidateMainLightStaticShadowCache();
