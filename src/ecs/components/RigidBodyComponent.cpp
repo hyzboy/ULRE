@@ -1,7 +1,7 @@
 #include <hgl/ecs/components/RigidBodyComponent.h>
 #include <hgl/ecs/systems/tick/JoltPhysicsSystem.h>
 #include <hgl/ecs/core/entity/Entity.h>
-#include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/ECSCoreContext.h>
 
 namespace hgl::ecs
 {

@@ -12,6 +12,7 @@
 namespace hgl::ecs
 {
     class ECSCoreContext;
+    class ECSGameplayContext;
     class ECSContext;
 
     /**
@@ -40,6 +41,7 @@ namespace hgl::ecs
     class WorldSpatialState
     {
         friend class ECSContext;
+        friend class ECSGameplayContext;
         friend class TransformAccessor;
     private:
         ECSCoreContext* core_context = nullptr;

@@ -114,8 +114,11 @@ source_group("ECS\\Tests" FILES ${ECS_TEST_FILES})
 # ============================================================================
 set(ECS_CORE_SOURCES
     "components/Layer2DComponent.cpp"
+    "components/ModelCollisionProxyComponent.cpp"
+    "components/RigidBodyComponent.cpp"
     "components/Transform2DComponent.cpp"
     "core/ECSCoreContext.cpp"
+    "core/GameplayContext.cpp"
     "core/entity/ComponentRow.cpp"
     "core/entity/Entity.cpp"
     "core/entity/EntityManager.cpp"
@@ -125,10 +128,12 @@ set(ECS_CORE_SOURCES
     "core/system/SystemOrderPlanner.cpp"
     "core/system/SystemRegistry.cpp"
     "support/cull/BatchLayoutStaging.cpp"
+    "support/cull/VisibilityDataStorage.cpp"
     "support/material/MaterialVariantTable.cpp"
     "support/pipeline/RenderStrategyParity.cpp"
     "support/spatial/WorldSpatialState.cpp"
     "support/storage/FrameProfiler.cpp"
+    "support/transform/TransformAccessor.cpp"
     "systems/tick/CameraInputMapping.cpp"
     "systems/tick/InputSystem.cpp"
     "systems/tick/JoltPhysicsSystem.cpp"
@@ -149,6 +154,7 @@ set(ECS_CORE_HEADERS
     "core/AdaptiveRenderGraphCache.h"
     "core/DefaultSystems.h"
     "core/ECSCoreContext.h"
+    "core/GameplayContext.h"
     "core/MainFrameTopologyState.h"
     "core/RenderPassScopeState.h"
     "core/entity/ComponentRow.h"
@@ -526,6 +532,10 @@ add_ulre_unit_test(TestBindlessSlotAllocator tests/TestBindlessSlotAllocator.cpp
 add_executable(TestECSCoreBoundary tests/TestECSCoreBoundary.cpp)
 target_link_libraries(TestECSCoreBoundary PRIVATE ULRE.ECS.Core)
 set_target_properties(TestECSCoreBoundary PROPERTIES FOLDER "ULRE/Tests/ECS")
+
+add_executable(TestHeadlessGameplayWorld tests/TestHeadlessGameplayWorld.cpp)
+target_link_libraries(TestHeadlessGameplayWorld PRIVATE ULRE.ECS.Core)
+set_target_properties(TestHeadlessGameplayWorld PROPERTIES FOLDER "ULRE/Tests/ECS")
 
 add_ecs_test(TestTransformFlatStorage tests/TestTransformFlatStorage.cpp)
 
