@@ -62,6 +62,12 @@ namespace hgl::ecs
             vis_storage->SetVisible(id);
     }
 
+    void WorldSpatialState::UpdateTransforms()
+    {
+        if (TransformDataStorage* storage = transform_storage)
+            storage->UpdateDirtyWorldMatricesFlat();
+    }
+
     uint32_t WorldSpatialState::GetTransformSegmentBudget(const bool movable) const
     {
         const TransformDataStorage* storage = static_cast<const TransformDataStorage*>(transform_storage);

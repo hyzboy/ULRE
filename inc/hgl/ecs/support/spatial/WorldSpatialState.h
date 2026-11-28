@@ -73,6 +73,9 @@ namespace hgl::ecs
         /// 实体销毁时的空间数据统一回收入口（变换行、包围盒行、可见性状态）
         void OnEntityDestroy(EntityID id);
 
+        /// 纯 CPU 变换层级与世界矩阵求值（供无头世界与渲染世界共用唯一实现）
+        void UpdateTransforms();
+
         // ── 变换槽位与生命周期 ──
         uint32_t GetTransformSegmentBudget(bool movable) const;
         uint32_t AcquireTransformSlot(bool movable);

@@ -86,11 +86,8 @@ namespace hgl::ecs
         if (!world || !updateMovable)
             return;
 
+        world->Spatial().UpdateTransforms();
         auto* storage = world->Spatial().Transforms();
-        if (storage)
-        {
-            storage->UpdateDirtyWorldMatricesFlat();
-        }
 
         uint32_t total_movable = 0;
         uint32_t dirty_movable = 0;
